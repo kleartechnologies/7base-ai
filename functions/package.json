@@ -1,0 +1,26 @@
+{
+  "name": "marka-functions",
+  "private": true,
+  "description": "MARKA backend — authenticated AI orchestration and secure integrations",
+  "main": "lib/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.3.0",
+    "firebase-functions": "^7.3.2",
+    "openai": "^7.8.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}

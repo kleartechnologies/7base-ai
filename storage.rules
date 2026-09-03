@@ -1,0 +1,39 @@
+rules_version = '2';
+
+// MARKA Storage security rules.
+//
+// Every object lives under `businesses/{businessId}/…`. Access is granted by
+// looking up the business document in Firestore and checking its `ownerId`,
+// so file access can never diverge from data access.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function ownsBusiness(businessId) {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+    }
+
+    // 20 MB ceiling; menus and brand assets are well under this.
+    function isAllowedUpload() {
+      return request.resource.size < 20 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/.*')
+          || request.resource.contentType == 'application/pdf'
+        );
+    }
+
+    match /businesses/{businessId}/{allPaths=**} {
+      allow read: if ownsBusiness(businessId);
+      allow write: if ownsBusiness(businessId) && isAllowedUpload();
+      allow delete: if ownsBusiness(businessId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

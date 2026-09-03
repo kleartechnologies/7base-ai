@@ -1,0 +1,220 @@
+rules_version = '2';
+
+// MARKA Firestore security rules.
+//
+// Principle: a user can only ever touch documents they own. Ownership is
+// `ownerId == request.auth.uid` on every collection except `users`, which is
+// keyed by uid directly.
+//
+// Assistant messages are deliberately NOT client-writable. They are written by
+// Cloud Functions through the Admin SDK, which bypasses these rules — so a
+// client cannot forge a reply from MARKA.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // The document already stored belongs to the caller.
+    function ownsExisting() {
+      return isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // The document being written claims the caller as its owner.
+    function ownsIncoming() {
+      return isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+    }
+
+    // Ownership and creation time can never be rewritten after the fact.
+    function immutableFieldsUnchanged() {
+      return request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // --- users ---------------------------------------------------------
+    // A profile is readable and writable only by its own account. Deletion is
+    // denied: account removal must go through a backend that also cleans up
+    // the user's businesses, conversations and files.
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // --- businesses ----------------------------------------------------
+    // The Business Brain is jointly written: the owner edits the business
+    // facts, while website analysis is produced by Cloud Functions.
+    //
+    // `discovery` and `sources` are the record of what the backend actually
+    // did — which site was analysed, when, how many pages, whether it
+    // succeeded. They carry more authority than anything the client asserts,
+    // so the client may never write them. Functions use the Admin SDK, which
+    // bypasses these rules.
+    //
+    // `provenance` and the per-section source stamps stay client-writable on
+    // purpose: the only authority a client can honestly claim there is the
+    // owner's own, and the owner already outranks every discovered value. A
+    // forged stamp would only downgrade their own data.
+    match /businesses/{businessId} {
+
+      // A newly created business has not been analysed yet. This is the
+      // manual path (name plus what they sell); the analysed path is created
+      // server-side.
+      function pristineDiscovery() {
+        let discovery = request.resource.data.get('discovery', {});
+        return discovery.get('status', 'not_started') == 'not_started'
+          && discovery.get('sourceRef', null) == null
+          && discovery.get('completedAt', null) == null
+          && discovery.get('pagesAnalysed', 0) == 0
+          && request.resource.data.get('sources', []).size() == 0;
+      }
+
+      // An update must leave the backend's own record exactly as it found it.
+      function serverFieldsUnchanged() {
+        return request.resource.data.get('discovery', null) == resource.data.get('discovery', null)
+          && request.resource.data.get('sources', null) == resource.data.get('sources', null);
+      }
+
+      allow get, list: if ownsExisting();
+      allow create: if ownsIncoming() && pristineDiscovery();
+      allow update: if ownsExisting()
+        && ownsIncoming()
+        && immutableFieldsUnchanged()
+        && serverFieldsUnchanged();
+      allow delete: if ownsExisting();
+    }
+
+    // --- conversations and their messages -------------------------------
+    match /conversations/{conversationId} {
+      allow get, list: if ownsExisting();
+      allow create: if ownsIncoming();
+      allow update: if ownsExisting() && ownsIncoming() && immutableFieldsUnchanged();
+      allow delete: if ownsExisting();
+
+      match /messages/{messageId} {
+        function parentConversation() {
+          return get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+        }
+
+        function ownsConversation() {
+          return isSignedIn() && parentConversation().ownerId == request.auth.uid;
+        }
+
+        allow get, list: if ownsConversation();
+
+        // Clients may only ever add their own turn. MARKA's replies come from
+        // the Admin SDK, so 'assistant' and 'system' are refused here.
+        allow create: if ownsConversation()
+          && ownsIncoming()
+          && request.resource.data.role == 'user';
+
+        // Messages are an immutable record of the conversation.
+        allow update: if false;
+        allow delete: if ownsConversation();
+      }
+    }
+
+    // --- campaigns, creatives, calendar, results ------------------------
+    // Campaigns are jointly written: MARKA builds them server-side from
+    // recommendations, and the owner edits the strategy fields directly.
+    //
+    // `sourceRecommendationId` is the server's record that MARKA built this
+    // campaign from a real recommendation — a client that could set it would
+    // forge that provenance, so a client-created campaign must not carry one,
+    // and no update may change it. `businessId` and `conversationId` anchor
+    // the campaign to what it was built for and are equally frozen.
+    match /campaigns/{campaignId} {
+
+      function pristineCampaignProvenance() {
+        return request.resource.data.get('sourceRecommendationId', null) == null;
+      }
+
+      function campaignServerFieldsUnchanged() {
+        return request.resource.data.get('sourceRecommendationId', null)
+            == resource.data.get('sourceRecommendationId', null)
+          && request.resource.data.get('businessId', null)
+            == resource.data.get('businessId', null)
+          && request.resource.data.get('conversationId', null)
+            == resource.data.get('conversationId', null);
+      }
+
+      allow get, list: if ownsExisting();
+      allow create: if ownsIncoming() && pristineCampaignProvenance();
+      allow update: if ownsExisting()
+        && ownsIncoming()
+        && immutableFieldsUnchanged()
+        && campaignServerFieldsUnchanged();
+      allow delete: if ownsExisting();
+    }
+
+    // Creatives are generated only by Cloud Functions from a campaign the
+    // caller owns — a client that could create one could forge the chain
+    // Creative → Campaign → Recommendation, so creation is refused outright.
+    // The owner may edit the copy fields directly, but the provenance anchors
+    // (`campaignId`, `businessId`, `conversationId`, `sourceRecommendationId`)
+    // and the image reference (whose storagePath points into Storage the
+    // server wrote) are frozen.
+    match /creatives/{creativeId} {
+
+      function creativeServerFieldsUnchanged() {
+        return request.resource.data.get('campaignId', null)
+            == resource.data.get('campaignId', null)
+          && request.resource.data.get('businessId', null)
+            == resource.data.get('businessId', null)
+          && request.resource.data.get('conversationId', null)
+            == resource.data.get('conversationId', null)
+          && request.resource.data.get('sourceRecommendationId', null)
+            == resource.data.get('sourceRecommendationId', null)
+          && request.resource.data.get('content', {}).get('image', null)
+            == resource.data.get('content', {}).get('image', null);
+      }
+
+      allow get, list: if ownsExisting();
+      allow create: if false;
+      allow update: if ownsExisting()
+        && ownsIncoming()
+        && immutableFieldsUnchanged()
+        && creativeServerFieldsUnchanged();
+      allow delete: if ownsExisting();
+    }
+
+    match /calendarItems/{itemId} {
+      allow get, list: if ownsExisting();
+      allow create: if ownsIncoming();
+      allow update: if ownsExisting() && ownsIncoming() && immutableFieldsUnchanged();
+      allow delete: if ownsExisting();
+    }
+
+    // Performance data is written by backend ingestion, never by the client.
+    match /results/{resultId} {
+      allow get, list: if ownsExisting();
+      allow create: if ownsIncoming();
+      allow update: if ownsExisting() && ownsIncoming() && immutableFieldsUnchanged();
+      allow delete: if ownsExisting();
+    }
+
+    // --- recommendations ------------------------------------------------
+    // Server-generated marketing intelligence. Like assistant messages,
+    // recommendations are written only by Cloud Functions through the Admin
+    // SDK — a client that could create or edit one could forge MARKA's
+    // advice, so every client write except delete is refused. The owner may
+    // read their own and delete ones they no longer want.
+    match /recommendations/{recommendationId} {
+      allow get, list: if ownsExisting();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if ownsExisting();
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

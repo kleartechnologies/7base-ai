@@ -1,0 +1,13 @@
+{
+  // The Functions build excludes tests so they never ship in `lib`. They still
+  // have to typecheck, which is what this config is for.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "sourceMap": false,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["src"],
+  "exclude": ["lib", "node_modules"]
+}
