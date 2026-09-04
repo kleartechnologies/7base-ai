@@ -51,6 +51,15 @@ describe('extractPage', () => {
     expect(page.headings).toContain('Our menu')
   })
 
+  it('reads og:title separately from the title tag', () => {
+    const shell = extractPage(
+      'https://example.com/',
+      `<html><head><meta property="og:title" content="Warung Pak Din &amp; Sons" /></head><body></body></html>`,
+    )
+    expect(shell.title).toBeNull()
+    expect(shell.ogTitle).toBe('Warung Pak Din & Sons')
+  })
+
   it('never carries script or style content through', () => {
     expect(allText).not.toContain('do-not-read-me')
     expect(allText).not.toContain('alert(')

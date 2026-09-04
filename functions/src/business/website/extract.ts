@@ -19,6 +19,12 @@ export interface ExtractedLink {
 export interface ExtractedPage {
   url: string
   title: string | null
+  /**
+   * Open Graph title, kept separately from `<title>`. On script-shell pages
+   * (social platforms especially) the OG tags are sometimes the only place
+   * the page names its subject.
+   */
+  ogTitle: string | null
   metaDescription: string | null
   headings: string[]
   /** Readable prose and list items, in document order, de-duplicated. */
@@ -91,6 +97,7 @@ export function extractPage(url: string, html: string): ExtractedPage {
 
   const rawTitle = firstMatch(contentHtml, /<title[^>]*>([\s\S]*?)<\/title>/i)
   const title = rawTitle === null ? null : decodeEntities(rawTitle).trim() || null
+  const ogTitle = metaContent(contentHtml, 'property', 'og:title')
   const metaDescription =
     metaContent(contentHtml, 'name', 'description') ??
     metaContent(contentHtml, 'property', 'og:description')
@@ -138,6 +145,7 @@ export function extractPage(url: string, html: string): ExtractedPage {
   return {
     url,
     title,
+    ogTitle,
     metaDescription,
     headings,
     textBlocks,

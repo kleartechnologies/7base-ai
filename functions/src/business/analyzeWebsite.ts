@@ -27,8 +27,6 @@ import {
 import { assertRequestBudgetRemains } from '../usage/guardrail'
 import { HttpsError } from 'firebase-functions/v2/https'
 import { CRAWL_LIMITS, crawlSite, SiteUnreachableError } from './website/crawl'
-import { extractPage } from './website/extract'
-import { fetchPage, PageFetchError } from './website/fetchPage'
 import { normalizeSite } from './website/normalize'
 import { InvalidUrlError } from './website/url'
 import { BlockedHostError, UnresolvableHostError } from './website/guard'
@@ -38,10 +36,10 @@ import {
   type DiscoverySource,
 } from './discovery/source'
 import {
-  buildSocialCorpus,
-  isSocialLoginWall,
-  MIN_SOCIAL_TEXT_LENGTH,
-} from './discovery/socialPage'
+  fetchSocialProfile,
+  NotPublicError,
+  SocialThrottledError,
+} from './discovery/fetchSocial'
 import { emptyBrain } from './brain/empty'
 import { linkBusinessToUser } from './onboardingState'
 import { mergeWebsiteAnalysis } from './brain/merge'
@@ -304,6 +302,8 @@ export const businessRunWebsiteAnalysis = onCall(
         // One public page, fetched through the same SSRF-guarded fetcher the
         // crawler uses — DNS re-checked, every redirect hop re-validated. No
         // login, no session, no API: only what an anonymous visitor sees.
+        // The platforms answer anonymous readers inconsistently, so a
+        // recoverable miss gets one bounded retry (see discovery/fetchSocial).
         const social = await fetchSocialProfile(source)
         crawlMs = Date.now() - startedAt
 
@@ -429,55 +429,6 @@ export const businessRunWebsiteAnalysis = onCall(
 
 /* --- helpers ----------------------------------------------------------- */
 
-/**
- * The page exists but a server cannot see it: a login wall, a private or
- * restricted account, or the platform refusing anonymous readers. Nothing the
- * owner can retry their way out of — the manual flow is the answer.
- */
-class NotPublicError extends Error {
-  constructor() {
-    super('Social page is not publicly readable')
-    this.name = 'NotPublicError'
-  }
-}
-
-interface SocialProfileContent {
-  corpus: string
-  signals: { emails: string[]; phones: string[]; outboundLinks: string[] }
-}
-
-/**
- * Fetches and flattens one public social page. Never assumes the platform
- * cooperated: both Facebook and Instagram decide per-request whether an
- * anonymous server gets the page, a login wall, or a refusal, so every
- * outcome short of readable business content becomes a typed error the
- * caller's `classify` can translate for the owner.
- */
-async function fetchSocialProfile(source: DiscoverySource): Promise<SocialProfileContent> {
-  let fetched
-  try {
-    fetched = await fetchPage(source.url)
-  } catch (error) {
-    if (error instanceof PageFetchError) {
-      // 401/403/429 or a vanished page: for these platforms that means "not
-      // for anonymous eyes", not "site down".
-      if (error.failure === 'blocked' || error.failure === 'not_found') {
-        throw new NotPublicError()
-      }
-      throw new SiteUnreachableError(source.url, error.failure)
-    }
-    throw error
-  }
-
-  const page = extractPage(fetched.url, fetched.html)
-  if (isSocialLoginWall(source.kind, fetched.url, page)) throw new NotPublicError()
-
-  const social = buildSocialCorpus(source.kind, page)
-  if (social.textLength < MIN_SOCIAL_TEXT_LENGTH) throw new InsufficientContentError()
-
-  return { corpus: social.corpus, signals: social.signals }
-}
-
 interface AnalysisFailure {
   code: DiscoveryErrorCode
   message: string
@@ -507,6 +458,16 @@ function classify(error: unknown): AnalysisFailure {
       code: 'not_public',
       message:
         "I couldn't get enough public information from this page — it may be private, or only visible when logged in. No worries, you can tell EVA about your business instead.",
+    }
+  }
+  // Rate-limited on every attempt. Temporary by definition — `unreachable`
+  // keeps the retry button, and the wording says when, not "your page is
+  // private".
+  if (error instanceof SocialThrottledError) {
+    return {
+      code: 'unreachable',
+      message:
+        'This page is busy and did not let EVA read it just now. Please try again in a few minutes — or tell EVA about your business instead.',
     }
   }
   if (error instanceof SiteUnreachableError) {

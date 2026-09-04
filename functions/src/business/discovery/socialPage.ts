@@ -47,7 +47,7 @@ const WALL_TITLE_PATTERNS = [/^log\s?in\b/i, /\blog in or sign up\b/i, /\bsign u
 export function isSocialLoginWall(
   kind: DiscoverySourceKind,
   finalUrl: string,
-  page: Pick<ExtractedPage, 'title' | 'textLength'>,
+  page: Pick<ExtractedPage, 'title' | 'ogTitle' | 'textLength'>,
 ): boolean {
   if (kind === 'website') return false
 
@@ -60,7 +60,9 @@ export function isSocialLoginWall(
     // An unparseable final URL proves nothing either way; fall through.
   }
 
-  const title = (page.title ?? '').trim().toLowerCase()
+  // A shell render sometimes drops <title> but keeps the OG tags — a page
+  // that names its subject anywhere is not a wall.
+  const title = (page.title ?? page.ogTitle ?? '').trim().toLowerCase()
   if (title && WALL_TITLES.has(title)) return true
   if (title && WALL_TITLE_PATTERNS.some((p) => p.test(title))) return true
 
@@ -75,11 +77,32 @@ export interface SocialCorpus {
   corpus: string
   /** Characters of actual page-derived text — drives the "enough?" check. */
   textLength: number
+  /**
+   * True when the page carries the identity pair — a real title AND a
+   * description. On script-shell renders these two fields are where the
+   * platform puts the business name, category and location, so together they
+   * are enough to start from even when the prose count runs short.
+   */
+  hasIdentity: boolean
   signals: {
     emails: string[]
     phones: string[]
     outboundLinks: string[]
   }
+}
+
+/**
+ * Whether a social corpus is worth an AI request.
+ *
+ * Either the raw floor is met, or the identity pair is present. This is NOT
+ * a lowered threshold: a page with neither a description nor 80 characters
+ * of readable text still fails, exactly as before. What no longer fails is a
+ * metadata-rich shell whose title + description name the business, its
+ * category and its town — the representation Facebook and Instagram actually
+ * serve anonymous readers.
+ */
+export function isSocialContentSufficient(social: SocialCorpus): boolean {
+  return social.textLength >= MIN_SOCIAL_TEXT_LENGTH || social.hasIdentity
 }
 
 const MAX_CORPUS_CHARS = 8_000
@@ -105,7 +128,8 @@ export function buildSocialCorpus(kind: DiscoverySourceKind, page: ExtractedPage
     textLength += text.length
   }
 
-  add(`${platform} title`, page.title)
+  const title = page.title?.trim() || page.ogTitle?.trim() || null
+  add(`${platform} title`, title)
   add('Profile description', page.metaDescription)
 
   for (const heading of page.headings) add('', heading)
@@ -129,6 +153,7 @@ export function buildSocialCorpus(kind: DiscoverySourceKind, page: ExtractedPage
   return {
     corpus,
     textLength,
+    hasIdentity: Boolean(title && page.metaDescription?.trim()),
     signals: {
       emails: page.emails,
       phones: page.phones,

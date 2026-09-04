@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import type { ExtractedPage } from '../website/extract'
-import { buildSocialCorpus, isSocialLoginWall, MIN_SOCIAL_TEXT_LENGTH } from './socialPage'
+import {
+  buildSocialCorpus,
+  isSocialContentSufficient,
+  isSocialLoginWall,
+  MIN_SOCIAL_TEXT_LENGTH,
+} from './socialPage'
 
 function page(overrides: Partial<ExtractedPage> = {}): ExtractedPage {
   return {
     url: 'https://www.facebook.com/warungpakdin/',
     title: 'Warung Pak Din | Kuala Lumpur',
+    ogTitle: null,
     metaDescription: 'Warung Pak Din. 4,213 likes. Authentic nasi lemak since 1998.',
     headings: ['Warung Pak Din'],
     textBlocks: ['Open daily 7am-3pm', 'Jalan Ampang, Kuala Lumpur'],
@@ -59,7 +65,28 @@ describe('isSocialLoginWall', () => {
     expect(
       isSocialLoginWall('instagram', 'https://www.instagram.com/warungpakdin/', {
         title: null,
+        ogTitle: null,
         textLength: MIN_SOCIAL_TEXT_LENGTH - 1,
+      }),
+    ).toBe(true)
+  })
+
+  it('a shell that names its subject only in og:title is not a wall', () => {
+    expect(
+      isSocialLoginWall('facebook', 'https://www.facebook.com/warungpakdin/', {
+        title: null,
+        ogTitle: 'Warung Pak Din | Kuala Lumpur',
+        textLength: 0,
+      }),
+    ).toBe(false)
+  })
+
+  it('a wall title in og:title is still a wall', () => {
+    expect(
+      isSocialLoginWall('facebook', 'https://www.facebook.com/warungpakdin/', {
+        title: null,
+        ogTitle: 'Facebook - log in or sign up',
+        textLength: 500,
       }),
     ).toBe(true)
   })
@@ -133,6 +160,24 @@ describe('buildSocialCorpus', () => {
     expect(occurrences).toBe(1)
   })
 
+  it('falls back to og:title when the title tag is missing', () => {
+    const result = buildSocialCorpus(
+      'facebook',
+      page({ title: null, ogTitle: 'Warung Pak Din | Kuala Lumpur' }),
+    )
+    expect(result.corpus).toContain('Facebook Page title: Warung Pak Din | Kuala Lumpur')
+    expect(result.hasIdentity).toBe(true)
+  })
+
+  it('reports the identity pair only when both title and description exist', () => {
+    expect(buildSocialCorpus('facebook', page()).hasIdentity).toBe(true)
+    expect(buildSocialCorpus('facebook', page({ metaDescription: null })).hasIdentity).toBe(false)
+    expect(
+      buildSocialCorpus('facebook', page({ title: null, ogTitle: null })).hasIdentity,
+    ).toBe(false)
+    expect(buildSocialCorpus('facebook', page({ metaDescription: '   ' })).hasIdentity).toBe(false)
+  })
+
   it('surfaces contact details and the business website, not platform links', () => {
     const result = buildSocialCorpus(
       'facebook',
@@ -150,5 +195,47 @@ describe('buildSocialCorpus', () => {
     expect(result.signals.emails).toEqual(['hello@warungpakdin.com'])
     expect(result.signals.phones).toEqual(['+60123456789'])
     expect(result.signals.outboundLinks).toEqual(['https://warungpakdin.com/'])
+  })
+})
+
+describe('isSocialContentSufficient', () => {
+  it('passes on the raw floor alone, as before', () => {
+    const social = buildSocialCorpus('facebook', page({ metaDescription: null }))
+    expect(social.textLength).toBeGreaterThanOrEqual(MIN_SOCIAL_TEXT_LENGTH)
+    expect(isSocialContentSufficient(social)).toBe(true)
+  })
+
+  it('passes a short metadata-only page when the identity pair is present', () => {
+    // A real pattern: short Malay bio, script-only body. Name + description
+    // carry the business, its category and its town in under 80 characters.
+    const social = buildSocialCorpus(
+      'facebook',
+      page({
+        title: 'Kedai Runcit Salmiah',
+        metaDescription: 'Kedai runcit di Banting.',
+        headings: [],
+        textBlocks: [],
+        priceLines: [],
+        structuredData: [],
+      }),
+    )
+    expect(social.textLength).toBeLessThan(MIN_SOCIAL_TEXT_LENGTH)
+    expect(isSocialContentSufficient(social)).toBe(true)
+  })
+
+  it('still fails a page with neither the floor nor the identity pair', () => {
+    const social = buildSocialCorpus(
+      'facebook',
+      page({
+        title: 'Kedai Salmiah | Banting',
+        metaDescription: null,
+        headings: [],
+        textBlocks: [],
+        priceLines: [],
+        structuredData: [],
+      }),
+    )
+    expect(social.hasIdentity).toBe(false)
+    expect(isSocialContentSufficient(social)).toBe(false)
   })
 })
