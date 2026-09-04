@@ -135,11 +135,14 @@ export async function generateCreativeEdit(params: {
   businessName: string | null
   /** Grounding corpus; the instruction itself is already included by callers. */
   corpus: string
+  /** The authenticated owner, for the usage guardrail. */
+  uid: string
   /** Server-resolved subscription plan, from the callable boundary. */
   plan: SubscriptionPlan
 }): Promise<CreativeEditOutcome> {
   const { data, meta } = await runStructuredTask<unknown>({
     task: 'creative.edit',
+    uid: params.uid,
     plan: params.plan,
     systemPrompt: CREATIVE_EDIT_PROMPT,
     input: buildCreativeEditInput(params),

@@ -36,6 +36,8 @@ export async function generateCreativeImage(params: {
   altText: string | null
   format: CreativeFormat
   business: StoredBusiness | null
+  /** The authenticated owner — the account whose image quota this consumes. */
+  uid: string
   /**
    * Server-resolved subscription plan, from the callable boundary. Both
    * plans use the same image model; this feeds the per-plan cost telemetry.
@@ -52,6 +54,7 @@ export async function generateCreativeImage(params: {
 
   const result = await runImageTask({
     task: 'creative.generate_image',
+    uid: params.uid,
     plan: params.plan,
     prompt,
     size: params.format === 'portrait_post' ? '1024x1536' : '1024x1024',

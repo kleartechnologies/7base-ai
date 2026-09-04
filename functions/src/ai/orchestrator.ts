@@ -1,4 +1,5 @@
 import { logger } from 'firebase-functions'
+import { HttpsError } from 'firebase-functions/v2/https'
 import {
   estimateCostUsd,
   resolveModelForTask,
@@ -7,6 +8,13 @@ import {
   type SubscriptionPlan,
 } from '../config/models'
 import type { MessageBlock, MessageMeta } from '../lib/types'
+import { reserveAiUsage, settleAiUsage, settleAiUsageFailure } from '../usage/guardrail'
+import {
+  buildUsageReservation,
+  CONTEXT_TOO_LARGE_MESSAGE,
+  MAX_REQUEST_CHARS,
+  ZERO_ACTUAL,
+} from '../usage/limits'
 import { classifyProviderError, type AiServiceError } from './errors'
 import { getOpenAI, isConfigured } from './openai.client'
 
@@ -25,6 +33,13 @@ import { getOpenAI, isConfigured } from './openai.client'
 
 export interface OrchestrationRequest {
   task: AiTask
+  /**
+   * The authenticated caller, from the callable's verified auth context —
+   * never from a client payload. Required on every request because the Phase
+   * 6B usage guardrail runs inside this module: an OpenAI call with no owner
+   * would be an OpenAI call with no budget.
+   */
+  uid: string
   /**
    * The caller's subscription plan, resolved server-side by the callable
    * boundary (lib/auth.ts `resolvePlanForUser`) — never taken from a client
@@ -62,6 +77,8 @@ export interface OrchestrationResult {
 
 export interface StructuredRequest {
   task: AiTask
+  /** The authenticated caller; see OrchestrationRequest. */
+  uid: string
   /** Server-resolved subscription plan; see OrchestrationRequest. */
   plan: SubscriptionPlan
   systemPrompt: string
@@ -152,7 +169,11 @@ function recordTiming({ task, plan, config, latencyMs, promptChars, response }: 
     /** Rough throughput, the number that tells you whether output size is the story. */
     outputTokensPerSecond: latencyMs > 0 ? Math.round((outputTokens / latencyMs) * 1000) : null,
     /** Null when this model's price is not pinned — never a guess. */
-    estimatedCostUsd: estimateCostUsd(config.model, { inputTokens, outputTokens }),
+    estimatedCostUsd: estimateCostUsd(config.model, {
+      inputTokens,
+      outputTokens,
+      cachedInputTokens: usage?.input_tokens_details?.cached_tokens ?? 0,
+    }),
   })
 }
 
@@ -175,6 +196,49 @@ function reportFailure(
   return classified
 }
 
+/* --- Phase 6B usage guardrail -------------------------------------------- */
+
+/**
+ * The context-size gate, BEFORE any reservation or model call. Ceilings live
+ * in usage/limits.ts and are sized well above anything the product builds,
+ * so tripping one means the payload was forged or a caller is broken —
+ * `invalid-argument`, not `resource-exhausted`, because no quota was spent.
+ */
+function assertContextWithinLimit(args: {
+  task: AiTask
+  uid: string
+  plan: SubscriptionPlan
+  promptChars: number
+}): void {
+  const maxChars = MAX_REQUEST_CHARS[args.task]
+  if (args.promptChars > maxChars) {
+    logger.warn('usage.blocked', {
+      uid: args.uid,
+      plan: args.plan,
+      task: args.task,
+      reason: 'context_limit',
+      promptChars: args.promptChars,
+      maxChars,
+    })
+    throw new HttpsError('invalid-argument', CONTEXT_TOO_LARGE_MESSAGE)
+  }
+}
+
+/** Settlement facts for a finished text call, from the provider's own usage report. */
+function textActual(model: string, response: ProviderResponse) {
+  const usage = response.usage
+  const inputTokens = usage?.input_tokens ?? 0
+  const outputTokens = usage?.output_tokens ?? 0
+  const cachedInputTokens = usage?.input_tokens_details?.cached_tokens ?? 0
+  return {
+    ...ZERO_ACTUAL,
+    inputTokens,
+    outputTokens,
+    cachedInputTokens,
+    costUsd: estimateCostUsd(model, { inputTokens, outputTokens, cachedInputTokens }) ?? 0,
+  }
+}
+
 /**
  * Runs a task whose answer is data rather than prose.
  *
@@ -191,8 +255,23 @@ export async function runStructuredTask<T>(
   }
 
   const config = resolveModelForTask(request.task, request.plan)
-  const startedAt = Date.now()
+  const promptChars = request.systemPrompt.length + request.input.length
+  assertContextWithinLimit({ task: request.task, uid: request.uid, plan: request.plan, promptChars })
 
+  // Enforcement BEFORE OpenAI: worst case reserved, or resource-exhausted.
+  const handle = await reserveAiUsage({
+    uid: request.uid,
+    plan: request.plan,
+    task: request.task,
+    reservation: buildUsageReservation({
+      task: request.task,
+      model: config.model,
+      maxOutputTokens: config.maxOutputTokens,
+      promptChars,
+    }),
+  })
+
+  const startedAt = Date.now()
   let response
   try {
     response = await getOpenAI().responses.create({
@@ -211,8 +290,15 @@ export async function runStructuredTask<T>(
       },
     }, { timeout: config.timeoutMs, maxRetries: config.maxRetries })
   } catch (error) {
+    // Zero tokens billed as far as we can know, but the attempt stays
+    // counted — a failing loop exhausts requests, not the token budget.
+    await settleAiUsageFailure(handle)
     throw reportFailure(request.task, request.plan, config, Date.now() - startedAt, error)
   }
+
+  // Measurement AFTER OpenAI: the response is billed whether or not it
+  // parses, so settlement happens before any validation can throw.
+  await settleAiUsage(handle, textActual(config.model, response))
 
   const latencyMs = Date.now() - startedAt
   recordTiming({
@@ -263,6 +349,8 @@ export async function runStructuredTask<T>(
 
 export interface ImageRequest {
   task: AiTask
+  /** The authenticated caller; see OrchestrationRequest. */
+  uid: string
   /**
    * Server-resolved subscription plan; see OrchestrationRequest. Both plans
    * share one image model today — carried anyway so the telemetry can split
@@ -294,8 +382,28 @@ export async function runImageTask(request: ImageRequest): Promise<ImageResult> 
   }
 
   const config = resolveModelForTask(request.task, request.plan)
-  const startedAt = Date.now()
+  assertContextWithinLimit({
+    task: request.task,
+    uid: request.uid,
+    plan: request.plan,
+    promptChars: request.prompt.length,
+  })
 
+  // One image attempt = one unit of image quota, reserved BEFORE the model
+  // runs. A failed attempt stays consumed — the spend happened.
+  const handle = await reserveAiUsage({
+    uid: request.uid,
+    plan: request.plan,
+    task: request.task,
+    reservation: buildUsageReservation({
+      task: request.task,
+      model: config.model,
+      maxOutputTokens: config.maxOutputTokens,
+      promptChars: request.prompt.length,
+    }),
+  })
+
+  const startedAt = Date.now()
   let response
   try {
     response = await getOpenAI().images.generate(
@@ -311,7 +419,21 @@ export async function runImageTask(request: ImageRequest): Promise<ImageResult> 
       { timeout: config.timeoutMs, maxRetries: config.maxRetries },
     )
   } catch (error) {
+    await settleAiUsageFailure(handle)
     throw reportFailure(request.task, request.plan, config, Date.now() - startedAt, error)
+  }
+
+  // Image tokens are booked to their own counters, never the text budget.
+  {
+    const inputTokens = response.usage?.input_tokens ?? 0
+    const outputTokens = response.usage?.output_tokens ?? 0
+    await settleAiUsage(handle, {
+      ...ZERO_ACTUAL,
+      imageInputTokens: inputTokens,
+      imageOutputTokens: outputTokens,
+      costUsd: estimateCostUsd(config.model, { inputTokens, outputTokens }) ?? 0,
+      imageGenerated: Boolean(response.data?.[0]?.b64_json),
+    })
   }
 
   const latencyMs = Date.now() - startedAt
@@ -367,8 +489,30 @@ export async function runTask(request: OrchestrationRequest): Promise<Orchestrat
   }
 
   const config = resolveModelForTask(request.task, request.plan)
-  const startedAt = Date.now()
+  const promptChars =
+    request.systemPrompt.length +
+    request.history.reduce((total, turn) => total + turn.text.length, 0)
+  assertContextWithinLimit({ task: request.task, uid: request.uid, plan: request.plan, promptChars })
 
+  // Attachment parts carry token weight the char count cannot see, so the
+  // reservation books a flat conservative figure per part; settlement then
+  // replaces the estimate with what the provider actually billed.
+  const parts = request.history.flatMap((turn) => turn.parts ?? [])
+  const handle = await reserveAiUsage({
+    uid: request.uid,
+    plan: request.plan,
+    task: request.task,
+    reservation: buildUsageReservation({
+      task: request.task,
+      model: config.model,
+      maxOutputTokens: config.maxOutputTokens,
+      promptChars,
+      imageParts: parts.filter((part) => part.type === 'input_image').length,
+      fileParts: parts.filter((part) => part.type === 'input_file').length,
+    }),
+  })
+
+  const startedAt = Date.now()
   let response
   try {
     response = await getOpenAI().responses.create({
@@ -395,8 +539,11 @@ export async function runTask(request: OrchestrationRequest): Promise<Orchestrat
       ...(config.temperature === null ? {} : { temperature: config.temperature }),
     }, { timeout: config.timeoutMs, maxRetries: config.maxRetries })
   } catch (error) {
+    await settleAiUsageFailure(handle)
     throw reportFailure(request.task, request.plan, config, Date.now() - startedAt, error)
   }
+
+  await settleAiUsage(handle, textActual(config.model, response))
 
   const text = response.output_text?.trim() ?? ''
   const latencyMs = Date.now() - startedAt
@@ -405,9 +552,7 @@ export async function runTask(request: OrchestrationRequest): Promise<Orchestrat
     plan: request.plan,
     config,
     latencyMs,
-    promptChars:
-      request.systemPrompt.length +
-      request.history.reduce((total, turn) => total + turn.text.length, 0),
+    promptChars,
     response,
   })
 

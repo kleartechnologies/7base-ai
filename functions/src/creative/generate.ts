@@ -127,6 +127,7 @@ export const creativeGenerateFromCampaign = onCall(
       try {
         const copyResult = await runStructuredTask<unknown>({
           task: 'creative.generate_copy',
+          uid,
           plan,
           systemPrompt: CREATIVE_COPY_PROMPT,
           input: buildCopyInput({
@@ -150,7 +151,10 @@ export const creativeGenerateFromCampaign = onCall(
       } catch (copyError) {
         // Wording is an improvement, not a dependency. The deterministic
         // draft says only what the campaign already says, and ships.
+        // HttpsError means the usage guardrail blocked the call before any
+        // OpenAI spend — the unworded draft is the graceful degradation.
         if (
+          copyError instanceof HttpsError ||
           copyError instanceof AiNotConfiguredError ||
           copyError instanceof AiServiceError ||
           copyError instanceof AiResponseError ||
@@ -203,12 +207,19 @@ export const creativeGenerateFromCampaign = onCall(
             altText,
             format,
             business,
+            uid,
             plan,
           })
           image = generated.image
           meta = meta ?? generated.meta
         } catch (imageErrorRaw) {
-          if (
+          // A guardrail block (HttpsError) carries the sentence the owner
+          // should read — "today's image-generation limit" beats a generic
+          // failure line, and the copy work already done still ships.
+          if (imageErrorRaw instanceof HttpsError) {
+            logger.warn('Creative image generation blocked', { campaignId })
+            imageError = imageErrorRaw.message
+          } else if (
             imageErrorRaw instanceof AiNotConfiguredError ||
             imageErrorRaw instanceof AiServiceError ||
             imageErrorRaw instanceof AiResponseError
@@ -299,6 +310,9 @@ export const creativeGenerateFromCampaign = onCall(
 
       return { creativeId, conversationId, imageReady: image !== null }
     } catch (error) {
+      // Guardrail and validation HttpsErrors already carry the message the
+      // owner should read; wrapping them in `internal` would swallow it.
+      if (error instanceof HttpsError) throw error
       throw internal('creativeGenerateFromCampaign', error)
     }
   },

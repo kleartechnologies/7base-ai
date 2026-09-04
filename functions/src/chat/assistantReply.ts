@@ -27,6 +27,7 @@ import {
 } from '../ai/orchestrator'
 import { buildBusinessContext } from '../ai/context'
 import { buildChatSystemPrompt } from '../ai/prompts/system'
+import { CHAT_HISTORY_MAX_CHARS, trimTurnsToCharBudget } from '../usage/limits'
 import { buildUnavailableNote, resolveAttachmentInput } from './attachments'
 import {
   applyCampaignPatch,
@@ -141,12 +142,19 @@ export const chatAssistantReply = onCall(
       .map((doc) => doc.data() as StoredMessage)
       .filter((message) => message.role === 'user' || message.role === 'assistant')
 
-    const history: OrchestrationTurn[] = stored
-      .map((message) => ({
-        role: message.role as 'user' | 'assistant',
-        text: message.plainText,
-      }))
-      .filter((turn) => turn.text.length > 0)
+    // The 30-turn window bounds how many turns are sent; the char budget
+    // bounds how big they are. Without it, thirty maximum-length messages
+    // would buy a giant context on every turn of the thread (§26 abuse
+    // shape). Oldest turns fall off first, like any context window.
+    const history: OrchestrationTurn[] = trimTurnsToCharBudget(
+      stored
+        .map((message) => ({
+          role: message.role as 'user' | 'assistant',
+          text: message.plainText,
+        }))
+        .filter((turn) => turn.text.length > 0),
+      CHAT_HISTORY_MAX_CHARS,
+    )
 
     const latest = history.at(-1)
     if (!latest || latest.role !== 'user') {
@@ -211,6 +219,7 @@ export const chatAssistantReply = onCall(
             business,
             writeAssistantMessage,
             conversationId,
+            uid,
             plan,
           })
           return { conversationId, assistantMessageId }
@@ -234,6 +243,7 @@ export const chatAssistantReply = onCall(
             instruction: latest.text,
             campaign: existing.campaign,
             businessName: typeof business?.name === 'string' ? business.name : null,
+            uid,
             plan,
           })
 
@@ -303,6 +313,7 @@ export const chatAssistantReply = onCall(
           goal: latest.text,
           business,
           recentTurns: history.slice(0, -1).slice(-MARKETING_CONTEXT_TURNS),
+          uid,
           plan,
         })
 
@@ -350,6 +361,7 @@ export const chatAssistantReply = onCall(
 
       const result = await runTask({
         task: 'chat.reply',
+        uid,
         plan,
         systemPrompt:
           buildChatSystemPrompt(buildBusinessContext(business)) + (unavailableNote ?? ''),
@@ -373,6 +385,10 @@ export const chatAssistantReply = onCall(
 
       return { conversationId, assistantMessageId }
     } catch (error) {
+      // Guardrail blocks (resource-exhausted with the limit sentence) and
+      // context-size rejections (invalid-argument) already carry the message
+      // the owner should read; wrapping them in `internal` would swallow it.
+      if (error instanceof HttpsError) throw error
       if (error instanceof AiNotConfiguredError) {
         throw notConfigured()
       }
@@ -420,6 +436,8 @@ async function editCreativeFromChat(params: {
   instruction: string
   business: StoredBusiness | null
   conversationId: string
+  /** The authenticated caller, for the usage guardrail. */
+  uid: string
   /** Server-resolved subscription plan, from the callable boundary. */
   plan: SubscriptionPlan
   writeAssistantMessage: (
@@ -428,7 +446,7 @@ async function editCreativeFromChat(params: {
     meta: MessageMeta | null,
   ) => Promise<string>
 }): Promise<string> {
-  const { existing, instruction, business, conversationId, plan } = params
+  const { existing, instruction, business, conversationId, uid, plan } = params
   const creative = existing.creative
 
   // The campaign, for grounding and context — if it still exists. Its
@@ -450,6 +468,7 @@ async function editCreativeFromChat(params: {
     campaign,
     businessName: typeof business?.name === 'string' ? business.name : null,
     corpus,
+    uid,
     plan,
   })
 
@@ -493,7 +512,14 @@ async function editCreativeFromChat(params: {
         imageChanged = true
       }
     } catch (imageError) {
-      if (
+      // A guardrail block (HttpsError) keeps the copy edit that already
+      // happened and puts its limit sentence on the image slot — the owner
+      // reads why the visual did not change, and nothing applied is lost.
+      if (imageError instanceof HttpsError) {
+        logger.warn('Creative visual edit blocked', { creativeId: existing.id })
+        next = { ...next, imageError: imageError.message }
+        imageChanged = true
+      } else if (
         imageError instanceof AiNotConfiguredError ||
         imageError instanceof AiServiceError ||
         imageError instanceof AiResponseError

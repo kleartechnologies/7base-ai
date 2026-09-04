@@ -118,11 +118,14 @@ export async function generateCampaignEdit(params: {
   instruction: string
   campaign: StoredCampaign
   businessName: string | null
+  /** The authenticated owner, for the usage guardrail. */
+  uid: string
   /** Server-resolved subscription plan, from the callable boundary. */
   plan: SubscriptionPlan
 }): Promise<CampaignEditOutcome> {
   const { data, meta } = await runStructuredTask<unknown>({
     task: 'campaign.edit',
+    uid: params.uid,
     plan: params.plan,
     systemPrompt: CAMPAIGN_EDIT_PROMPT,
     input: buildEditInput(params),

@@ -357,6 +357,17 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // --- usage ----------------------------------------------------------
+    // Phase 6B AI usage guardrail: one document per uid per UTC day,
+    // holding request counts, token totals and estimated cost. Written only
+    // by the guardrail transactions through the Admin SDK. Clients get no
+    // access in either direction — even reads are denied, so quota internals
+    // never become a client contract and a tampered client learns nothing
+    // about how the limits work.
+    match /usage/{usageId} {
+      allow read, write: if false;
+    }
+
     // Anything not matched above is denied.
     match /{document=**} {
       allow read, write: if false;

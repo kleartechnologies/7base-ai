@@ -264,27 +264,49 @@ export function resolveModelForTask(task: AiTask, plan: SubscriptionPlan): Model
 }
 
 /**
- * USD per 1M tokens, for the telemetry's cost estimate. Verified against the
- * OpenAI pricing page on 2026-08-30 alongside the model IDs above. A model
- * missing here produces a null estimate rather than a wrong one — telemetry
- * must never invent a price, for the same reason MARKA's copy never does.
+ * USD per 1M tokens, for the telemetry's cost estimate and the Phase 6B usage
+ * guardrail's cost reservations. Re-verified against the official OpenAI
+ * pricing page (developers.openai.com/api/docs/pricing) on 2026-09-04
+ * alongside the model IDs above. A model missing here produces a null
+ * estimate rather than a wrong one — telemetry must never invent a price,
+ * for the same reason MARKA's copy never does.
+ *
+ * `cachedInput` is the discounted rate for prompt-cache hits (10% of the
+ * input rate on every current text model). `input`/`output` on gpt-image-2
+ * are its *text input* ($5) and *image output* ($30) rates — the only two
+ * MARKA pays, because every image call is a text-prompt generation
+ * (`/v1/images/generations`); the $8 image-input rate would only apply to
+ * reference-image edits, which the product does not make.
  */
-const PRICING_PER_MILLION_USD: Record<string, { input: number; output: number }> = {
-  'gpt-5.6-sol': { input: 4, output: 20 },
-  'gpt-5.6-terra': { input: 2, output: 12 },
-  'gpt-5.6-luna': { input: 0.2, output: 1.2 },
+const PRICING_PER_MILLION_USD: Record<
+  string,
+  { input: number; cachedInput: number; output: number }
+> = {
+  'gpt-5.6-sol': { input: 4, cachedInput: 0.4, output: 20 },
+  'gpt-5.6-terra': { input: 2, cachedInput: 0.2, output: 12 },
+  'gpt-5.6-luna': { input: 0.2, cachedInput: 0.02, output: 1.2 },
+  'gpt-image-2': { input: 5, cachedInput: 2, output: 30 },
 }
 
-/** Rough request cost in USD, or null when the model's price is not pinned. */
+/**
+ * Rough request cost in USD, or null when the model's price is not pinned.
+ *
+ * `cachedInputTokens` (when the provider reports it) is the portion of
+ * `inputTokens` that hit the prompt cache — a subset, not an addition — so it
+ * is billed at the cached rate and subtracted from the full-rate portion.
+ * Omitting it never under-counts; it only prices cache hits at full rate.
+ */
 export function estimateCostUsd(
   model: string,
-  usage: { inputTokens: number; outputTokens: number } | null,
+  usage: { inputTokens: number; outputTokens: number; cachedInputTokens?: number } | null,
 ): number | null {
   if (!usage) return null
   const price = PRICING_PER_MILLION_USD[model]
   if (!price) return null
+  const cached = Math.min(Math.max(usage.cachedInputTokens ?? 0, 0), usage.inputTokens)
   const usd =
-    (usage.inputTokens / 1_000_000) * price.input +
+    ((usage.inputTokens - cached) / 1_000_000) * price.input +
+    (cached / 1_000_000) * price.cachedInput +
     (usage.outputTokens / 1_000_000) * price.output
   return Number(usd.toFixed(6))
 }

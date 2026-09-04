@@ -351,6 +351,7 @@ export async function resolveRetryImage(
     altText: image?.altText ?? null,
     format: creative.format,
     business: params.business,
+    uid: params.ownerId,
     plan: params.plan,
   })
   return { image: generated.image, meta: generated.meta }
@@ -410,6 +411,7 @@ export async function resolveVisualEditImage(
     altText: image?.altText ?? null,
     format: creative.format,
     business: params.business,
+    uid: params.ownerId,
     plan: params.plan,
   })
   return { action: 'replaced', image: generated.image, meta: generated.meta, note: null }

@@ -47,6 +47,7 @@ describe('generateCreativeImage', () => {
       altText: 'A plate of nasi lemak',
       format: 'square_post',
       business: null,
+      uid: 'user-1',
       plan: 'basic' as never,
     })
     expect(image.source).toBe('generated')
@@ -62,6 +63,7 @@ describe('generateCreativeImage', () => {
       altText: null,
       format: 'square_post',
       business: null,
+      uid: 'user-1',
       plan: 'basic' as never,
     })
     expect(h.prompts[0]).toMatch(/no text/i)

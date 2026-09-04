@@ -375,6 +375,29 @@ await no('anon creates a result', () => setDoc(doc(anon, 'results/anonResult'), 
 await no('bob deletes alice result', () => deleteDoc(doc(bob, 'results/aliceDoc')))
 await ok('alice deletes her result', () => deleteDoc(doc(alice, 'results/aliceDoc')))
 
+console.log('\n-- USAGE (Phase 6B guardrail ledger; server-only in BOTH directions) --')
+// Seeded the way the Admin SDK writes it. Clients never read usage — showing
+// remaining quota would hand abusers a precise probe of the limits — and a
+// client write would mint quota, so both directions are a flat deny.
+await env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), 'usage/alice_2026-09-04'), {
+    ownerId: 'alice', period: '2026-09-04', plan: 'basic',
+    requests: { chat: 3, websiteAnalysis: 0, aiGeneration: 1, imageGeneration: 0 },
+    inputTokens: 1200, outputTokens: 300, cachedInputTokens: 0,
+    imageInputTokens: 0, imageOutputTokens: 0, imagesGenerated: 0,
+    reservedInputTokens: 0, reservedOutputTokens: 0, reservedCostUsd: 0,
+    estimatedCostUsd: 0.0006, inflight: 0, lastReserveAt: 1000,
+    createdAt: 1000, updatedAt: 1000,
+  })
+})
+await no('alice reads her own usage document', () => getDoc(doc(alice, 'usage/alice_2026-09-04')))
+await no('alice zeroes her own usage counters', () => updateDoc(doc(alice, 'usage/alice_2026-09-04'), { requests: { chat: 0, websiteAnalysis: 0, aiGeneration: 0, imageGeneration: 0 } }))
+await no('alice pre-creates tomorrow\'s usage document', () => setDoc(doc(alice, 'usage/alice_2026-09-05'), { ownerId: 'alice', period: '2026-09-05', requests: { chat: 0 }, createdAt: 1 }))
+await no('alice deletes her usage document', () => deleteDoc(doc(alice, 'usage/alice_2026-09-04')))
+await no('alice lists usage even scoped to herself', () => getDocs(query(collection(alice, 'usage'), where('ownerId', '==', 'alice'))))
+await no('bob reads alice usage', () => getDoc(doc(bob, 'usage/alice_2026-09-04')))
+await no('anon reads a usage document', () => getDoc(doc(anon, 'usage/alice_2026-09-04')))
+
 console.log(`\n===== RULES: ${pass} passed, ${fail} failed =====`)
 await env.cleanup()
 process.exit(fail ? 1 : 0)

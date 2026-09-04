@@ -20,6 +20,7 @@ import {
   runStructuredTask,
 } from '../ai/orchestrator'
 import { BUSINESS_ANALYSIS_PROMPT, buildWebsiteAnalysisInput } from '../ai/prompts/business'
+import { assertRequestBudgetRemains } from '../usage/guardrail'
 import { HttpsError } from 'firebase-functions/v2/https'
 import { CRAWL_LIMITS, crawlSite, SiteUnreachableError } from './website/crawl'
 import { normalizeSite } from './website/normalize'
@@ -116,6 +117,9 @@ export const businessStartWebsiteAnalysis = onCall(
       status: 'running' as const,
       stage: 'fetching' as DiscoveryStage,
       lastRunAt: now,
+      // Preserved, not reset: the cooldown in the run callable keys on this,
+      // and a start→run loop must not be able to launder it away.
+      lastAttemptAt: existing?.discovery?.lastAttemptAt ?? null,
       completedAt: existing?.discovery?.completedAt ?? null,
       sourceRef: normalizedUrl,
       pagesAnalysed: existing?.discovery?.pagesAnalysed ?? 0,
@@ -182,12 +186,36 @@ export const businessRunWebsiteAnalysis = onCall(
       throw invalidArgument('This business has no website to analyse.')
     }
 
-    const completedAt = stored.discovery?.completedAt ?? 0
-    if (stored.discovery?.status === 'complete' && Date.now() - completedAt < REANALYSIS_COOLDOWN_MS) {
-      throw new HttpsError('resource-exhausted', 'MARKA just analysed this website. Please wait a moment.')
+    // Attempt-based cooldown (Phase 6B). The old check keyed on
+    // `status === 'complete'`, so a FAILED analysis could be retried in a
+    // tight loop, each retry paying for a crawl and a reasoning call. Any
+    // attempt — success, failure or timeout — now starts the clock, because
+    // `lastAttemptAt` is written below before the crawl begins.
+    const lastAttemptAt = Math.max(
+      stored.discovery?.lastAttemptAt ?? 0,
+      stored.discovery?.completedAt ?? 0,
+    )
+    if (Date.now() - lastAttemptAt < REANALYSIS_COOLDOWN_MS) {
+      throw new HttpsError(
+        'resource-exhausted',
+        'Please wait before starting another website analysis.',
+      )
     }
 
+    // Server-resolved plan; the request payload has no say in model choice.
+    const plan = await resolvePlanForUser(uid)
+
+    // The crawl is the expensive pre-model work, so today's analysis budget
+    // is checked before it runs. Advisory only — the atomic reservation
+    // inside the orchestrator remains the authority.
+    await assertRequestBudgetRemains({ uid, plan, task: 'business.analyse_website' })
+
     const ref = db.collection(COLLECTIONS.businesses).doc(businessId)
+
+    // The attempt starts NOW, before the crawl — a failed or timed-out run
+    // must still hold the next attempt to the cooldown.
+    const attemptAt = Date.now()
+    await ref.update({ 'discovery.lastAttemptAt': attemptAt, updatedAt: attemptAt })
     const setStage = (stage: DiscoveryStage) =>
       ref.update({ 'discovery.stage': stage, updatedAt: Date.now() }).catch((error: unknown) => {
         // Progress reporting must never be able to fail the analysis itself.
@@ -219,8 +247,8 @@ export const businessRunWebsiteAnalysis = onCall(
 
       const { data, meta } = await runStructuredTask<unknown>({
         task: 'business.analyse_website',
-        // Server-resolved plan; the request payload has no say in model choice.
-        plan: await resolvePlanForUser(uid),
+        uid,
+        plan,
         systemPrompt: BUSINESS_ANALYSIS_PROMPT,
         input: buildWebsiteAnalysisInput({
           websiteUrl: site.startUrl,
@@ -255,6 +283,7 @@ export const businessRunWebsiteAnalysis = onCall(
           status: 'complete',
           stage: null,
           lastRunAt: stored.discovery?.lastRunAt ?? now,
+          lastAttemptAt: attemptAt,
           completedAt: now,
           sourceRef: site.startUrl,
           pagesAnalysed: site.pageUrls.length,
@@ -290,6 +319,17 @@ export const businessRunWebsiteAnalysis = onCall(
         productsFound: analysis.products.length,
       }
     } catch (error) {
+      // A usage-guardrail block (thrown inside runStructuredTask) already
+      // carries the sentence the owner should read. The attempt is recorded
+      // as failed — the crawl ran, the cooldown holds — and the error passes
+      // through unwrapped.
+      if (error instanceof HttpsError) {
+        await recordFailure(ref, { code: 'ai_unavailable', message: error.message }).catch(
+          () => undefined,
+        )
+        throw error
+      }
+
       const failure = classify(error)
       await recordFailure(ref, failure).catch(() => undefined)
 

@@ -201,8 +201,36 @@ describe('estimateCostUsd', () => {
     )
   })
 
+  it('prices gpt-image-2 at the verified generation rates (text-in $5, image-out $30 per 1M)', () => {
+    // 100 prompt tokens + 2000 image output tokens: (100×5 + 2000×30) / 1M.
+    expect(estimateCostUsd('gpt-image-2', { inputTokens: 100, outputTokens: 2_000 })).toBeCloseTo(
+      0.0605,
+      6,
+    )
+  })
+
+  it('bills cached input tokens at the cached rate, not the full rate', () => {
+    // Terra: 600 fresh × $2 + 400 cached × $0.20 + 200 out × $12, per 1M.
+    expect(
+      estimateCostUsd('gpt-5.6-terra', {
+        inputTokens: 1_000,
+        outputTokens: 200,
+        cachedInputTokens: 400,
+      }),
+    ).toBeCloseTo(0.00368, 6)
+  })
+
+  it('clamps a cached count larger than the input count — never a negative fresh-token bill', () => {
+    const clamped = estimateCostUsd('gpt-5.6-luna', {
+      inputTokens: 100,
+      outputTokens: 0,
+      cachedInputTokens: 5_000,
+    })
+    // All 100 tokens at the cached rate; nothing negative.
+    expect(clamped).toBeCloseTo((100 * 0.02) / 1_000_000, 9)
+  })
+
   it('returns null rather than inventing a price for an unpinned model', () => {
-    expect(estimateCostUsd('gpt-image-2', { inputTokens: 1000, outputTokens: 1000 })).toBeNull()
     expect(estimateCostUsd('some-future-model', { inputTokens: 1, outputTokens: 1 })).toBeNull()
   })
 

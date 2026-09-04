@@ -38,6 +38,8 @@ export async function generateMarketingRecommendation(params: {
   business: StoredBusiness
   /** Prior turns, oldest first, excluding the goal message itself. */
   recentTurns: OrchestrationTurn[]
+  /** The authenticated owner, for the usage guardrail. */
+  uid: string
   /** Server-resolved subscription plan, from the callable boundary. */
   plan: SubscriptionPlan
 }): Promise<RecommendationOutcome> {
@@ -45,6 +47,7 @@ export async function generateMarketingRecommendation(params: {
 
   const { data, meta } = await runStructuredTask<unknown>({
     task: 'campaign.diagnose',
+    uid: params.uid,
     plan: params.plan,
     systemPrompt: MARKETING_INTELLIGENCE_PROMPT,
     input: buildMarketingInput({

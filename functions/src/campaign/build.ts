@@ -1,4 +1,4 @@
-import { onCall, type CallableRequest } from 'firebase-functions/v2/https'
+import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https'
 import { logger } from 'firebase-functions'
 import { AiServiceError } from '../ai/errors'
 import {
@@ -79,6 +79,7 @@ export const campaignBuildFromRecommendation = onCall(
         const opportunity = recommendedOpportunity(recommendation)
         const polishResult = await runStructuredTask<unknown>({
           task: 'campaign.build',
+          uid,
           plan,
           systemPrompt: CAMPAIGN_POLISH_PROMPT,
           input: buildPolishInput({
@@ -107,8 +108,12 @@ export const campaignBuildFromRecommendation = onCall(
         meta = polishResult.meta
       } catch (polishError) {
         // Polish is an improvement, not a dependency. The deterministic
-        // draft is complete and honest without it.
+        // draft is complete and honest without it. HttpsError here means the
+        // usage guardrail blocked the polish call — no OpenAI spend happened,
+        // so shipping the unpolished draft is the graceful degradation, not a
+        // limit bypass.
         if (
+          polishError instanceof HttpsError ||
           polishError instanceof AiNotConfiguredError ||
           polishError instanceof AiServiceError ||
           polishError instanceof AiResponseError ||
@@ -177,6 +182,9 @@ export const campaignBuildFromRecommendation = onCall(
 
       return { campaignId, conversationId }
     } catch (error) {
+      // A guardrail or validation HttpsError already carries the message the
+      // user should read; wrapping it in `internal` would swallow it.
+      if (error instanceof HttpsError) throw error
       throw internal('campaignBuildFromRecommendation', error)
     }
   },
