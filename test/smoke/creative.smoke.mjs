@@ -96,6 +96,7 @@ console.log(`\n-- 1. creative.generate_copy (fast tier, plan=${SMOKE_PLAN}, live
 const t0 = Date.now()
 const { data, meta } = await runStructuredTask({
   task: 'creative.generate_copy',
+  uid: 'smoke',
   plan: SMOKE_PLAN,
   systemPrompt: CREATIVE_COPY_PROMPT,
   input: buildCopyInput({
@@ -142,7 +143,7 @@ const instruction1 = 'Make the headline more premium'
 const edit1 = await generateCreativeEdit({
   instruction: instruction1, creative, campaign, businessName: business.name,
   corpus: buildCreativeEditCorpus({ creative, campaign, business, instruction: instruction1 }),
-  plan: SMOKE_PLAN,
+  uid: 'smoke', plan: SMOKE_PLAN,
 })
 console.log('  reply:', JSON.stringify(edit1.draft.reply))
 console.log('  patch:', JSON.stringify(edit1.draft.patch))
@@ -162,7 +163,7 @@ const instruction2 = "Don't mention discounts"
 const edit2 = await generateCreativeEdit({
   instruction: instruction2, creative, campaign, businessName: business.name,
   corpus: buildCreativeEditCorpus({ creative, campaign, business, instruction: instruction2 }),
-  plan: SMOKE_PLAN,
+  uid: 'smoke', plan: SMOKE_PLAN,
 })
 console.log('  reply:', JSON.stringify(edit2.draft.reply))
 console.log('  patch:', JSON.stringify(edit2.draft.patch))
@@ -193,11 +194,46 @@ if (process.env.SMOKE_IMAGE === '1') {
     format: 'square_post', paletteHexes: [], visualStyle: null,
   })
   const t1 = Date.now()
-  const image = await runImageTask({ task: 'creative.generate_image', plan: SMOKE_PLAN, prompt, size: '1024x1024' })
+  const image = await runImageTask({ task: 'creative.generate_image', uid: 'smoke', plan: SMOKE_PLAN, prompt, size: '1024x1024' })
   console.log(`  model=${image.meta.model} latency=${Date.now() - t1}ms`)
   check('image bytes returned', image.imageBytes.length > 10_000, `${image.imageBytes.length} bytes`)
 } else {
   console.log('\n-- 4. image generation skipped (set SMOKE_IMAGE=1 to run it) --')
+}
+
+/* --- 5. the usage ledger (Phase 6B) --------------------------------------
+ * The orchestrator calls above ran through the real guardrail: every one
+ * reserved before OpenAI and settled after, against whatever Firestore the
+ * Admin SDK is pointed at. Run inside `firebase emulators:exec --only
+ * firestore` to get these assertions without touching production data.
+ */
+if (process.env.FIRESTORE_EMULATOR_HOST) {
+  console.log('\n-- 5. usage ledger (guardrail settlement, via emulator) --')
+  const { db } = require('../../functions/lib/lib/firebase.js')
+  const period = new Date().toISOString().slice(0, 10)
+  const snapshot = await db.collection('usage').doc(`smoke_${period}`).get()
+  check('usage document exists for the smoke user-day', snapshot.exists)
+  if (snapshot.exists) {
+    const usage = snapshot.data()
+    const imageRuns = process.env.SMOKE_IMAGE === '1' ? 1 : 0
+    console.log('  ledger:', JSON.stringify({
+      requests: usage.requests, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
+      imageInputTokens: usage.imageInputTokens, imageOutputTokens: usage.imageOutputTokens,
+      imagesGenerated: usage.imagesGenerated, estimatedCostUsd: usage.estimatedCostUsd,
+      inflight: usage.inflight, reservedInputTokens: usage.reservedInputTokens,
+      reservedOutputTokens: usage.reservedOutputTokens, reservedCostUsd: usage.reservedCostUsd,
+    }))
+    check('three aiGeneration attempts counted', usage.requests.aiGeneration === 3)
+    check('image attempts counted separately', usage.requests.imageGeneration === imageRuns)
+    check('text tokens settled from provider actuals', usage.inputTokens > 0 && usage.outputTokens > 0)
+    check('estimated cost settled and positive', usage.estimatedCostUsd > 0)
+    check('nothing left in flight', usage.inflight === 0)
+    check('all reservations released', usage.reservedInputTokens === 0 && usage.reservedOutputTokens === 0 && usage.reservedCostUsd === 0)
+    if (imageRuns) {
+      check('image tokens on the image counters', usage.imageOutputTokens > 0)
+      check('delivered image counted', usage.imagesGenerated === 1)
+    }
+  }
 }
 
 console.log(`\n===== SMOKE: ${pass} passed, ${fail} failed =====`)
