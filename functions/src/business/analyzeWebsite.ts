@@ -19,13 +19,29 @@ import {
   AiResponseError,
   runStructuredTask,
 } from '../ai/orchestrator'
-import { BUSINESS_ANALYSIS_PROMPT, buildWebsiteAnalysisInput } from '../ai/prompts/business'
+import {
+  BUSINESS_ANALYSIS_PROMPT,
+  buildSocialAnalysisInput,
+  buildWebsiteAnalysisInput,
+} from '../ai/prompts/business'
 import { assertRequestBudgetRemains } from '../usage/guardrail'
 import { HttpsError } from 'firebase-functions/v2/https'
 import { CRAWL_LIMITS, crawlSite, SiteUnreachableError } from './website/crawl'
+import { extractPage } from './website/extract'
+import { fetchPage, PageFetchError } from './website/fetchPage'
 import { normalizeSite } from './website/normalize'
-import { InvalidUrlError, normalizeWebsiteUrl } from './website/url'
+import { InvalidUrlError } from './website/url'
 import { BlockedHostError, UnresolvableHostError } from './website/guard'
+import {
+  detectDiscoverySource,
+  UnsupportedSocialUrlError,
+  type DiscoverySource,
+} from './discovery/source'
+import {
+  buildSocialCorpus,
+  isSocialLoginWall,
+  MIN_SOCIAL_TEXT_LENGTH,
+} from './discovery/socialPage'
 import { emptyBrain } from './brain/empty'
 import { linkBusinessToUser } from './onboardingState'
 import { mergeWebsiteAnalysis } from './brain/merge'
@@ -39,7 +55,13 @@ import {
 } from './brain/validate'
 
 /**
- * Website analysis, split across two callables.
+ * Business discovery, split across two callables.
+ *
+ * The owner gives ONE link — a website, a public Facebook Page, or an
+ * Instagram profile. What kind of link it is gets decided deterministically
+ * (see `discovery/source.ts`); the fetch-and-understand flow is then the same
+ * shape either way, and everything downstream — quota, cooldown, provenance,
+ * fallback to the manual flow — is shared.
  *
  * `businessStartWebsiteAnalysis` is fast: it validates the URL, finds or
  * creates the business, marks it as running, and returns the id. The client
@@ -75,15 +97,19 @@ export const businessStartWebsiteAnalysis = onCall(
     const uid = requireUid(request)
     const { websiteUrl, businessId } = request.data ?? {}
 
-    let normalizedUrl: string
+    let source: DiscoverySource
     try {
-      normalizedUrl = normalizeWebsiteUrl(String(websiteUrl ?? ''))
+      source = detectDiscoverySource(String(websiteUrl ?? ''))
     } catch (error) {
+      if (error instanceof UnsupportedSocialUrlError) {
+        throw invalidArgument(error.userMessage)
+      }
       if (error instanceof InvalidUrlError) {
-        throw invalidArgument('That does not look like a valid website address.')
+        throw invalidArgument('That does not look like a valid website or social page link.')
       }
       throw internal('businessStartWebsiteAnalysis:url', error)
     }
+    const normalizedUrl = source.url
 
     const businesses = db.collection(COLLECTIONS.businesses)
     const now = Date.now()
@@ -98,9 +124,16 @@ export const businessStartWebsiteAnalysis = onCall(
       if (!existing) throw invalidArgument('That business no longer exists.')
     } else {
       const owned = await businesses.where('ownerId', '==', uid).limit(20).get()
-      const match = owned.docs.find(
-        (doc) => sameSiteUrl((doc.data() as StoredBusiness).contact?.website, normalizedUrl),
-      )
+      // A website matches by host — any page of the same site is the same
+      // business. A social page matches only its exact canonical URL: every
+      // Facebook Page shares facebook.com, so host matching would fold every
+      // business on the platform into one.
+      const match = owned.docs.find((doc) => {
+        const data = doc.data() as StoredBusiness
+        return source.kind === 'website'
+          ? sameSiteUrl(data.contact?.website, normalizedUrl)
+          : data.discovery?.sourceRef === normalizedUrl
+      })
       if (match) {
         targetId = match.id
         existing = match.data() as StoredBusiness
@@ -130,14 +163,13 @@ export const businessStartWebsiteAnalysis = onCall(
     }
 
     if (targetId) {
-      await businesses.doc(targetId).update({
-        discovery: runningDiscovery,
-        'contact.website': normalizedUrl,
-        updatedAt: now,
-      })
+      const update: Record<string, unknown> = { discovery: runningDiscovery, updatedAt: now }
+      // A Facebook Page or Instagram profile is never the business's website.
+      if (source.kind === 'website') update['contact.website'] = normalizedUrl
+      await businesses.doc(targetId).update(update)
     } else {
-      const brain = emptyBrain(uid, fallbackNameFor(normalizedUrl), now)
-      brain.contact.website = normalizedUrl
+      const brain = emptyBrain(uid, fallbackNameFor(source), now)
+      if (source.kind === 'website') brain.contact.website = normalizedUrl
       brain.discovery = runningDiscovery
       const created = await businesses.add(brain)
       targetId = created.id
@@ -180,10 +212,17 @@ export const businessRunWebsiteAnalysis = onCall(
     if (!stored) throw invalidArgument('That business no longer exists.')
 
     // The URL comes from the document the previous call validated, never from
-    // this request's payload.
+    // this request's payload. It is re-validated here all the same: the fetch
+    // must never run on anything that has not just passed the URL checks.
     const websiteUrl = stored.discovery?.sourceRef ?? stored.contact?.website
     if (!websiteUrl) {
       throw invalidArgument('This business has no website to analyse.')
+    }
+    let source: DiscoverySource
+    try {
+      source = detectDiscoverySource(websiteUrl)
+    } catch {
+      throw invalidArgument('This business has no valid page to analyse.')
     }
 
     // Attempt-based cooldown (Phase 6B). The old check keyed on
@@ -233,29 +272,60 @@ export const businessRunWebsiteAnalysis = onCall(
     let modelMs = 0
 
     try {
-      const crawl = await crawlSite(websiteUrl, {
-        onProgress: (stage) => void setStage(stage),
-      })
-      crawlMs = Date.now() - startedAt
+      // Both branches end at the same place: the URL that was actually read,
+      // how many pages that was, and the model's input. Everything after —
+      // model call, validation, merge, quotas — is one path.
+      let analysedUrl: string
+      let pagesAnalysed: number
+      let corpusChars: number
+      let modelInput: string
 
-      if (crawl.totalTextLength < CRAWL_LIMITS.minTotalTextLength) {
-        throw new InsufficientContentError()
+      if (source.kind === 'website') {
+        const crawl = await crawlSite(websiteUrl, {
+          onProgress: (stage) => void setStage(stage),
+        })
+        crawlMs = Date.now() - startedAt
+
+        if (crawl.totalTextLength < CRAWL_LIMITS.minTotalTextLength) {
+          throw new InsufficientContentError()
+        }
+
+        const site = normalizeSite(crawl)
+        analysedUrl = site.startUrl
+        pagesAnalysed = site.pageUrls.length
+        corpusChars = site.charCount
+        modelInput = buildWebsiteAnalysisInput({
+          websiteUrl: site.startUrl,
+          pageCount: site.pageUrls.length,
+          corpus: site.corpus,
+          signals: site.signals,
+        })
+      } else {
+        // One public page, fetched through the same SSRF-guarded fetcher the
+        // crawler uses — DNS re-checked, every redirect hop re-validated. No
+        // login, no session, no API: only what an anonymous visitor sees.
+        const social = await fetchSocialProfile(source)
+        crawlMs = Date.now() - startedAt
+
+        analysedUrl = source.url
+        pagesAnalysed = 1
+        corpusChars = social.corpus.length
+        modelInput = buildSocialAnalysisInput({
+          kind: source.kind,
+          profileUrl: source.url,
+          corpus: social.corpus,
+          signals: social.signals,
+        })
       }
 
       await setStage('understanding')
-      const site = normalizeSite(crawl)
 
       const { data, meta } = await runStructuredTask<unknown>({
         task: 'business.analyse_website',
         uid,
         plan,
         systemPrompt: BUSINESS_ANALYSIS_PROMPT,
-        input: buildWebsiteAnalysisInput({
-          websiteUrl: site.startUrl,
-          pageCount: site.pageUrls.length,
-          corpus: site.corpus,
-          signals: site.signals,
-        }),
+        input: modelInput,
         schema: {
           name: WEBSITE_ANALYSIS_SCHEMA_NAME,
           schema: WEBSITE_ANALYSIS_SCHEMA as unknown as Record<string, unknown>,
@@ -270,9 +340,10 @@ export const businessRunWebsiteAnalysis = onCall(
 
       const now = Date.now()
       const patch = mergeWebsiteAnalysis(stored, analysis, {
-        websiteUrl: site.startUrl,
-        pagesAnalysed: site.pageUrls.length,
+        websiteUrl: analysedUrl,
+        pagesAnalysed,
         now,
+        source: source.kind,
       })
 
       await setStage('saving')
@@ -285,8 +356,8 @@ export const businessRunWebsiteAnalysis = onCall(
           lastRunAt: stored.discovery?.lastRunAt ?? now,
           lastAttemptAt: attemptAt,
           completedAt: now,
-          sourceRef: site.startUrl,
-          pagesAnalysed: site.pageUrls.length,
+          sourceRef: analysedUrl,
+          pagesAnalysed,
           error: null,
           errorCode: null,
           summary: analysis.summary || null,
@@ -300,9 +371,10 @@ export const businessRunWebsiteAnalysis = onCall(
       const totalMs = Date.now() - startedAt
       logger.info('Website analysis complete', {
         businessId,
-        pages: site.pageUrls.length,
+        sourceKind: source.kind,
+        pages: pagesAnalysed,
         products: analysis.products.length,
-        corpusChars: site.charCount,
+        corpusChars,
         model: meta.model,
         latencyMs: meta.latencyMs,
         // Where the owner's wait actually went. `ai.request.complete` carries
@@ -315,7 +387,7 @@ export const businessRunWebsiteAnalysis = onCall(
 
       return {
         businessId,
-        pagesAnalysed: site.pageUrls.length,
+        pagesAnalysed,
         productsFound: analysis.products.length,
       }
     } catch (error) {
@@ -357,6 +429,55 @@ export const businessRunWebsiteAnalysis = onCall(
 
 /* --- helpers ----------------------------------------------------------- */
 
+/**
+ * The page exists but a server cannot see it: a login wall, a private or
+ * restricted account, or the platform refusing anonymous readers. Nothing the
+ * owner can retry their way out of — the manual flow is the answer.
+ */
+class NotPublicError extends Error {
+  constructor() {
+    super('Social page is not publicly readable')
+    this.name = 'NotPublicError'
+  }
+}
+
+interface SocialProfileContent {
+  corpus: string
+  signals: { emails: string[]; phones: string[]; outboundLinks: string[] }
+}
+
+/**
+ * Fetches and flattens one public social page. Never assumes the platform
+ * cooperated: both Facebook and Instagram decide per-request whether an
+ * anonymous server gets the page, a login wall, or a refusal, so every
+ * outcome short of readable business content becomes a typed error the
+ * caller's `classify` can translate for the owner.
+ */
+async function fetchSocialProfile(source: DiscoverySource): Promise<SocialProfileContent> {
+  let fetched
+  try {
+    fetched = await fetchPage(source.url)
+  } catch (error) {
+    if (error instanceof PageFetchError) {
+      // 401/403/429 or a vanished page: for these platforms that means "not
+      // for anonymous eyes", not "site down".
+      if (error.failure === 'blocked' || error.failure === 'not_found') {
+        throw new NotPublicError()
+      }
+      throw new SiteUnreachableError(source.url, error.failure)
+    }
+    throw error
+  }
+
+  const page = extractPage(fetched.url, fetched.html)
+  if (isSocialLoginWall(source.kind, fetched.url, page)) throw new NotPublicError()
+
+  const social = buildSocialCorpus(source.kind, page)
+  if (social.textLength < MIN_SOCIAL_TEXT_LENGTH) throw new InsufficientContentError()
+
+  return { corpus: social.corpus, signals: social.signals }
+}
+
 interface AnalysisFailure {
   code: DiscoveryErrorCode
   message: string
@@ -379,6 +500,13 @@ function classify(error: unknown): AnalysisFailure {
     return {
       code: 'unreachable',
       message: 'I could not access this website. Check the address and try again.',
+    }
+  }
+  if (error instanceof NotPublicError) {
+    return {
+      code: 'not_public',
+      message:
+        "I couldn't get enough public information from this page — it may be private, or only visible when logged in. No worries, you can tell EVA about your business instead.",
     }
   }
   if (error instanceof SiteUnreachableError) {
@@ -465,16 +593,33 @@ function sameSiteUrl(stored: string | null | undefined, candidate: string): bool
 }
 
 /** A readable placeholder until the analysis supplies the real name. */
-function fallbackNameFor(url: string): string {
+function fallbackNameFor(source: DiscoverySource): string {
   try {
-    const host = new URL(url).hostname.replace(/^www\./, '')
-    const label = host.split('.')[0] ?? host
-    return label
-      .split(/[-_]/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ') || host
+    const url = new URL(source.url)
+
+    if (source.kind === 'website') {
+      const host = url.hostname.replace(/^www\./, '')
+      const label = host.split('.')[0] ?? host
+      return titleCase(label) || host
+    }
+
+    // For a social page the hostname would say "Facebook"; the page name or
+    // handle in the path is the business. Numeric ids name nothing.
+    const handle = url.pathname
+      .split('/')
+      .filter((segment) => segment && segment !== 'pages' && !/^\d+$/.test(segment))
+      .pop()
+    if (!handle || handle === 'profile.php') return 'My business'
+    return titleCase(handle) || 'My business'
   } catch {
     return 'My business'
   }
+}
+
+function titleCase(label: string): string {
+  return label
+    .split(/[-_.]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }

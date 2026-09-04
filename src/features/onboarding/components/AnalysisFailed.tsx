@@ -21,6 +21,9 @@ const RETRYABLE: readonly DiscoveryErrorCode[] = ['unreachable', 'ai_busy', 'ai_
 
 /** Failures where typing it in themselves is the fastest way forward. */
 const OFFER_MANUAL: readonly DiscoveryErrorCode[] = [
+  // A private or login-walled social page will stay that way no matter how
+  // often it is retried; telling EVA directly is the way forward.
+  'not_public',
   'insufficient_content',
   'ai_unavailable',
   'ai_failed',
@@ -54,7 +57,7 @@ export function AnalysisFailed({
 
       <div className="flex flex-wrap items-center gap-2">
         <Button size="lg" variant={manualLeads ? 'outline' : 'default'} onClick={onRetryWebsite}>
-          Try another website
+          Try another link
         </Button>
         {offerManual ? (
           <Button

@@ -66,6 +66,10 @@ Every dish, drink, set, package or service the site lists. Name and price exactl
 
 These are mostly inference, and that is fine as long as it is labelled. Ground each one in something you actually read. "Families" because the site sells sharing platters and mentions kenduri. "Value-focused" because prices are shown prominently and there is a set-meal deal. If you cannot point to the evidence, do not write the field.
 
+## When the source is a Facebook Page or Instagram profile
+
+Sometimes the owner has no website and gives you their public Facebook Page or Instagram profile instead. The input will say so. Everything above still applies, with one adjustment: a profile shows far less than a website — often just a name, a bio, a category and a handful of visible lines. That is not a problem to fix by guessing. Record the little that is genuinely there with honest confidence, leave everything else null, and let \`unknowns\` be long. Follower or like counts are platform metrics, not business facts — do not turn them into claims about popularity.
+
 ## Summary
 
 Write \`summary\` as two or three short sentences addressed to the owner, in plain language — English, or Bahasa Melayu when the website itself is written mainly in Malay — describing what you understood about their business. No marketing jargon, no hype, no bullet points. This is the first thing they will read from EVA, and it should sound like someone who paid attention.`
@@ -92,6 +96,35 @@ export function buildWebsiteAnalysisInput(params: {
   }
 
   parts.push('', '--- WEBSITE CONTENT ---', '', params.corpus)
+
+  return parts.join('\n')
+}
+
+export function buildSocialAnalysisInput(params: {
+  kind: 'facebook' | 'instagram'
+  profileUrl: string
+  corpus: string
+  signals: { emails: string[]; phones: string[]; outboundLinks: string[] }
+}): string {
+  const label = params.kind === 'instagram' ? 'Instagram profile' : 'Facebook Page'
+
+  const parts = [
+    `Source: a public ${label}, supplied by the owner — not a website.`,
+    `Profile analysed: ${params.profileUrl}`,
+    'This is a single profile page. Expect far less information than a website would give; leave what it does not show as null.',
+  ]
+
+  if (params.signals.outboundLinks.length > 0) {
+    parts.push(`Links found on the profile: ${params.signals.outboundLinks.join(', ')}`)
+  }
+  if (params.signals.emails.length > 0) {
+    parts.push(`Email addresses found on the profile: ${params.signals.emails.join(', ')}`)
+  }
+  if (params.signals.phones.length > 0) {
+    parts.push(`Phone numbers found on the profile: ${params.signals.phones.join(', ')}`)
+  }
+
+  parts.push('', `--- ${label.toUpperCase()} CONTENT ---`, '', params.corpus)
 
   return parts.join('\n')
 }

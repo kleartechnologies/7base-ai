@@ -45,6 +45,16 @@ describe('capability accuracy', () => {
     expect(CURRENT_CAPABILITIES).toContain('saved to their Assets')
   })
 
+  it('claims exactly the one page read during setup, nothing broader', () => {
+    // Phase 6D: discovery can read a public Facebook Page or Instagram
+    // profile the owner supplies. The claim stays that narrow — one public
+    // page, at setup — and never grows into "access to their socials".
+    expect(CURRENT_CAPABILITIES).toContain(
+      'their website, or a public Facebook Page or Instagram profile',
+    )
+    expect(CURRENT_CAPABILITIES).toContain('No logging in, no private profiles')
+  })
+
   it('still refuses honestly what does not exist: publishing, social access, billing, live results', () => {
     expect(CURRENT_CAPABILITIES).toContain('cannot publish, schedule or send anything')
     expect(CURRENT_CAPABILITIES).toContain('cannot read their social accounts')

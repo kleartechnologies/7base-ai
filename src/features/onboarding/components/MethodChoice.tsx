@@ -1,26 +1,21 @@
-import { Globe, Share2, Upload, type LucideIcon } from 'lucide-react'
+import { Globe, Upload, type LucideIcon } from 'lucide-react'
 
 /**
  * How MARKA should learn about the business.
  *
- * Only the website path works today. The other two are shown because they are
- * genuinely coming — but they are disabled and labelled, never dressed up as
- * working buttons.
+ * One link — website, Facebook Page, or Instagram profile — is a single path
+ * now, because to the owner it is a single idea: "here is where my business
+ * lives online." Uploads are shown because they are genuinely coming — but
+ * disabled and labelled, never dressed up as a working button.
  */
 export function MethodChoice({ onChooseWebsite }: { onChooseWebsite: () => void }) {
   return (
     <div className="space-y-3">
       <Method
         icon={Globe}
-        title="From my website"
-        description="EVA reads your public website and works out the rest."
+        title="From my website or social media"
+        description="Give EVA your website, public Facebook Page, or Instagram profile and she works out the rest."
         onClick={onChooseWebsite}
-      />
-      <Method
-        icon={Share2}
-        title="From my Facebook or Instagram"
-        description="Connecting social accounts is coming soon."
-        disabled
       />
       <Method
         icon={Upload}

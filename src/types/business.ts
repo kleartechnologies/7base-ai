@@ -259,6 +259,12 @@ export type DiscoveryStage =
 export type DiscoveryErrorCode =
   | 'invalid_url'
   | 'unreachable'
+  /**
+   * A social page that is not publicly visible to a server — a login wall,
+   * a private account, an unavailable page. Retrying cannot fix it; telling
+   * EVA about the business directly can.
+   */
+  | 'not_public'
   | 'insufficient_content'
   /** The AI service is momentarily overloaded. Trying again is worth it. */
   | 'ai_busy'

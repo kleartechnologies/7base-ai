@@ -1,4 +1,6 @@
 node_modules/
-lib/
+# Compiled output only. Anchored: a bare `lib/` also matched `src/lib/`,
+# which silently kept the shared types/auth/errors sources out of the repo.
+/lib/
 *.local
 .env

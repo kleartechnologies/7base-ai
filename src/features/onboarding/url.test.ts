@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { checkWebsiteUrl, displayHost } from './url'
+import { checkDiscoveryUrl, checkWebsiteUrl, displayHost, displaySource } from './url'
 
 /**
  * This check is the first thing a new user meets, so it has two jobs at once:
@@ -106,5 +106,83 @@ describe('displayHost', () => {
 
   it('falls back to the raw string rather than throwing in the UI', () => {
     expect(displayHost('not a url')).toBe('not a url')
+  })
+})
+
+describe('checkDiscoveryUrl', () => {
+  it('passes an ordinary website through unchanged', () => {
+    const check = checkDiscoveryUrl('warungpakdin.com/menu')
+    expect(check).toMatchObject({ ok: true, kind: 'website', url: 'https://warungpakdin.com/menu' })
+  })
+
+  it('recognises a Facebook Page on the front-ends people paste', () => {
+    for (const input of [
+      'facebook.com/warungpakdin',
+      'https://www.facebook.com/warungpakdin/',
+      'https://m.facebook.com/warungpakdin/about',
+      'fb.com/warungpakdin?mibextid=zz',
+    ]) {
+      expect(checkDiscoveryUrl(input), input).toMatchObject({
+        ok: true,
+        kind: 'facebook',
+        url: 'https://www.facebook.com/warungpakdin/',
+      })
+    }
+  })
+
+  it('keeps the id of an unnamed page and drops the tracking junk', () => {
+    expect(checkDiscoveryUrl('https://www.facebook.com/profile.php?id=61550000000000&s=1')).toMatchObject({
+      ok: true,
+      kind: 'facebook',
+      url: 'https://www.facebook.com/profile.php?id=61550000000000',
+    })
+  })
+
+  it('recognises an Instagram profile and canonicalises the handle', () => {
+    for (const input of [
+      'instagram.com/warung.pakdin',
+      'https://www.instagram.com/Warung.PakDin/?igsh=abc',
+      'https://www.instagram.com/warung.pakdin/reels/',
+    ]) {
+      expect(checkDiscoveryUrl(input), input).toMatchObject({
+        ok: true,
+        kind: 'instagram',
+        url: 'https://www.instagram.com/warung.pakdin/',
+      })
+    }
+  })
+
+  it('refuses post and video links with a helpful sentence', () => {
+    for (const input of [
+      'https://www.facebook.com/watch?v=123',
+      'https://www.facebook.com/reel/9',
+      'https://www.facebook.com/groups/foodies',
+      'https://www.instagram.com/p/Cxyz/',
+      'https://www.instagram.com/reel/Cxyz/',
+      'https://www.facebook.com/',
+    ]) {
+      const check = checkDiscoveryUrl(input)
+      expect(check.ok, input).toBe(false)
+      expect(check.message).toContain('page or profile')
+    }
+  })
+
+  it('still refuses what checkWebsiteUrl refuses', () => {
+    expect(checkDiscoveryUrl('').ok).toBe(false)
+    expect(checkDiscoveryUrl('javascript:alert(1)').ok).toBe(false)
+    expect(checkDiscoveryUrl('not a url').ok).toBe(false)
+  })
+})
+
+describe('displaySource', () => {
+  it('shows host plus handle for social pages, host alone for websites', () => {
+    expect(displaySource('https://www.facebook.com/warungpakdin/')).toBe('facebook.com/warungpakdin')
+    expect(displaySource('https://www.instagram.com/warung.pakdin/')).toBe(
+      'instagram.com/warung.pakdin',
+    )
+    expect(displaySource('https://www.facebook.com/pages/Warung-Pak-Din/123456789')).toBe(
+      'facebook.com/Warung-Pak-Din',
+    )
+    expect(displaySource('https://www.warungpakdin.com/menu')).toBe('warungpakdin.com')
   })
 })

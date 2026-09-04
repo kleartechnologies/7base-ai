@@ -14,13 +14,15 @@ import { OnboardingLayout } from './components/OnboardingLayout'
 import { ReviewStep } from './components/ReviewStep'
 import { WebsiteStep } from './components/WebsiteStep'
 import { useWebsiteAnalysis } from './useWebsiteAnalysis'
-import { displayHost } from './url'
+import { displaySource } from './url'
 
 /**
  * First run: MARKA learns the business instead of interviewing the owner.
  *
- * The owner supplies one thing — a website address — and reviews what MARKA
- * understood. Every other step here exists only for when that does not work.
+ * The owner supplies one thing — a link to wherever their business lives
+ * online: a website, a public Facebook Page, or an Instagram profile — and
+ * reviews what EVA understood. Every other step here exists only for when
+ * that does not work, and none of them can be blocked by it failing.
  */
 type Step = 'choose' | 'website' | 'manual'
 
@@ -81,8 +83,8 @@ export default function OnboardingPage() {
   if (analysis.phase === 'starting' || analysis.phase === 'running') {
     return (
       <OnboardingLayout
-        title="EVA is reading your website"
-        subtitle={`Looking through ${displayHost(url)}. This usually takes under a minute.`}
+        title="EVA is taking a look"
+        subtitle={`Reading ${displaySource(url)}. This usually takes under a minute.`}
       >
         <AnalysingStep stage={analysis.stage} />
       </OnboardingLayout>
@@ -131,14 +133,15 @@ export default function OnboardingPage() {
   if (step === 'website') {
     return (
       <OnboardingLayout
-        title="What’s your website?"
-        subtitle="EVA will read it and work out the rest — you just check what it found."
+        title="Where can EVA learn about your business?"
+        subtitle="One link is enough — EVA reads it and works out the rest. You just check what she found."
       >
         <WebsiteStep
           initialUrl={url}
           busy={busy}
           onSubmit={startAnalysis}
           onBack={() => setStep('choose')}
+          onNoOnlinePresence={() => setStep('manual')}
         />
       </OnboardingLayout>
     )

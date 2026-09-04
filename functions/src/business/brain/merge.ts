@@ -32,26 +32,29 @@ import type { WebsiteAnalysis } from './validate'
  * Which kind of claim each section represents.
  *
  * Audience and brand personality are MARKA reading between the lines, so they
- * are `inferred` and rank below anything a source states outright. Promotions,
- * calls to action and opening hours are printed on the page, so they are
- * `website`. The distinction is what stops an inference from later
- * outranking a fact.
+ * are `inferred` and rank below anything a source states outright — whichever
+ * page they were read from. Promotions, calls to action and opening hours are
+ * printed on the page, so they carry the page's own source kind. The
+ * distinction is what stops an inference from later outranking a fact.
  */
-const SECTION_SOURCES = {
+const INFERRED_SECTIONS = {
   audience: 'inferred',
   brand: 'inferred',
-  marketing: 'website',
-  operations: 'website',
 } as const satisfies Record<string, SourceKind>
 
 /** Applied when the model returns a fact without an explicit confidence. */
 const DEFAULT_FACT_CONFIDENCE = 0.6
+
+/** Where the analysed page lives. Website discovery long predates the rest. */
+export type DiscoveredFrom = 'website' | 'facebook' | 'instagram'
 
 export interface MergeContext {
   /** The URL that was actually analysed. */
   websiteUrl: string
   pagesAnalysed: number
   now: number
+  /** Which kind of page `websiteUrl` is. Absent means website. */
+  source?: DiscoveredFrom
 }
 
 export type BrainPatch = Partial<StoredBusiness>
@@ -62,6 +65,7 @@ export function mergeWebsiteAnalysis(
   context: MergeContext,
 ): BrainPatch {
   const { now } = context
+  const pageSource: DiscoveredFrom = context.source ?? 'website'
   const sourceConfidence = new Map<ProvenanceField, { sourceUrl: string | null; confidence: number }>()
   for (const entry of analysis.fieldSources) {
     sourceConfidence.set(entry.field, { sourceUrl: entry.sourceUrl, confidence: entry.confidence })
@@ -75,7 +79,7 @@ export function mergeWebsiteAnalysis(
 
     const hint = sourceConfidence.get(field)
     const incoming = {
-      source: 'website' as const,
+      source: pageSource,
       confirmed: false,
       confidence: hint?.confidence ?? DEFAULT_FACT_CONFIDENCE,
     }
@@ -83,7 +87,7 @@ export function mergeWebsiteAnalysis(
     if (!outranks(incoming, claimOf(provenance[field] ?? null))) return currentValue
 
     provenance[field] = {
-      source: 'website',
+      source: pageSource,
       sourceRef: hint?.sourceUrl ?? context.websiteUrl,
       confidence: incoming.confidence,
       confirmed: false,
@@ -122,8 +126,10 @@ export function mergeWebsiteAnalysis(
     phone: fact('contact.phone', analysis.contact.phone, existing.contact.phone),
     whatsapp: fact('contact.whatsapp', analysis.contact.whatsapp, existing.contact.whatsapp),
     // The analysed URL is not a discovery — it is the thing that was analysed.
-    website: context.websiteUrl,
-    socialProfiles:
+    // But only when it IS a website: a Facebook Page must never become the
+    // business's website, nor overwrite one the owner already has.
+    website: pageSource === 'website' ? context.websiteUrl : existing.contact.website,
+    socialProfiles: withAnalysedProfile(
       fact<SocialProfile[]>(
         'contact.socialProfiles',
         analysis.contact.socialProfiles.length > 0
@@ -135,6 +141,9 @@ export function mergeWebsiteAnalysis(
           : null,
         existing.contact.socialProfiles,
       ) ?? [],
+      pageSource,
+      context.websiteUrl,
+    ),
   }
 
   const location: StoredBusiness['location'] = {
@@ -178,7 +187,7 @@ export function mergeWebsiteAnalysis(
           preferences: analysis.audience.preferences,
         }
       : null,
-    SECTION_SOURCES.audience,
+    INFERRED_SECTIONS.audience,
     analysis.audience.sourceUrl ?? context.websiteUrl,
     analysis.audience.confidence,
     now,
@@ -198,7 +207,7 @@ export function mergeWebsiteAnalysis(
           valuePropositions: analysis.brand.valuePropositions,
         }
       : null,
-    SECTION_SOURCES.brand,
+    INFERRED_SECTIONS.brand,
     analysis.brand.sourceUrl ?? context.websiteUrl,
     analysis.brand.confidence,
     now,
@@ -220,7 +229,7 @@ export function mergeWebsiteAnalysis(
           emphasizedProducts: analysis.marketing.emphasizedProducts,
         }
       : null,
-    SECTION_SOURCES.marketing,
+    pageSource,
     analysis.marketing.sourceUrl ?? context.websiteUrl,
     analysis.marketing.confidence,
     now,
@@ -237,7 +246,7 @@ export function mergeWebsiteAnalysis(
           notes: analysis.operations.notes,
         }
       : null,
-    SECTION_SOURCES.operations,
+    pageSource,
     analysis.operations.sourceUrl ?? context.websiteUrl,
     analysis.operations.confidence,
     now,
@@ -255,7 +264,7 @@ export function mergeWebsiteAnalysis(
     marketing,
     operations,
     provenance,
-    sources: upsertWebsiteSource(existing.sources, context),
+    sources: upsertDiscoverySource(existing.sources, context, pageSource),
     brainVersion: BRAIN_VERSION,
     updatedAt: now,
   }
@@ -303,6 +312,7 @@ export function mergeProducts(
   analysis: WebsiteAnalysis,
   context: MergeContext,
 ): Product[] {
+  const pageSource: DiscoveredFrom = context.source ?? 'website'
   const existingByKey = new Map(existing.map((product) => [productKey(product.name), product]))
   const merged: Product[] = []
   const usedKeys = new Set<string>()
@@ -327,7 +337,7 @@ export function mergeProducts(
       imageUrl: current?.imageUrl ?? null,
       isSignature: incoming.isSignature,
       attributes: incoming.attributes,
-      source: 'website',
+      source: pageSource,
       sourceRef: incoming.sourceUrl ?? context.websiteUrl,
       confidence: incoming.confidence,
       confirmed: false,
@@ -364,19 +374,67 @@ function productId(name: string, index: number): string {
   return `p_${slug}_${index}`
 }
 
-function upsertWebsiteSource(existing: ConnectedSource[], context: MergeContext): ConnectedSource[] {
-  const others = existing.filter((source) => source.id !== 'website')
+const SOURCE_LABELS: Record<DiscoveredFrom, string> = {
+  website: 'Website',
+  facebook: 'Facebook Page',
+  instagram: 'Instagram profile',
+}
+
+/**
+ * Records what was analysed in the sources list, one entry per kind. A
+ * business that gave a website and later a Facebook Page keeps both entries.
+ */
+function upsertDiscoverySource(
+  existing: ConnectedSource[],
+  context: MergeContext,
+  pageSource: DiscoveredFrom,
+): ConnectedSource[] {
+  const others = existing.filter((source) => source.id !== pageSource)
   return [
     ...others,
     {
-      id: 'website',
-      kind: 'website',
-      label: 'Website',
+      id: pageSource,
+      kind: pageSource,
+      label: SOURCE_LABELS[pageSource],
       reference: context.websiteUrl,
       status: 'connected',
       lastSyncedAt: context.now,
     },
   ]
+}
+
+/**
+ * The analysed Facebook Page or Instagram profile belongs in the business's
+ * social profiles — the owner told us it is theirs by pasting it. Appended,
+ * never replacing anything already listed at the same URL.
+ */
+function withAnalysedProfile(
+  profiles: SocialProfile[],
+  pageSource: DiscoveredFrom,
+  analysedUrl: string,
+): SocialProfile[] {
+  if (pageSource === 'website') return profiles
+
+  const normalize = (url: string) => url.replace(/\/+$/, '').toLowerCase()
+  if (profiles.some((profile) => normalize(profile.url) === normalize(analysedUrl))) {
+    return profiles
+  }
+
+  return [
+    ...profiles,
+    { platform: pageSource, handle: handleFromUrl(analysedUrl), url: analysedUrl },
+  ]
+}
+
+function handleFromUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const id = parsed.searchParams.get('id')
+    if (id) return id
+    return parsed.pathname.split('/').filter(Boolean).pop() ?? ''
+  } catch {
+    return ''
+  }
 }
 
 /* --- "did the model actually find anything?" --------------------------- */

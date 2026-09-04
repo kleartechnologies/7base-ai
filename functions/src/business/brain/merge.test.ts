@@ -684,3 +684,139 @@ describe('re-analysis after the owner accepted the Brain', () => {
     })
   })
 })
+
+describe('mergeWebsiteAnalysis from a social page', () => {
+  const FB_CONTEXT: MergeContext = {
+    websiteUrl: 'https://www.facebook.com/warungmakcik/',
+    pagesAnalysed: 1,
+    now: NOW,
+    source: 'facebook',
+  }
+
+  it('labels facts and products with the page they came from', () => {
+    const patch = mergeWebsiteAnalysis(
+      business(),
+      analysis({
+        products: [
+          {
+            name: 'Nasi Lemak',
+            description: null,
+            price: 8.5,
+            currency: 'MYR',
+            category: null,
+            isSignature: false,
+            attributes: [],
+            sourceUrl: null,
+            confidence: 0.7,
+          },
+        ],
+      }),
+      FB_CONTEXT,
+    )
+
+    expect(patch.provenance?.name).toMatchObject({ source: 'facebook' })
+    expect(patch.products?.[0]).toMatchObject({
+      source: 'facebook',
+      sourceRef: 'https://www.facebook.com/warungmakcik/',
+    })
+    expect(patch.marketing?.source).toBe('facebook')
+    expect(patch.operations?.source).toBe('facebook')
+    // Reading between the lines is inference wherever the lines were read.
+    expect(patch.audience?.source).toBe('inferred')
+    expect(patch.brand?.source).toBe('inferred')
+  })
+
+  it('never turns a Facebook Page into the business website', () => {
+    const empty = mergeWebsiteAnalysis(business(), analysis(), FB_CONTEXT)
+    expect(empty.contact?.website).toBeNull()
+
+    const withSite = mergeWebsiteAnalysis(
+      business({
+        contact: {
+          email: null,
+          phone: null,
+          whatsapp: null,
+          website: 'https://warungmakcik.com',
+          socialProfiles: [],
+        },
+      }),
+      analysis(),
+      FB_CONTEXT,
+    )
+    expect(withSite.contact?.website).toBe('https://warungmakcik.com')
+  })
+
+  it('lists the analysed page among the social profiles, once', () => {
+    const patch = mergeWebsiteAnalysis(business(), analysis(), FB_CONTEXT)
+    const analysed = patch.contact?.socialProfiles.filter(
+      (profile) => profile.url === 'https://www.facebook.com/warungmakcik/',
+    )
+    expect(analysed).toHaveLength(1)
+    expect(analysed?.[0]).toMatchObject({ platform: 'facebook', handle: 'warungmakcik' })
+
+    // Re-analysis must not duplicate it.
+    const again = mergeWebsiteAnalysis(
+      business({ contact: { ...business().contact, socialProfiles: patch.contact!.socialProfiles } }),
+      analysis(),
+      FB_CONTEXT,
+    )
+    expect(
+      again.contact?.socialProfiles.filter(
+        (profile) => profile.url === 'https://www.facebook.com/warungmakcik/',
+      ),
+    ).toHaveLength(1)
+  })
+
+  it('registers the page as its own source, next to an existing website', () => {
+    const withWebsiteSource = business({
+      sources: [
+        {
+          id: 'website',
+          kind: 'website',
+          label: 'Website',
+          reference: 'https://warungmakcik.com',
+          status: 'connected',
+          lastSyncedAt: NOW - 5000,
+        },
+      ],
+    })
+
+    const patch = mergeWebsiteAnalysis(withWebsiteSource, analysis(), FB_CONTEXT)
+    expect(patch.sources?.map((source) => source.id).sort()).toEqual(['facebook', 'website'])
+    expect(patch.sources?.find((source) => source.id === 'facebook')).toMatchObject({
+      kind: 'facebook',
+      label: 'Facebook Page',
+      reference: 'https://www.facebook.com/warungmakcik/',
+    })
+  })
+
+  it('does not overwrite what the owner already confirmed', () => {
+    const corrected = business({
+      name: 'Warung Mak Cik Kiah',
+      provenance: { name: confirmedBy('user') },
+    })
+
+    const patch = mergeWebsiteAnalysis(corrected, analysis(), FB_CONTEXT)
+    expect(patch.name).toBe('Warung Mak Cik Kiah')
+    expect(patch.provenance?.name).toMatchObject({ source: 'user', confirmed: true })
+  })
+
+  it('handles the Instagram labelling too', () => {
+    const patch = mergeWebsiteAnalysis(business(), analysis(), {
+      websiteUrl: 'https://www.instagram.com/warungmakcik/',
+      pagesAnalysed: 1,
+      now: NOW,
+      source: 'instagram',
+    })
+
+    expect(patch.provenance?.name).toMatchObject({ source: 'instagram' })
+    expect(patch.sources?.find((source) => source.id === 'instagram')).toMatchObject({
+      label: 'Instagram profile',
+    })
+    expect(
+      patch.contact?.socialProfiles.find(
+        (profile) => profile.url === 'https://www.instagram.com/warungmakcik/',
+      ),
+    ).toMatchObject({ platform: 'instagram', handle: 'warungmakcik' })
+  })
+})
