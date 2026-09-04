@@ -37,7 +37,7 @@ describe('billing and exhausted credit', () => {
 
     expect(failure.kind).toBe('billing')
     expect(failure.userMessage).toBe(
-      'MARKA’s AI service has reached its usage limit. Please check the account billing settings.',
+      'EVA’s AI service has reached its usage limit. Please check the account billing settings.',
     )
   })
 
@@ -73,7 +73,7 @@ describe('rate limits', () => {
 
     expect(failure.kind).toBe('rate_limit')
     expect(failure.retryable).toBe(true)
-    expect(failure.userMessage).toBe('MARKA is busy right now. Please try again shortly.')
+    expect(failure.userMessage).toBe('EVA is busy right now. Please try again shortly.')
   })
 
   it('classifies a 429 with no code at all as a rate limit', () => {
@@ -87,7 +87,7 @@ describe('other provider failures', () => {
 
     expect(failure.kind).toBe('unavailable')
     expect(failure.retryable).toBe(true)
-    expect(failure.userMessage).toBe('MARKA ran into a problem. Please try again.')
+    expect(failure.userMessage).toBe('EVA ran into a problem. Please try again.')
   })
 
   it('classifies 503 as unavailable', () => {
@@ -99,7 +99,7 @@ describe('other provider failures', () => {
 
     expect(failure.kind).toBe('auth')
     expect(failure.retryable).toBe(false)
-    expect(failure.userMessage).toBe('MARKA ran into a problem. Please try again.')
+    expect(failure.userMessage).toBe('EVA ran into a problem. Please try again.')
     expect(failure.userMessage).not.toMatch(/billing|key/i)
   })
 
@@ -123,14 +123,14 @@ describe('other provider failures', () => {
     const failure = classifyProviderError(new TypeError('x is not a function'))
 
     expect(failure.kind).toBe('unknown')
-    expect(failure.userMessage).toBe('MARKA ran into a problem. Please try again.')
+    expect(failure.userMessage).toBe('EVA ran into a problem. Please try again.')
   })
 
   it('survives being handed something that is not an error at all', () => {
     for (const thrown of [null, undefined, 'boom', 42, {}]) {
       const failure = classifyProviderError(thrown)
       expect(failure).toBeInstanceOf(AiServiceError)
-      expect(failure.userMessage).toBe('MARKA ran into a problem. Please try again.')
+      expect(failure.userMessage).toBe('EVA ran into a problem. Please try again.')
     }
   })
 
@@ -142,7 +142,7 @@ describe('other provider failures', () => {
 })
 
 describe('timeouts', () => {
-  const TIMEOUT_MESSAGE = 'MARKA is taking longer than expected right now. Please try again.'
+  const TIMEOUT_MESSAGE = 'EVA is taking longer than expected right now. Please try again.'
 
   it('classifies the real OpenAI SDK timeout, whose .name is just "Error"', () => {
     // The SDK's error classes never set `.name` — the live Phase 3 timeout

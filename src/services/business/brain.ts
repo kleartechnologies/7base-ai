@@ -315,7 +315,7 @@ export function describeSource(source: SourceMark | null | undefined): string | 
     case 'website':
       return 'From your website'
     case 'inferred':
-      return 'MARKA’s inference'
+      return 'EVA’s inference'
     case 'document':
       return 'From a document you uploaded'
     default:

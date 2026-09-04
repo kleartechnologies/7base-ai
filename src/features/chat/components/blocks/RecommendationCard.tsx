@@ -41,7 +41,7 @@ export function RecommendationCard({ block }: { block: MarketingRecommendationBl
       <div className="border-b border-border px-5 py-3">
         <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           <Sparkles className="size-3.5" aria-hidden />
-          MARKA’s recommendation
+          EVA’s recommendation
         </p>
         <h3 className="mt-1 text-[16px] font-semibold tracking-[-0.01em] text-foreground">
           {block.title}

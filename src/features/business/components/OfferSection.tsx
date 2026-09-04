@@ -52,8 +52,8 @@ export function OfferSection({
       title="What you offer"
       hint={
         business.products.length > 0
-          ? `MARKA found ${business.products.length} ${business.products.length === 1 ? 'item' : 'items'}. Fix anything that looks wrong.`
-          : 'Nothing found yet. Add what you sell so MARKA can write about it.'
+          ? `EVA found ${business.products.length} ${business.products.length === 1 ? 'item' : 'items'}. Fix anything that looks wrong.`
+          : 'Nothing found yet. Add what you sell so EVA can write about it.'
       }
       editing={editing}
       onEdit={open}

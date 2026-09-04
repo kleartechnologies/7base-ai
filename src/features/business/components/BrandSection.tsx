@@ -58,7 +58,7 @@ export function BrandSection({
   return (
     <SectionCard
       title="Your brand"
-      hint="How MARKA will sound when it writes as you."
+      hint="How EVA will sound when it writes as you."
       editing={editing}
       onEdit={open}
     >

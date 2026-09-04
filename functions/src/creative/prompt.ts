@@ -30,7 +30,7 @@ Fields:
 Rules:
 - Never invent facts: no prices, discounts, percentages, product names, opening hours, addresses or links that are not in the input. The server rejects fields that break this rule, so a made-up "RM9.90" costs you the whole field.
 - OWNER RULES in the input are standing instructions from the owner. They outrank everything else here.
-- Plain, warm, jargon-free language. Malaysian context; English unless the campaign's message is in Malay. No hype, no ALL CAPS, no emoji walls (one or two emoji in captions are fine).
+- Plain, warm, jargon-free language. Malaysian context. Write in the language the campaign's core message and offer are written in — Bahasa Melayu campaigns get Bahasa Melayu poster text and captions; do not translate the owner's wording into English. No hype, no ALL CAPS, no emoji walls (one or two emoji in captions are fine).
 - Return null for any field you cannot write honestly.`
 
 export interface CopyInputParams {
@@ -82,7 +82,7 @@ Rules:
 - Never invent facts: no prices, discounts, percentages, product names or links that are not in the creative, the campaign or the instruction itself. A price the owner types in the instruction is theirs to use.
 - OWNER RULES are standing instructions from earlier edits. They still apply — "make it catchier" must not reintroduce a discount the owner banned.
 - visualChange: null unless the instruction asks to change the *image* (the photo, scene, colours or mood of the visual). When it does, describe the new scene in 1-3 sentences — subject, setting, mood — with no text, prices or logos in it. Wording changes are never a visualChange; regenerating the image costs the owner money.
-- reply: one or two short sentences in MARKA's plain, warm voice saying what you changed. If the instruction is not about this creative, or is too unclear to act on, return every field null and use reply to say so — or to ask one short clarifying question. No jargon, no emoji.`
+- reply: one or two short sentences in EVA's plain, warm voice, in the language of the owner's instruction (English, Bahasa Melayu, or natural Manglish), saying what you changed. If the instruction is not about this creative, or is too unclear to act on, return every field null and use reply to say so — or to ask one short clarifying question. No jargon, no emoji.`
 
 export interface CreativeEditInputParams {
   instruction: string

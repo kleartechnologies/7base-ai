@@ -1,7 +1,7 @@
 /** A quiet three-dot pulse while MARKA composes its reply. */
 export function ThinkingIndicator() {
   return (
-    <div className="flex items-center gap-1.5 py-1" role="status" aria-label="MARKA is thinking">
+    <div className="flex items-center gap-1.5 py-1" role="status" aria-label="EVA is thinking">
       {[0, 150, 300].map((delay) => (
         <span
           key={delay}

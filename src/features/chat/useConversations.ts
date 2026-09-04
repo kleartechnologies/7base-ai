@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/app/routes/paths'
 import { deleteConversation, observeConversations } from '@/services/chat/chat.service'
@@ -23,7 +23,10 @@ interface ListState {
 export function useConversations() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { conversationId: openId } = useParams<{ conversationId: string }>()
+  // This hook lives in the shell layout, above the chat route, so `useParams`
+  // cannot see `:conversationId` — match the location directly instead.
+  const { pathname } = useLocation()
+  const openId = matchPath(`${ROUTES.chat}/:conversationId`, pathname)?.params.conversationId ?? null
   const uid = user ? user.uid : null
 
   const [state, setState] = useState<ListState>(() => ({
@@ -59,13 +62,18 @@ export function useConversations() {
 
   const remove = useCallback(
     async (conversationId: string) => {
-      // Optimistic: the row disappears immediately, and the snapshot confirms.
-      setState((previous) => ({
-        ...previous,
-        conversations: previous.conversations.filter((c) => c.id !== conversationId),
-      }))
-
-      await deleteConversation(conversationId)
+      // Not optimistic: the local snapshot cache removes the row the moment
+      // the delete is accepted anyway, and a failed delete must not leave the
+      // list quietly lying about what still exists.
+      try {
+        await deleteConversation(conversationId)
+      } catch {
+        setState((previous) => ({
+          ...previous,
+          error: 'Could not delete the conversation. Please try again.',
+        }))
+        return
+      }
 
       if (openId === conversationId) {
         navigate(ROUTES.chat, { replace: true })

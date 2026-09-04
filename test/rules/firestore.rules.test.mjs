@@ -164,7 +164,12 @@ await no('anon reads a profile', () => getDoc(doc(anon, 'users/alice')))
 console.log('\n-- CONVERSATIONS & MESSAGES --')
 await ok('alice reads her conversation', () => getDoc(doc(alice, 'conversations/aliceConv')))
 await ok('alice creates a conversation', () => addDoc(collection(alice, 'conversations'), { ownerId: 'alice', businessId: 'aliceBiz', createdAt: 1 }))
+await ok('alice creates a pre-onboarding conversation with no business', () => addDoc(collection(alice, 'conversations'), { ownerId: 'alice', businessId: null, createdAt: 1 }))
+await no('alice creates a conversation claiming bob business', () => addDoc(collection(alice, 'conversations'), { ownerId: 'alice', businessId: 'bobBiz', createdAt: 1 }))
+await no('alice creates a conversation claiming a nonexistent business', () => addDoc(collection(alice, 'conversations'), { ownerId: 'alice', businessId: 'ghostBiz', createdAt: 1 }))
 await no('alice creates a conversation owned by bob', () => addDoc(collection(alice, 'conversations'), { ownerId: 'bob', createdAt: 1 }))
+await no('alice repoints her conversation at another business', () => updateDoc(doc(alice, 'conversations/aliceConv'), { businessId: 'bobBiz' }))
+await no('alice detaches her conversation from its business', () => updateDoc(doc(alice, 'conversations/aliceConv'), { businessId: null }))
 await ok('alice reads her messages', () => getDocs(collection(alice, 'conversations/aliceConv/messages')))
 await ok('alice posts her own user message', () => addDoc(collection(alice, 'conversations/aliceConv/messages'), { ownerId: 'alice', role: 'user', createdAt: 1 }))
 await no('alice forges an assistant message', () => addDoc(collection(alice, 'conversations/aliceConv/messages'), { ownerId: 'alice', role: 'assistant', createdAt: 1 }))
@@ -222,14 +227,22 @@ await no('alice moves campaign to another business', () => updateDoc(doc(alice, 
 await no('alice moves campaign to another conversation', () => updateDoc(doc(alice, 'campaigns/aliceCampaign'), { conversationId: 'bobConv' }))
 await no('alice rewrites campaign ownerId', () => updateDoc(doc(alice, 'campaigns/aliceCampaign'), { ownerId: 'bob' }))
 await no('alice rewrites campaign createdAt', () => updateDoc(doc(alice, 'campaigns/aliceCampaign'), { createdAt: 9999 }))
-await ok('alice creates a pristine campaign of her own', () => setDoc(doc(alice, 'campaigns/manualCampaign'), { ownerId: 'alice', businessId: 'aliceBiz', conversationId: null, sourceRecommendationId: null, name: 'Manual', status: 'draft', userEdited: [], createdAt: 1, updatedAt: 1 }))
+// Campaign creation is server-only: no client code path creates one, so even
+// a pristine, honestly-owned document is refused.
+await no('alice creates a pristine campaign of her own', () => setDoc(doc(alice, 'campaigns/manualCampaign'), { ownerId: 'alice', businessId: 'aliceBiz', conversationId: null, sourceRecommendationId: null, name: 'Manual', status: 'draft', userEdited: [], createdAt: 1, updatedAt: 1 }))
 await no('alice forges built-by-MARKA provenance on create', () => setDoc(doc(alice, 'campaigns/forgedCampaign'), { ownerId: 'alice', sourceRecommendationId: 'aliceRec', name: 'Forged', createdAt: 1 }))
 await no('bob reads alice campaign', () => getDoc(doc(bob, 'campaigns/aliceCampaign')))
 await no('bob lists alice campaigns', () => getDocs(query(collection(bob, 'campaigns'), where('ownerId', '==', 'alice'))))
 await no('bob edits alice campaign', () => updateDoc(doc(bob, 'campaigns/aliceCampaign'), { name: 'X' }))
 await no('bob deletes alice campaign', () => deleteDoc(doc(bob, 'campaigns/aliceCampaign')))
 await no('anon reads a campaign', () => getDoc(doc(anon, 'campaigns/aliceCampaign')))
-await ok('alice deletes her manual campaign', () => deleteDoc(doc(alice, 'campaigns/manualCampaign')))
+await ok('alice deletes her own campaign', () => deleteDoc(doc(alice, 'campaigns/aliceDoc')))
+
+console.log('\n-- CALENDAR ITEMS (feature does not exist; writes closed) --')
+await no('alice creates a calendar item', () => setDoc(doc(alice, 'calendarItems/newItem'), { ownerId: 'alice', title: 'Post', createdAt: 1 }))
+await no('alice edits her stored calendar item', () => updateDoc(doc(alice, 'calendarItems/aliceDoc'), { title: 'Changed' }))
+await no('alice deletes her stored calendar item', () => deleteDoc(doc(alice, 'calendarItems/aliceDoc')))
+await no('anon creates a calendar item', () => setDoc(doc(anon, 'calendarItems/anonItem'), { ownerId: 'alice', createdAt: 1 }))
 
 console.log('\n-- CREATIVES (server creates, owner edits copy) --')
 await ok('alice reads her creative', () => getDoc(doc(alice, 'creatives/aliceCreative')))
@@ -373,7 +386,9 @@ await no('bob creates a result claiming alice', () => setDoc(doc(bob, 'results/f
 await no('bob creates a result for himself', () => setDoc(doc(bob, 'results/bobResult'), { ownerId: 'bob', createdAt: 1 }))
 await no('anon creates a result', () => setDoc(doc(anon, 'results/anonResult'), { ownerId: 'alice', createdAt: 1 }))
 await no('bob deletes alice result', () => deleteDoc(doc(bob, 'results/aliceDoc')))
-await ok('alice deletes her result', () => deleteDoc(doc(alice, 'results/aliceDoc')))
+// Results are the append-only record future recommendations are judged
+// against; deletion is closed to clients along with the other writes.
+await no('alice deletes her result', () => deleteDoc(doc(alice, 'results/aliceDoc')))
 
 console.log('\n-- USAGE (Phase 6B guardrail ledger; server-only in BOTH directions) --')
 // Seeded the way the Admin SDK writes it. Clients never read usage — showing

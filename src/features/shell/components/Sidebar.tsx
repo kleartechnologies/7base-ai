@@ -3,21 +3,38 @@ import { PenSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MarkaLogo } from '@/components/MarkaLogo'
 import { ROUTES } from '@/app/routes/paths'
-import { useConversations } from '@/features/chat/useConversations'
+import type { Conversation } from '@/types'
 import { SETTINGS_NAV, WORKSPACE_NAV } from '../navigation'
 import { ChatHistoryList } from './ChatHistoryList'
 import { SidebarNavLink } from './SidebarNavLink'
 import { UserMenu } from './UserMenu'
+
+export interface SidebarConversations {
+  conversations: Conversation[]
+  loading: boolean
+  error: string | null
+  remove: (conversationId: string) => Promise<void>
+}
 
 /**
  * The persistent left rail.
  *
  * Order encodes the product philosophy: new chat and history first, workspace
  * tabs second. The chat is the product; the tabs are where its output lands.
+ *
+ * The conversation list is owned by the shell, not this component: the shell
+ * can mount two Sidebars at once (fixed rail + mobile drawer), and each must
+ * not open its own Firestore listener over the same data.
  */
-export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function Sidebar({
+  history,
+  onNavigate,
+}: {
+  history: SidebarConversations
+  onNavigate?: () => void
+}) {
   const navigate = useNavigate()
-  const { conversations, loading, remove } = useConversations()
+  const { conversations, loading, error, remove } = history
 
   function handleNewChat() {
     navigate(ROUTES.chat)
@@ -45,6 +62,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <ChatHistoryList
           conversations={conversations}
           loading={loading}
+          error={error}
           onDelete={(id) => void remove(id)}
           onNavigate={onNavigate}
         />

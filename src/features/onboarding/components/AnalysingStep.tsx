@@ -13,7 +13,7 @@ const STAGES: { id: DiscoveryStage; label: string }[] = [
   { id: 'reading_pages', label: 'Reading your pages' },
   { id: 'understanding', label: 'Working out what you offer' },
   { id: 'building_brain', label: 'Building your Business Brain' },
-  { id: 'saving', label: 'Saving what MARKA learned' },
+  { id: 'saving', label: 'Saving what EVA learned' },
 ]
 
 export function AnalysingStep({ stage }: { stage: DiscoveryStage | null }) {

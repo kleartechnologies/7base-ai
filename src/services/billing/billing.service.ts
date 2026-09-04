@@ -4,15 +4,20 @@ import type { EntityId, Millis } from '@/types'
  * Billing seam — Billplz is NOT implemented.
  *
  * This module exists so that plan state has a home and the UI can already ask
- * "what can this account do?" without every feature growing its own guess.
+ * "what plan is this account on?" without every feature growing its own guess.
  * When Billplz lands it becomes: create bill (Cloud Function, secret key
  * server-side) → redirect to Billplz → webhook verifies the X-Signature and
  * writes the subscription → this module reads it.
  *
+ * The plan names here mirror the server's canon (`subscriptions/{uid}` →
+ * basic | pro). The server is the authority on what a plan may do — usage
+ * limits are enforced in the Cloud Functions, not here — so this module
+ * deliberately carries no limit numbers for the UI to drift out of date.
+ *
  * No Billplz key must ever appear in this bundle.
  */
 
-export type PlanId = 'free' | 'starter' | 'pro'
+export type PlanId = 'basic' | 'pro'
 
 export interface Subscription {
   id: EntityId
@@ -22,26 +27,17 @@ export interface Subscription {
   currentPeriodEnd: Millis | null
 }
 
-export interface PlanLimits {
-  maxBusinesses: number
-  maxCampaignsPerMonth: number
-  maxCreativesPerMonth: number
-}
-
-const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
-  free: { maxBusinesses: 1, maxCampaignsPerMonth: 2, maxCreativesPerMonth: 10 },
-  starter: { maxBusinesses: 1, maxCampaignsPerMonth: 15, maxCreativesPerMonth: 100 },
-  pro: { maxBusinesses: 5, maxCampaignsPerMonth: 100, maxCreativesPerMonth: 1000 },
-}
-
-export function getPlanLimits(planId: PlanId): PlanLimits {
-  return PLAN_LIMITS[planId]
+/** Human name for a plan, for display only. */
+export function getPlanName(planId: PlanId): string {
+  return planId === 'pro' ? 'Pro' : 'Basic'
 }
 
 /**
- * Every account is on `free` until billing exists. Kept as a function, not a
- * constant, so callers are already written against an async-shaped source.
+ * Every account is on `basic` until billing exists — the same default the
+ * server applies when no subscription document is found. Kept as a function,
+ * not a constant, so callers are already written against an async-shaped
+ * source.
  */
 export function getCurrentPlan(): PlanId {
-  return 'free'
+  return 'basic'
 }

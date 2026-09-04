@@ -24,10 +24,10 @@ const AUTH_MESSAGES: Record<string, string> = {
 const GENERIC_MESSAGES: Record<string, string> = {
   'permission-denied': 'You do not have access to that.',
   unauthenticated: 'Please sign in again.',
-  unavailable: 'MARKA could not reach the server. Please try again.',
+  unavailable: 'EVA could not reach the server. Please try again.',
   'deadline-exceeded': 'That took too long. Please try again.',
   'resource-exhausted': 'You have reached a usage limit. Please try again later.',
-  'failed-precondition': 'MARKA is not set up to do that yet.',
+  'failed-precondition': 'EVA is not set up to do that yet.',
 }
 
 export function toUserMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {

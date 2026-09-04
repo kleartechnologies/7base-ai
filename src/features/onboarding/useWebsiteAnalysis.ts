@@ -32,7 +32,7 @@ export interface WebsiteAnalysis {
 
 const GENERIC_FAILURE: AnalysisFailure = {
   code: 'internal',
-  message: 'MARKA couldn’t finish analysing the business right now. Please try again.',
+  message: 'EVA couldn’t finish analysing the business right now. Please try again.',
 }
 
 export function useWebsiteAnalysis(): WebsiteAnalysis {
@@ -43,10 +43,15 @@ export function useWebsiteAnalysis(): WebsiteAnalysis {
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [business, setBusiness] = useState<Business | null>(null)
 
-  // Live view of the business the backend is writing into.
+  // Live view of the business the backend is writing into. If the listener
+  // itself dies we can no longer see how the run ends, so surface a failure
+  // instead of spinning forever.
   useEffect(() => {
     if (!businessId) return
-    return observeBusiness(businessId, setBusiness)
+    return observeBusiness(businessId, setBusiness, () => {
+      setLocalFailure(GENERIC_FAILURE)
+      setLocalPhase('failed')
+    })
   }, [businessId])
 
   // The document is the authority on how the run ended: the callable may have
@@ -93,9 +98,13 @@ export function useWebsiteAnalysis(): WebsiteAnalysis {
 
     const finished = await runWebsiteAnalysis({ businessId: started.data.businessId })
     if (!finished.ok) {
-      // If the backend recorded its own outcome, the derivation above uses it;
-      // this only covers a call that never got there.
-      setLocalFailure(GENERIC_FAILURE)
+      // If the backend recorded its own outcome on the document, the
+      // derivation above prefers it; this covers a call that never got there.
+      // The callable's message is already owner-readable, so keep it.
+      setLocalFailure({
+        code: 'internal',
+        message: finished.error.message || GENERIC_FAILURE.message,
+      })
       setLocalPhase('failed')
     }
   }, [])

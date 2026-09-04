@@ -43,14 +43,14 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const EMPTY_COPY: Record<LibraryTab, string> = {
-  all: 'No marketing work yet. Ask MARKA in the chat — the recommendations, campaigns, posters and captions you build together are collected here.',
+  all: 'No marketing work yet. Ask EVA in the chat — the recommendations, campaigns, posters and captions you build together are collected here.',
   creatives:
     'No creatives yet. Open a campaign and choose “Create Marketing Materials” — posters land here.',
   copywriting:
-    'No copywriting yet. Captions arrive together with each creative MARKA makes.',
+    'No copywriting yet. Captions arrive together with each creative EVA makes.',
   campaigns:
-    'No campaigns yet. When MARKA recommends a move in the chat, one click turns it into a campaign.',
-  recommendations: 'No recommendations yet. Ask MARKA what you want to achieve.',
+    'No campaigns yet. When EVA recommends a move in the chat, one click turns it into a campaign.',
+  recommendations: 'No recommendations yet. Ask EVA what you want to achieve.',
 }
 
 export default function LibraryPage() {
@@ -68,10 +68,10 @@ export default function LibraryPage() {
       <header>
         <h1 className="flex items-center gap-2.5 text-[22px] font-semibold tracking-[-0.01em] text-foreground">
           <LibraryBig className="size-5 text-muted-foreground" aria-hidden />
-          EVA Library
+          Library
         </h1>
         <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          Everything MARKA has created for your business, in one place — newest first.
+          Everything EVA has created for your business, in one place — newest first.
         </p>
       </header>
 

@@ -82,6 +82,25 @@ describe('normalizeWebsiteUrl', () => {
     }
   })
 
+  it('refuses re-encoded IP addresses, not just the dotted-quad form', () => {
+    // The WHATWG URL parser normalises most of these back to a dotted quad
+    // (hex, octal, decimal, shorthand all become 127.0.0.1), where the
+    // IP-literal refusal catches them; anything it leaves alone then fails
+    // the registrable-domain rule, which demands an alphabetic TLD. Either
+    // way the request must never leave the building.
+    for (const input of [
+      'http://0x7f.0x0.0x0.0x1/', // hex
+      'http://0x7f.1/', // hex + shorthand
+      'http://0177.0.0.1/', // octal
+      'http://127.1/', // shorthand
+      'http://2130706433/', // decimal
+      'http://[::ffff:127.0.0.1]/', // IPv4 wearing an IPv6 coat
+      'http://[0:0:0:0:0:ffff:a9fe:a9fe]/', // 169.254.169.254, expanded
+    ]) {
+      expect(() => normalizeWebsiteUrl(input)).toThrow(InvalidUrlError)
+    }
+  })
+
   it('refuses empty and oversized input', () => {
     expect(() => normalizeWebsiteUrl('   ')).toThrow(InvalidUrlError)
     expect(() => normalizeWebsiteUrl(`https://example.com/${'a'.repeat(3000)}`)).toThrow(

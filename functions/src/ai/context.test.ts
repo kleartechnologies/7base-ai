@@ -122,7 +122,7 @@ describe('buildBusinessContext — provenance structure', () => {
     )!
 
     expect(context).toMatch(/^MARKETING — READ FROM THEIR WEBSITE/m)
-    expect(context).toMatch(/^AUDIENCE — MARKA'S INFERENCE/m)
+    expect(context).toMatch(/^AUDIENCE — EVA'S INFERENCE/m)
     expect(context).toMatch(/^BRAND — CONFIRMED BY THE OWNER/m)
   })
 

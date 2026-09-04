@@ -56,7 +56,7 @@ export function BusinessSection({
   return (
     <SectionCard
       title="Your business"
-      hint="The basics MARKA will use in everything it writes for you."
+      hint="The basics EVA will use in everything it writes for you."
       editing={editing}
       onEdit={open}
     >

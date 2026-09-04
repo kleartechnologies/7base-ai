@@ -56,7 +56,7 @@ export function WebsiteStep({
           }}
         />
         <p id="website-url-help" className="text-[13px] leading-relaxed text-muted-foreground">
-          MARKA will analyse publicly available information from your website.
+          EVA will analyse publicly available information from your website.
         </p>
         {error ? (
           <p role="alert" className="text-[13px] text-destructive">

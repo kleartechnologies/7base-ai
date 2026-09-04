@@ -33,9 +33,26 @@ export default function ChatPage() {
     handleConversationCreated,
   )
 
+  // Opening a thread jumps to the newest message. After that, new content only
+  // scrolls the view when the user is already at (or near) the bottom — never
+  // yanking someone away from an older message they scrolled up to read.
+  const scrolledThreadRef = useRef<string | null>(null)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: 'end' })
-  }, [messages.length, awaitingReply])
+    const container = scrollRef.current
+    if (!container) return
+
+    const threadKey = conversationId ?? 'new'
+    const firstRender = scrolledThreadRef.current !== threadKey
+    const nearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 120
+
+    if (firstRender || nearBottom) {
+      bottomRef.current?.scrollIntoView({ block: 'end' })
+    }
+    if (messages.length > 0) {
+      scrolledThreadRef.current = threadKey
+    }
+  }, [conversationId, messages.length, awaitingReply])
 
   const isEmpty = !loading && messages.length === 0
 

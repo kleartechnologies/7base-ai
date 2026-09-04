@@ -47,10 +47,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resolved = await getPrimaryBusiness(uid)
       }
 
-      if (activeUidRef.current === uid) setBusiness(resolved)
+      if (activeUidRef.current === uid) {
+        setBusiness(resolved)
+        setError(null)
+      }
     } catch {
-      // Having no business yet is a normal pre-onboarding state, not an error.
-      if (activeUidRef.current === uid) setBusiness(null)
+      // This branch is a *failed load*, not the normal pre-onboarding state —
+      // a user with no business resolves to null above without throwing. Say
+      // so instead of silently pretending the business does not exist.
+      if (activeUidRef.current === uid) {
+        setBusiness(null)
+        setError('Could not load your business. Please check your connection and refresh.')
+      }
     }
   }, [])
 

@@ -49,7 +49,7 @@ interface PendingAttachment {
 export function ChatComposer({
   onSend,
   disabled,
-  placeholder = 'Tell MARKA what you want to achieve…',
+  placeholder = 'Tell EVA what you want to achieve…',
   autoFocus = false,
 }: {
   onSend: (text: string, attachments: AttachmentDraft[]) => void
@@ -81,7 +81,10 @@ export function ChatComposer({
 
   useEffect(() => {
     if (!pickerWanted || !user) return
-    return observeAssets(user.uid, setAssets)
+    return observeAssets(user.uid, setAssets, () => {
+      // Say so rather than showing an empty picker that looks like "no assets".
+      setAttachError('Your Assets could not be loaded. Please try again.')
+    })
   }, [pickerWanted, user])
 
   // Preview URLs for rows still staged at unmount are released here; rows
@@ -297,7 +300,7 @@ export function ChatComposer({
           </DropdownMenu>
 
           <label htmlFor="chat-composer" className="sr-only">
-            Message MARKA
+            Message EVA
           </label>
           <Textarea
             id="chat-composer"
@@ -328,7 +331,7 @@ export function ChatComposer({
         </p>
       ) : null}
       <p className="mt-2 text-center text-xs text-muted-foreground">
-        MARKA can make mistakes. Review important details before publishing.
+        EVA can make mistakes. Review important details before publishing.
       </p>
     </form>
   )

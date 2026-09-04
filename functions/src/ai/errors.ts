@@ -46,10 +46,10 @@ export type AiFailureKind =
 /** The only four sentences MARKA will say about an AI failure. */
 export const AI_FAILURE_MESSAGES = {
   billing:
-    'MARKA’s AI service has reached its usage limit. Please check the account billing settings.',
-  busy: 'MARKA is busy right now. Please try again shortly.',
-  timeout: 'MARKA is taking longer than expected right now. Please try again.',
-  generic: 'MARKA ran into a problem. Please try again.',
+    'EVA’s AI service has reached its usage limit. Please check the account billing settings.',
+  busy: 'EVA is busy right now. Please try again shortly.',
+  timeout: 'EVA is taking longer than expected right now. Please try again.',
+  generic: 'EVA ran into a problem. Please try again.',
 } as const
 
 /**

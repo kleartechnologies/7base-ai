@@ -95,7 +95,7 @@ export function CampaignCard({ block }: { block: CampaignCardBlock }) {
         </div>
         {creating ? (
           <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-            MARKA is writing your copy and preparing the poster. They’ll appear here as a new
+            EVA is writing your copy and preparing the poster. They’ll appear here as a new
             message — this can take a minute or two.
           </p>
         ) : null}

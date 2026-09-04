@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ import type { Conversation } from '@/types'
 interface ChatHistoryListProps {
   conversations: Conversation[]
   loading: boolean
+  error?: string | null
   onDelete: (conversationId: string) => void
   onNavigate?: () => void
 }
@@ -22,9 +24,15 @@ interface ChatHistoryListProps {
 export function ChatHistoryList({
   conversations,
   loading,
+  error,
   onDelete,
   onNavigate,
 }: ChatHistoryListProps) {
+  // Deleting a conversation is permanent, so the menu action only *asks* —
+  // the row swaps to an inline confirm and nothing is removed until the owner
+  // clicks Delete a second time.
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+
   if (loading) {
     return (
       <div className="space-y-1.5 px-1 py-1">
@@ -38,14 +46,46 @@ export function ChatHistoryList({
   if (conversations.length === 0) {
     return (
       <p className="px-2.5 py-2 text-[13px] leading-relaxed text-muted-foreground">
-        Your conversations with MARKA will appear here.
+        Your conversations with EVA will appear here.
       </p>
     )
   }
 
   return (
-    <ul className="space-y-px">
-      {conversations.map((conversation) => (
+    <>
+      {error ? (
+        <p role="alert" className="px-2.5 py-2 text-[13px] leading-relaxed text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <ul className="space-y-px">
+        {conversations.map((conversation) =>
+          pendingDeleteId === conversation.id ? (
+            <li
+              key={conversation.id}
+              className="rounded-md border border-border bg-card px-2.5 py-2"
+            >
+              <p className="truncate text-[13px] text-foreground">{conversation.title}</p>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+                Delete this conversation? This can’t be undone.
+              </p>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setPendingDeleteId(null)
+                    onDelete(conversation.id)
+                  }}
+                >
+                  Delete
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setPendingDeleteId(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </li>
+          ) : (
         <li key={conversation.id} className="group/item relative">
           <NavLink
             to={ROUTES.conversation(conversation.id)}
@@ -74,14 +114,19 @@ export function ChatHistoryList({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem variant="destructive" onSelect={() => onDelete(conversation.id)}>
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => setPendingDeleteId(conversation.id)}
+              >
                 <Trash2 />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </li>
-      ))}
-    </ul>
+          ),
+        )}
+      </ul>
+    </>
   )
 }

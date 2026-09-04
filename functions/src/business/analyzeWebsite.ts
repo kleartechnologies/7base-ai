@@ -404,13 +404,13 @@ function classify(error: unknown): AnalysisFailure {
   if (error instanceof AiResponseError || error instanceof AnalysisValidationError) {
     return {
       code: 'ai_failed',
-      message: 'MARKA could not finish analysing the business right now. Please try again.',
+      message: 'EVA could not finish analysing the business right now. Please try again.',
     }
   }
   if (error instanceof AiNotConfiguredError) {
-    return { code: 'ai_failed', message: 'MARKA’s AI backend is not configured yet.' }
+    return { code: 'ai_failed', message: 'EVA’s AI backend is not configured yet.' }
   }
-  return { code: 'internal', message: 'MARKA ran into a problem. Please try again.' }
+  return { code: 'internal', message: 'EVA ran into a problem. Please try again.' }
 }
 
 /**
@@ -427,7 +427,7 @@ function unreachableMessage(reason: string): string {
     case 'tls':
       return "This website's security certificate could not be verified, so I stopped rather than read it. Your web host can renew or reinstall it."
     case 'blocked':
-      return 'This website refused to let MARKA read it. Your web host or security plugin may be blocking automated visitors.'
+      return 'This website refused to let EVA read it. Your web host or security plugin may be blocking automated visitors.'
     case 'timeout':
       return 'This website took too long to respond. Try again in a moment.'
     case 'not_html':

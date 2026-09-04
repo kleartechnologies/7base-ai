@@ -47,7 +47,7 @@ export function AnalysisFailed({
 
       {failure.code === 'ai_unavailable' ? (
         <p className="text-[13px] leading-relaxed text-muted-foreground">
-          Nothing you did caused this, and trying again won’t clear it. You can still set MARKA up
+          Nothing you did caused this, and trying again won’t clear it. You can still set EVA up
           yourself in the meantime.
         </p>
       ) : null}

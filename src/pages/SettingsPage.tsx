@@ -2,12 +2,11 @@ import { LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/hooks/useAuth'
-import { getCurrentPlan, getPlanLimits } from '@/services/billing/billing.service'
+import { getCurrentPlan, getPlanName } from '@/services/billing/billing.service'
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth()
   const plan = getCurrentPlan()
-  const limits = getPlanLimits(plan)
 
   return (
     <div className="h-full overflow-y-auto">
@@ -37,10 +36,9 @@ export default function SettingsPage() {
         <section className="mt-10 space-y-4">
           <h2 className="text-sm font-medium text-foreground">Plan</h2>
           <div className="rounded-xl border border-border bg-card px-5 py-4">
-            <p className="text-sm font-medium capitalize text-foreground">{plan}</p>
+            <p className="text-sm font-medium text-foreground">{getPlanName(plan)}</p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-              Up to {limits.maxCampaignsPerMonth} campaigns and {limits.maxCreativesPerMonth}{' '}
-              creatives per month. Paid plans are not available yet.
+              Fair-use limits on AI usage apply. Paid plans are not available yet.
             </p>
           </div>
         </section>

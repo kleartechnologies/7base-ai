@@ -178,8 +178,14 @@ export default function CampaignDetailPage() {
 
   async function handleStatus(status: CampaignStatus) {
     if (!campaign || status === campaign.status) return
-    await setCampaignStatus(campaign.id, status)
-    setCampaign({ ...campaign, status })
+    try {
+      await setCampaignStatus(campaign.id, status)
+      setCampaign({ ...campaign, status })
+    } catch {
+      // The buttons reflect `campaign.status`, so a failed write leaves them
+      // truthful — but the click must not vanish without a word.
+      setError('Could not update the campaign status. Please try again.')
+    }
   }
 
   async function handleCreateMaterials() {
@@ -349,7 +355,7 @@ export default function CampaignDetailPage() {
       </div>
       {creating ? (
         <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-          MARKA is writing your copy and preparing the poster — this can take a minute or two.
+          EVA is writing your copy and preparing the poster — this can take a minute or two.
         </p>
       ) : null}
       {materialsStarted ? (

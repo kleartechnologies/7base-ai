@@ -98,25 +98,32 @@ export function AttachmentBlockView({
 
   if (isPdf) {
     return (
-      <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
-        <FileText className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-        <div className="min-w-0">
-          <p className="truncate text-[13px] font-medium text-foreground">{block.fileName}</p>
-          <p className="flex items-center gap-2">{meta}</p>
+      <div className="max-w-xs">
+        <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+          <FileText className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-medium text-foreground">{block.fileName}</p>
+            <p className="flex items-center gap-2">{meta}</p>
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {url ? (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-border px-2 py-px text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Open
+              </a>
+            ) : null}
+            {saveAction}
+          </div>
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          {url ? (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full border border-border px-2 py-px text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              Open
-            </a>
-          ) : null}
-          {saveAction}
-        </div>
+        {saveState === 'error' ? (
+          <p className="mt-1 text-[12px] text-destructive">
+            Could not save to Assets. Please try again.
+          </p>
+        ) : null}
       </div>
     )
   }

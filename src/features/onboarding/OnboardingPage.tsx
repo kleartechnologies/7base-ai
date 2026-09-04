@@ -32,7 +32,9 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>('choose')
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
-  const [manualError, setManualError] = useState<string | null>(null)
+  // Shown wherever the failed submit happened — the review step and the manual
+  // step both render it. A confirm that fails must never look like success.
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   /**
    * Onboarding is done the moment a business exists and the owner has stood
@@ -45,6 +47,7 @@ export default function OnboardingPage() {
   async function finish(business: Business) {
     if (!user) return
     setBusy(true)
+    setSubmitError(null)
     try {
       await acceptBusinessBrain(business)
       await setActiveBusiness(user.uid, business.id)
@@ -52,7 +55,7 @@ export default function OnboardingPage() {
       await refresh()
       navigate(DEFAULT_AUTHENTICATED_ROUTE, { replace: true })
     } catch (caught) {
-      setManualError(toUserMessage(caught, 'Could not finish setting up. Please try again.'))
+      setSubmitError(toUserMessage(caught, 'Could not finish setting up. Please try again.'))
       setBusy(false)
     }
   }
@@ -60,12 +63,12 @@ export default function OnboardingPage() {
   async function handleManual(name: string, offering: string) {
     if (!user) return
     setBusy(true)
-    setManualError(null)
+    setSubmitError(null)
     try {
       const created = await createBusiness(user.uid, { name, offering: offering || null })
       await finish(created)
     } catch (caught) {
-      setManualError(toUserMessage(caught, 'Could not save your business. Please try again.'))
+      setSubmitError(toUserMessage(caught, 'Could not save your business. Please try again.'))
       setBusy(false)
     }
   }
@@ -78,7 +81,7 @@ export default function OnboardingPage() {
   if (analysis.phase === 'starting' || analysis.phase === 'running') {
     return (
       <OnboardingLayout
-        title="MARKA is reading your website"
+        title="EVA is reading your website"
         subtitle={`Looking through ${displayHost(url)}. This usually takes under a minute.`}
       >
         <AnalysingStep stage={analysis.stage} />
@@ -88,7 +91,7 @@ export default function OnboardingPage() {
 
   if (analysis.phase === 'failed' && analysis.failure) {
     return (
-      <OnboardingLayout title="MARKA couldn’t do that">
+      <OnboardingLayout title="EVA couldn’t do that">
         <AnalysisFailed
           failure={analysis.failure}
           onRetryWebsite={() => {
@@ -108,12 +111,13 @@ export default function OnboardingPage() {
     return (
       <OnboardingLayout
         wide
-        title="Here’s what MARKA understood"
-        subtitle="Have a quick look. Fix anything that’s wrong — MARKA will remember your version."
+        title="Here’s what EVA understood"
+        subtitle="Have a quick look. Fix anything that’s wrong — EVA will remember your version."
       >
         <ReviewStep
           business={analysis.business}
           busy={busy}
+          error={submitError}
           onConfirm={() => void finish(analysis.business!)}
           onReanalyse={() => {
             analysis.reset()
@@ -128,7 +132,7 @@ export default function OnboardingPage() {
     return (
       <OnboardingLayout
         title="What’s your website?"
-        subtitle="MARKA will read it and work out the rest — you just check what it found."
+        subtitle="EVA will read it and work out the rest — you just check what it found."
       >
         <WebsiteStep
           initialUrl={url}
@@ -143,12 +147,12 @@ export default function OnboardingPage() {
   if (step === 'manual') {
     return (
       <OnboardingLayout
-        title="Tell MARKA the basics"
-        subtitle="Two things is enough. MARKA will learn the rest as you work together."
+        title="Tell EVA the basics"
+        subtitle="Two things is enough. EVA will learn the rest as you work together."
       >
         <ManualStep
           busy={busy}
-          error={manualError}
+          error={submitError}
           onSubmit={(name, offering) => void handleManual(name, offering)}
           onBack={() => setStep('choose')}
         />
@@ -158,8 +162,8 @@ export default function OnboardingPage() {
 
   return (
     <OnboardingLayout
-      title="Let’s get MARKA up to speed"
-      subtitle="Rather than asking you to fill in a profile, MARKA would rather go and find out."
+      title="Let’s get EVA up to speed"
+      subtitle="Rather than asking you to fill in a profile, EVA would rather go and find out."
     >
       <MethodChoice onChooseWebsite={() => setStep('website')} />
       <button

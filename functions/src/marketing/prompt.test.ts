@@ -40,7 +40,7 @@ describe('buildMarketingInput', () => {
     })
 
     expect(input).toContain("THE OWNER'S REQUEST:\nI want more customers on weekdays.")
-    expect(input).toContain('WHAT MARKA KNOWS ABOUT THIS BUSINESS:\n- Name: Warung Uji')
+    expect(input).toContain('WHAT EVA KNOWS ABOUT THIS BUSINESS:\n- Name: Warung Uji')
   })
 
   it('says plainly when almost nothing is known, instead of omitting the section', () => {
@@ -61,7 +61,7 @@ describe('buildMarketingInput', () => {
     expect(input).toContain('turn 9 ')
     expect(input).toContain('…')
     expect(input).toContain('Owner: turn 4')
-    expect(input).toContain('MARKA: turn 9')
+    expect(input).toContain('EVA: turn 9')
   })
 
   it('omits the conversation section when there are no prior turns', () => {
@@ -94,7 +94,7 @@ describe('grounding labels survive into the engine input', () => {
       recentTurns: [],
     })
 
-    expect(input).toContain("MARKA'S INFERENCE")
+    expect(input).toContain("EVA'S INFERENCE")
     expect(input).not.toContain('CONFIRMED BY THE OWNER')
   })
 

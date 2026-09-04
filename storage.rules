@@ -18,12 +18,15 @@ service firebase.storage {
     }
 
     // 20 MB ceiling; menus and brand assets are well under this.
+    //
+    // The type list is exact, not `image/*`: SVG is an image type but also a
+    // script container, and nothing in the product uploads formats outside
+    // these four. Server-side writes (generated creatives) use the Admin SDK
+    // and bypass these rules, so this only constrains browsers.
     function isAllowedUpload() {
       return request.resource.size < 20 * 1024 * 1024
-        && (
-          request.resource.contentType.matches('image/.*')
-          || request.resource.contentType == 'application/pdf'
-        );
+        && request.resource.contentType in
+          ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     }
 
     match /businesses/{businessId}/{allPaths=**} {

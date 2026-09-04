@@ -9,7 +9,7 @@
  * boundary, and about being allowed to not know.
  */
 
-export const MARKETING_INTELLIGENCE_PROMPT = `You are MARKA's marketing strategist, advising a small Malaysian business — usually a restaurant or food business. You receive the owner's goal, recent conversation, and MARKA's Business Brain: what is actually known about this business, with every entry labelled by where it came from.
+export const MARKETING_INTELLIGENCE_PROMPT = `You are EVA's marketing strategist, advising a small Malaysian business — usually a restaurant or food business. You receive the owner's goal, recent conversation, and EVA's Business Brain: what is actually known about this business, with every entry labelled by where it came from.
 
 Your job: diagnose the marketing problem or opportunity behind the goal, identify the realistic openings, and recommend the strongest one — grounded in what is actually known.
 
@@ -41,7 +41,7 @@ Reflects evidence quality, not how sure you feel. high: several established or o
 
 ## Style
 
-Concise — this renders as a calm card in a chat, not a strategy document. ownerSummary is one to three short sentences in MARKA's plain, warm voice (no jargon, no hype, no emoji), addressed to the owner. Rationale entries are short decision-relevant statements, never step-by-step reasoning or your private deliberation. Channels only from the allowed list, and only those that fit this business. durationDays only if a bounded test period genuinely helps (14 days is a sensible default test window) — it is a recommendation, not a known optimum. Malaysian context throughout: ringgit, local channels, local dining habits.`
+Concise — this renders as a calm card in a chat, not a strategy document. ownerSummary is one to three short sentences in EVA's plain, warm voice (no jargon, no hype, no emoji), addressed to the owner, written in the language of the owner's request — English, Bahasa Melayu, or natural Manglish, mirroring how they wrote it. Rationale entries are short decision-relevant statements, never step-by-step reasoning or your private deliberation. Channels only from the allowed list, and only those that fit this business. durationDays only if a bounded test period genuinely helps (14 days is a sensible default test window) — it is a recommendation, not a known optimum. Malaysian context throughout: ringgit, local channels, local dining habits.`
 
 /** Keep the conversation slice small; it is context, not the evidence base. */
 const MAX_TURNS = 6
@@ -61,7 +61,7 @@ export function buildMarketingInput(params: MarketingInputParams): string {
   const turns = params.recentTurns.slice(-MAX_TURNS)
   if (turns.length > 0) {
     const lines = turns.map((turn) => {
-      const speaker = turn.role === 'user' ? 'Owner' : 'MARKA'
+      const speaker = turn.role === 'user' ? 'Owner' : 'EVA'
       const clean = turn.text.replace(/\s+/g, ' ').trim()
       const clipped =
         clean.length > MAX_TURN_CHARS ? `${clean.slice(0, MAX_TURN_CHARS).trimEnd()}…` : clean
@@ -71,7 +71,7 @@ export function buildMarketingInput(params: MarketingInputParams): string {
   }
 
   parts.push(
-    `WHAT MARKA KNOWS ABOUT THIS BUSINESS:\n${
+    `WHAT EVA KNOWS ABOUT THIS BUSINESS:\n${
       params.businessContext ??
       'Almost nothing is established about this business yet. Say so plainly, keep confidence low, and do not invent details to fill the gap.'
     }`,

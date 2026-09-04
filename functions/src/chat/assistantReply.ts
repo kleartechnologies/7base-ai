@@ -412,7 +412,7 @@ export const chatAssistantReply = onCall(
         error instanceof CreativeValidationError
       ) {
         logger.warn('Recommendation output unusable', { conversationId, reason: error.message })
-        throw new HttpsError('internal', 'MARKA could not finish that thought. Please try again.')
+        throw new HttpsError('internal', 'EVA could not finish that thought. Please try again.')
       }
       throw internal('chatAssistantReply', error)
     }

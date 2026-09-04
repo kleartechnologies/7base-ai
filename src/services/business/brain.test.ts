@@ -272,7 +272,7 @@ describe('describeSource', () => {
   it('says plainly where each piece of knowledge came from', () => {
     expect(describeSource(userProvenance(NOW))).toBe('Confirmed by you')
     expect(describeSource({ source: 'website', confirmed: false })).toBe('From your website')
-    expect(describeSource({ source: 'inferred', confirmed: false })).toBe('MARKA\u2019s inference')
+    expect(describeSource({ source: 'inferred', confirmed: false })).toBe('EVA\u2019s inference')
     expect(describeSource({ source: 'document', confirmed: false })).toBe(
       'From a document you uploaded',
     )

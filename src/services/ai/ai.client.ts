@@ -59,12 +59,12 @@ const ERROR_CODE_MAP: Record<string, AiErrorCode> = {
 const FALLBACK_MESSAGES: Record<AiErrorCode, string> = {
   unauthenticated: 'Your session expired. Please sign in again.',
   permission_denied: 'You do not have access to this conversation.',
-  not_configured: 'MARKA’s AI backend is not configured yet.',
-  rate_limited: 'MARKA is handling a lot of requests right now. Please try again shortly.',
-  timeout: 'MARKA took too long to respond. Please try again.',
-  unavailable: 'MARKA could not be reached. Please check your connection and try again.',
+  not_configured: 'EVA’s AI backend is not configured yet.',
+  rate_limited: 'EVA is handling a lot of requests right now. Please try again shortly.',
+  timeout: 'EVA took too long to respond. Please try again.',
+  unavailable: 'EVA could not be reached. Please check your connection and try again.',
   invalid_request: 'That request could not be understood.',
-  unknown: 'MARKA ran into a problem. Please try again.',
+  unknown: 'EVA ran into a problem. Please try again.',
 }
 
 function toAiError(error: unknown): AiError {

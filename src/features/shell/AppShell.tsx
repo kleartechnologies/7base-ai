@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MarkaLogo } from '@/components/MarkaLogo'
+import { useConversations } from '@/features/chat/useConversations'
 import { Sidebar } from './components/Sidebar'
 
 /**
@@ -14,6 +15,11 @@ import { Sidebar } from './components/Sidebar'
 export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
+  // One conversation listener for the whole shell. The fixed rail and the
+  // mobile drawer can both be mounted at once, so the hook must not live
+  // inside Sidebar or the same query would be subscribed twice.
+  const history = useConversations()
+
   // The drawer closes from the interactions that dismiss it — a link, the
   // scrim, the close button — rather than by reacting to the location, which
   // would re-render the whole shell on every navigation.
@@ -21,7 +27,7 @@ export function AppShell() {
   return (
     <div className="flex h-svh overflow-hidden bg-background">
       <aside className="hidden w-[264px] shrink-0 border-r border-sidebar-border lg:block">
-        <Sidebar />
+        <Sidebar history={history} />
       </aside>
 
       {drawerOpen ? (
@@ -33,7 +39,7 @@ export function AppShell() {
             onClick={() => setDrawerOpen(false)}
           />
           <div className="relative h-full w-[264px] border-r border-sidebar-border shadow-xl">
-            <Sidebar onNavigate={() => setDrawerOpen(false)} />
+            <Sidebar history={history} onNavigate={() => setDrawerOpen(false)} />
             <Button
               variant="ghost"
               size="icon-sm"

@@ -13,11 +13,13 @@ import type { Business } from '@/types'
 export function ReviewStep({
   business,
   busy,
+  error,
   onConfirm,
   onReanalyse,
 }: {
   business: Business
   busy: boolean
+  error?: string | null
   onConfirm: () => void
   onReanalyse: () => void
 }) {
@@ -33,16 +35,22 @@ export function ReviewStep({
 
       {business.discovery.unknowns.length > 0 ? (
         <div className="rounded-xl border border-dashed border-border px-5 py-4">
-          <p className="text-[13px] font-medium text-foreground">MARKA couldn’t work these out</p>
+          <p className="text-[13px] font-medium text-foreground">EVA couldn’t work these out</p>
           <ul className="mt-2 space-y-1 text-[13px] leading-relaxed text-muted-foreground">
             {business.discovery.unknowns.map((item) => (
               <li key={item}>• {item}</li>
             ))}
           </ul>
           <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            You can tell MARKA in chat, or fill them in above — nothing is blocked.
+            You can tell EVA in chat, or fill them in above — nothing is blocked.
           </p>
         </div>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className="text-[13px] leading-relaxed text-destructive">
+          {error}
+        </p>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2 pt-2">

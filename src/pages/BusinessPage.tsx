@@ -17,7 +17,7 @@ import type { Business } from '@/types'
  * discovers later.
  */
 export default function BusinessPage() {
-  const { business: initial } = useAuth()
+  const { business: initial, refresh } = useAuth()
   const businessId = initial?.id ?? null
 
   // Live, because the backend writes into this document too. The snapshot is
@@ -40,10 +40,10 @@ export default function BusinessPage() {
         <div className="mx-auto w-full max-w-lg px-8 py-20 text-center">
           <Globe className="mx-auto size-5 text-muted-foreground/60" aria-hidden />
           <h1 className="mt-4 text-[18px] font-semibold text-foreground">
-            MARKA doesn’t know your business yet
+            EVA doesn’t know your business yet
           </h1>
           <p className="mx-auto mt-2 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-            Give MARKA your website and it will work out the rest.
+            Give EVA your website and it will work out the rest.
           </p>
           <Button asChild size="lg" className="mt-6">
             <Link to={ROUTES.onboarding}>Set up my business</Link>
@@ -64,7 +64,7 @@ export default function BusinessPage() {
             {business.name}
           </h1>
           <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-            What MARKA knows about your business. Everything here is editable — your version always
+            What EVA knows about your business. Everything here is editable — your version always
             wins.
           </p>
 
@@ -94,7 +94,9 @@ export default function BusinessPage() {
           ) : null}
         </header>
 
-        <BusinessBrain business={business} />
+        {/* onSaved keeps the provider's one-shot copy in step with edits made
+            here, so the rest of the app (chat context, guards) sees them too. */}
+        <BusinessBrain business={business} onSaved={refresh} />
       </div>
     </div>
   )

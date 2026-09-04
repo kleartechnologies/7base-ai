@@ -145,7 +145,7 @@ function section<T>(
   const provenance = discovered.confirmed
     ? 'CONFIRMED BY THE OWNER. Treat as fact.'
     : discovered.source === 'inferred'
-      ? `MARKA'S INFERENCE from their website, not confirmed. Treat as a working assumption and offer it as one.`
+      ? `EVA'S INFERENCE from their website, not confirmed. Treat as a working assumption and offer it as one.`
       : 'READ FROM THEIR WEBSITE, not confirmed by the owner.'
 
   lines.push('')

@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck:functions": "tsc -p functions/tsconfig.test.json",
-    "test:rules": "node test/rules/firestore.rules.test.mjs"
+    "test:rules": "node test/rules/firestore.rules.test.mjs",
+    "test:rules:storage": "node test/rules/storage.rules.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",

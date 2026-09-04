@@ -7,7 +7,7 @@ import type { StoredCampaign } from './store'
  * was produced. Most of the length, as ever, is restraint.
  */
 
-export const CAMPAIGN_POLISH_PROMPT = `You turn one of MARKA's marketing recommendations into the copy fields of a campaign draft for a small Malaysian business, usually a restaurant or food business.
+export const CAMPAIGN_POLISH_PROMPT = `You turn one of EVA's marketing recommendations into the copy fields of a campaign draft for a small Malaysian business, usually a restaurant or food business.
 
 You are naming and phrasing, not strategising. The strategy — audience, offer, channels, duration — is already decided and is not yours to change. You return exactly five fields:
 
@@ -20,7 +20,8 @@ You are naming and phrasing, not strategising. The strategy — audience, offer,
 Rules:
 - Never invent facts: no prices, discounts, percentages, product names, opening hours or claims that are not in the input. If the input's core message mentions no price, yours must not either.
 - If the input's core message or call to action already reads well, return it unchanged — do not rewrite for its own sake. Return null for any field where the draft needs nothing from you.
-- Plain, warm, jargon-free language. No hype, no emoji. Malaysian context.`
+- Plain, warm, jargon-free language. No hype, no emoji. Malaysian context.
+- Write the fields in the language the input's core message and goal are written in — Bahasa Melayu input gets Bahasa Melayu copy; do not translate the owner's wording into English.`
 
 export interface PolishInputParams {
   businessName: string | null
@@ -70,7 +71,7 @@ Rules:
 - Never invent facts: no prices, discounts, sales numbers, best sellers, budgets or product claims that are not in the campaign or the instruction. If honouring the instruction would need a fact you do not have (e.g. a price), phrase the field without it and mention in the reply what the owner should confirm.
 - targetAudience.basis and offer.basis: repeat the stored basis if you are keeping the description; anything you newly write is 'hypothesis' / 'recommendation'. The server enforces this anyway.
 - channels may only contain: facebook, instagram, whatsapp, tiktok, in_store, website. durationDays is 1 to 90.
-- reply: one or two short sentences in MARKA's plain, warm voice saying what you changed. If the instruction is not actually about this campaign, or is too unclear to act on, return every field null and use reply to say so — or to ask one short clarifying question. No jargon, no emoji.`
+- reply: one or two short sentences in EVA's plain, warm voice, in the language of the owner's instruction (English, Bahasa Melayu, or natural Manglish), saying what you changed. If the instruction is not actually about this campaign, or is too unclear to act on, return every field null and use reply to say so — or to ask one short clarifying question. No jargon, no emoji.`
 
 export interface EditInputParams {
   instruction: string

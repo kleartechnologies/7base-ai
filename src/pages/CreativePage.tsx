@@ -21,10 +21,19 @@ import type { Creative } from '@/types'
 export default function CreativePage() {
   const { user } = useAuth()
   const [creatives, setCreatives] = useState<Creative[] | null>(null)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     if (!user) return
-    return observeCreatives(user.uid, setCreatives, () => setCreatives([]))
+    // A dead listener must not masquerade as "no creatives yet".
+    return observeCreatives(
+      user.uid,
+      (next) => {
+        setCreatives(next)
+        setLoadError(false)
+      },
+      () => setLoadError(true),
+    )
   }, [user])
 
   return (
@@ -35,17 +44,21 @@ export default function CreativePage() {
           Creative
         </h1>
         <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          Posters and captions MARKA has made from your campaigns — structured and editable,
+          Posters and captions EVA has made from your campaigns — structured and editable,
           never flattened.
         </p>
       </header>
 
-      {creatives === null ? (
+      {loadError ? (
+        <p role="alert" className="mt-10 text-[14px] leading-relaxed text-destructive">
+          Your creatives could not be loaded. Please check your connection and refresh.
+        </p>
+      ) : creatives === null ? (
         <p className="mt-10 text-[14px] text-muted-foreground">Loading…</p>
       ) : creatives.length === 0 ? (
         <p className="mt-10 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
           Nothing here yet. Open a campaign and choose “Create Marketing Materials” — the
-          poster and captions MARKA makes will be collected here.
+          poster and captions EVA makes will be collected here.
         </p>
       ) : (
         <ul className="mt-8 grid gap-4 sm:grid-cols-2">

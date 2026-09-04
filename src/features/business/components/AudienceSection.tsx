@@ -48,8 +48,8 @@ export function AudienceSection({
 
   return (
     <SectionCard
-      title="Who MARKA thinks your customers are"
-      hint="A first guess from your website. Correct it and MARKA will keep your version."
+      title="Who EVA thinks your customers are"
+      hint="A first guess from your website. Correct it and EVA will keep your version."
       provenance={business.audience}
       editing={editing}
       onEdit={open}

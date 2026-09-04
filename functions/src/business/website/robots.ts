@@ -31,8 +31,13 @@ export async function fetchRobots(siteUrl: string): Promise<RobotsRules> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), ROBOTS_TIMEOUT_MS)
     try {
+      // `manual`, never `follow`: a redirect target here would be fetched
+      // without the hostname/DNS validation every other request in this
+      // module family goes through — the one SSRF hole in the pipeline. A
+      // robots.txt that redirects is treated as "no rules" instead, which is
+      // the same stance taken for any other unreadable robots.txt.
       const response = await fetch(`${origin}/robots.txt`, {
-        redirect: 'follow',
+        redirect: 'manual',
         signal: controller.signal,
         headers: { 'user-agent': 'MarkaBot/1.0', accept: 'text/plain' },
       })

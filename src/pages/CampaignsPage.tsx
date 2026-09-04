@@ -20,10 +20,19 @@ const STATUS_LABELS: Record<Campaign['status'], string> = {
 export default function CampaignsPage() {
   const { user } = useAuth()
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     if (!user) return
-    return observeCampaigns(user.uid, setCampaigns, () => setCampaigns([]))
+    // A dead listener must not masquerade as "no campaigns yet".
+    return observeCampaigns(
+      user.uid,
+      (next) => {
+        setCampaigns(next)
+        setLoadError(false)
+      },
+      () => setLoadError(true),
+    )
   }, [user])
 
   return (
@@ -34,16 +43,20 @@ export default function CampaignsPage() {
           Campaigns
         </h1>
         <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          Every campaign MARKA builds with you, kept as structured strategy rather than loose
+          Every campaign EVA builds with you, kept as structured strategy rather than loose
           text.
         </p>
       </header>
 
-      {campaigns === null ? (
+      {loadError ? (
+        <p role="alert" className="mt-10 text-[14px] leading-relaxed text-destructive">
+          Your campaigns could not be loaded. Please check your connection and refresh.
+        </p>
+      ) : campaigns === null ? (
         <p className="mt-10 text-[14px] text-muted-foreground">Loading…</p>
       ) : campaigns.length === 0 ? (
         <p className="mt-10 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          Nothing here yet. Ask MARKA what you want to achieve in the chat — when it recommends
+          Nothing here yet. Ask EVA what you want to achieve in the chat — when it recommends
           a move, one click turns that recommendation into a campaign, saved here.
         </p>
       ) : (

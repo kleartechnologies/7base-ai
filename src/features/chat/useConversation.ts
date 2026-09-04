@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { toUserMessage } from '@/lib/firebase/errors'
 import { observeMessages, sendMessage } from '@/services/chat/chat.service'
 import type { AiError } from '@/services/ai/ai.types'
 import type { AttachmentDraft, Message } from '@/types'
@@ -128,7 +129,7 @@ export function useConversation(
               : current,
           )
         }
-      } catch {
+      } catch (caught) {
         // The send itself failed, so no navigation happened; the state is
         // still tagged with the id this send started from.
         setState((current) =>
@@ -137,7 +138,7 @@ export function useConversation(
                 ...current,
                 loading: Boolean(conversationId) && current.loading,
                 awaitingReply: false,
-                error: 'Your message could not be sent. Please try again.',
+                error: toUserMessage(caught, 'Your message could not be sent. Please try again.'),
               }
             : current,
         )
@@ -157,7 +158,7 @@ export function useConversation(
 
 function describeReplyError(error: AiError): string {
   if (error.code === 'not_configured') {
-    return 'MARKA’s AI backend is not connected yet. Your message was saved — deploy the Cloud Functions to get a reply.'
+    return 'EVA’s AI backend is not connected yet. Your message was saved — deploy the Cloud Functions to get a reply.'
   }
   return error.message
 }

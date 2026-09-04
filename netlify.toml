@@ -32,3 +32,11 @@
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    # Deliberately NOT a full CSP. Sign-in uses Firebase signInWithPopup,
+    # whose gapi/iframe channel needs script-src and frame-src entries that
+    # Google has changed before, and there is no staging site to catch a
+    # breakage before it locks every user out. So only the directives that
+    # cannot interfere with auth, Firestore, or Vite output are enforced:
+    # no plugin content, no <base> hijack, no form exfiltration, no framing.
+    # script-src / connect-src stay unset (unrestricted) on purpose.
+    Content-Security-Policy = "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"

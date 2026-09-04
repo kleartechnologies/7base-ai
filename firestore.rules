@@ -92,9 +92,28 @@ service cloud.firestore {
 
     // --- conversations and their messages -------------------------------
     match /conversations/{conversationId} {
+      // A conversation may claim a business only if the caller owns it —
+      // otherwise the assistant would read another owner's Business Brain
+      // into this thread's context. `null` is the legitimate pre-onboarding
+      // state. Once set, the claim is frozen: repointing a conversation at a
+      // different business would silently swap whose data feeds its replies.
+      function conversationBusinessValid() {
+        return request.resource.data.get('businessId', null) == null
+          || get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
+            .data.ownerId == request.auth.uid;
+      }
+
+      function conversationBusinessUnchanged() {
+        return request.resource.data.get('businessId', null)
+          == resource.data.get('businessId', null);
+      }
+
       allow get, list: if ownsExisting();
-      allow create: if ownsIncoming();
-      allow update: if ownsExisting() && ownsIncoming() && immutableFieldsUnchanged();
+      allow create: if ownsIncoming() && conversationBusinessValid();
+      allow update: if ownsExisting()
+        && ownsIncoming()
+        && immutableFieldsUnchanged()
+        && conversationBusinessUnchanged();
       allow delete: if ownsExisting();
 
       match /messages/{messageId} {
@@ -193,19 +212,15 @@ service cloud.firestore {
     }
 
     // --- campaigns, creatives, calendar, results ------------------------
-    // Campaigns are jointly written: MARKA builds them server-side from
-    // recommendations, and the owner edits the strategy fields directly.
+    // Campaigns are created only by Cloud Functions (from a recommendation,
+    // through the Admin SDK) — no client code path creates one, so client
+    // creation is refused outright rather than left open. The owner edits
+    // the strategy fields directly.
     //
-    // `sourceRecommendationId` is the server's record that MARKA built this
-    // campaign from a real recommendation — a client that could set it would
-    // forge that provenance, so a client-created campaign must not carry one,
-    // and no update may change it. `businessId` and `conversationId` anchor
-    // the campaign to what it was built for and are equally frozen.
+    // `sourceRecommendationId` is the server's record that the campaign was
+    // built from a real recommendation, and `businessId` / `conversationId`
+    // anchor it to what it was built for — all frozen on update.
     match /campaigns/{campaignId} {
-
-      function pristineCampaignProvenance() {
-        return request.resource.data.get('sourceRecommendationId', null) == null;
-      }
 
       function campaignServerFieldsUnchanged() {
         return request.resource.data.get('sourceRecommendationId', null)
@@ -217,7 +232,7 @@ service cloud.firestore {
       }
 
       allow get, list: if ownsExisting();
-      allow create: if ownsIncoming() && pristineCampaignProvenance();
+      allow create: if false;
       allow update: if ownsExisting()
         && ownsIncoming()
         && immutableFieldsUnchanged()
@@ -265,23 +280,24 @@ service cloud.firestore {
       allow delete: if ownsExisting();
     }
 
+    // The calendar does not exist as a feature yet — no client code touches
+    // this collection. Until it does, clients get read access to their own
+    // documents (harmless) and no writes: an open write surface on a
+    // collection nothing legitimate writes to is pure attack surface.
     match /calendarItems/{itemId} {
       allow get, list: if ownsExisting();
-      allow create: if ownsIncoming();
-      allow update: if ownsExisting() && ownsIncoming() && immutableFieldsUnchanged();
-      allow delete: if ownsExisting();
+      allow create, update, delete: if false;
     }
 
     // Performance data is written by backend ingestion, never by the client —
-    // a client that could write results could fabricate the numbers MARKA
-    // reports back as truth. Like recommendations: the owner may read their
-    // own and delete ones they no longer want; creation and edits are the
-    // backend's alone (Admin SDK, which bypasses these rules).
+    // a client that could write results could fabricate the numbers the
+    // product reports back as truth. Results ingestion does not exist yet and
+    // no client code reads or deletes these, so all client writes (deletion
+    // included — results are the append-only record recommendations will be
+    // judged against) are refused.
     match /results/{resultId} {
       allow get, list: if ownsExisting();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if ownsExisting();
+      allow create, update, delete: if false;
     }
 
     // --- assets ----------------------------------------------------------

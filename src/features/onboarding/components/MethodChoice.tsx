@@ -13,7 +13,7 @@ export function MethodChoice({ onChooseWebsite }: { onChooseWebsite: () => void 
       <Method
         icon={Globe}
         title="From my website"
-        description="MARKA reads your public website and works out the rest."
+        description="EVA reads your public website and works out the rest."
         onClick={onChooseWebsite}
       />
       <Method
