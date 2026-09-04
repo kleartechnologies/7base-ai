@@ -9,6 +9,8 @@ import type {
   AssistantReplyResponse,
   BuildCampaignRequest,
   BuildCampaignResponse,
+  DownloadCreativeImageRequest,
+  DownloadCreativeImageResponse,
   GenerateCreativeRequest,
   GenerateCreativeResponse,
   RetryCreativeImageRequest,
@@ -38,6 +40,7 @@ const CALLABLES = {
   buildCampaign: 'campaignBuildFromRecommendation',
   generateCreative: 'creativeGenerateFromCampaign',
   retryCreativeImage: 'creativeRetryImage',
+  downloadCreativeImage: 'creativeDownloadImage',
   startWebsiteAnalysis: 'businessStartWebsiteAnalysis',
   runWebsiteAnalysis: 'businessRunWebsiteAnalysis',
   saveAttachmentToAssets: 'chatSaveAttachmentToAssets',
@@ -162,6 +165,21 @@ export function retryCreativeImage(
     CALLABLES.retryCreativeImage,
     request,
     RETRY_CREATIVE_IMAGE_TIMEOUT_MS,
+  )
+}
+
+/**
+ * Fetches the poster image (and logo) bytes of a creative the user owns.
+ * The fallback path for "Download Poster": used only when the browser cannot
+ * read the image from Storage cross-origin. Not an AI call — no model, no
+ * usage cost — but it goes through the same authenticated door as the rest.
+ */
+export function downloadCreativeImage(
+  request: DownloadCreativeImageRequest,
+): Promise<AiResult<DownloadCreativeImageResponse>> {
+  return call<DownloadCreativeImageRequest, DownloadCreativeImageResponse>(
+    CALLABLES.downloadCreativeImage,
+    request,
   )
 }
 

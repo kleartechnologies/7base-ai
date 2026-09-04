@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Download, Image as ImageIcon } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
-import { downloadPoster } from '@/features/creative/poster'
+import { downloadCreativePoster } from '@/features/creative/poster'
 import { firstUsableColor, readableTextOn } from '@/features/creative/posterSpec'
 import { useAuth } from '@/hooks/useAuth'
 import { observeCreatives } from '@/services/creatives/creative.service'
@@ -120,7 +120,8 @@ function CreativeCard({ creative }: { creative: Creative }) {
     setDownloading(true)
     setDownloadError(false)
     try {
-      await downloadPoster({
+      await downloadCreativePoster({
+        creativeId: creative.id,
         content: {
           name: creative.name,
           format: creative.format === 'portrait_post' ? 'portrait_post' : 'square_post',

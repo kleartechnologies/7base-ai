@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Download, ImageOff, Images, RefreshCw } from 'lucide-react'
-import { copyTextToClipboard, downloadPoster } from '@/features/creative/poster'
+import { copyTextToClipboard, downloadCreativePoster } from '@/features/creative/poster'
 import { firstUsableColor, readableTextOn } from '@/features/creative/posterSpec'
 import { retryCreativeImage } from '@/services/ai/ai.client'
 import { getAssetUrl } from '@/services/storage/storage.service'
@@ -50,7 +50,8 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
     setDownloading(true)
     setDownloadError(false)
     try {
-      await downloadPoster({
+      await downloadCreativePoster({
+        creativeId: block.creativeId,
         content: {
           name: block.name,
           format: block.format,

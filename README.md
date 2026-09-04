@@ -268,11 +268,11 @@ security headers.
 
 The backend deploys separately with `firebase deploy --only functions`.
 
-### Storage CORS (required for poster downloads)
+### Storage CORS (recommended for poster downloads)
 
 "Download Poster" composes the poster on a canvas from the stored visual, which
-requires the browser to read the image cross-origin. The bucket must therefore
-allow cross-origin GETs once per project:
+requires the browser to read the image cross-origin. The bucket should
+therefore allow cross-origin GETs once per project:
 
 ```sh
 gsutil cors set cors.json gs://<project>.firebasestorage.app
@@ -280,8 +280,11 @@ gsutil cors set cors.json gs://<project>.firebasestorage.app
 
 `cors.json` allows `GET`/`HEAD` only; object access itself is still gated by
 the per-object download tokens, so this exposes nothing new. Without it the
-canvas route fails and the app falls back to downloading the raw visual
-without the text overlay — degraded, not broken.
+browser cannot read the image at all — a missing CORS header blocks a raw
+`fetch` exactly as it blocks the canvas — so the app falls back to fetching
+the bytes through the authenticated `creativeDownloadImage` callable and
+building the same poster from them. Downloads work either way; applying the
+CORS configuration just makes them free of the extra function invocation.
 
 ---
 

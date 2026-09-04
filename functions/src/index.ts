@@ -13,6 +13,7 @@ export { chatAssistantReply } from './chat/assistantReply'
 export { chatSaveAttachmentToAssets } from './chat/saveAttachment'
 export { campaignBuildFromRecommendation } from './campaign/build'
 export { creativeGenerateFromCampaign, creativeRetryImage } from './creative/generate'
+export { creativeDownloadImage } from './creative/downloadImage'
 export {
   businessStartWebsiteAnalysis,
   businessRunWebsiteAnalysis,

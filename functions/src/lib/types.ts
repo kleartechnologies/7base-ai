@@ -202,3 +202,27 @@ export interface SaveAttachmentToAssetsRequest {
 export interface SaveAttachmentToAssetsResponse {
   assetId: string
 }
+
+/**
+ * Poster download fallback. When the browser cannot read the poster image
+ * cross-origin (Storage media responses carry no CORS headers until the
+ * bucket is configured), the client asks the backend for the bytes instead.
+ * Only the creative id crosses the wire — the backend re-reads the creative,
+ * verifies ownership, and serves only objects under that business's own
+ * storage prefix.
+ */
+export interface DownloadCreativeImageRequest {
+  creativeId: string
+}
+
+export interface CreativeImagePayload {
+  contentType: string
+  base64: string
+}
+
+export interface DownloadCreativeImageResponse {
+  /** Null when the creative has no image (text-only poster). */
+  image: CreativeImagePayload | null
+  /** Null when no logo is snapshotted or the logo could not be read. */
+  logo: CreativeImagePayload | null
+}

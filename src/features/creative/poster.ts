@@ -1,3 +1,5 @@
+import { downloadCreativeImage } from '@/services/ai/ai.client'
+import type { AiResult, CreativeImagePayload, DownloadCreativeImageResponse } from '@/services/ai/ai.types'
 import { posterFileName, posterSpec, wrapLines, type PosterSpec } from './posterSpec'
 
 /**
@@ -9,9 +11,12 @@ import { posterFileName, posterSpec, wrapLines, type PosterSpec } from './poster
  * file rather than a screenshot — and what lets a text edit re-export without
  * ever regenerating the image.
  *
- * If the canvas route fails (usually the Storage bucket missing a CORS rule
- * in a new environment), the raw image alone is downloaded instead — a
- * degraded poster beats no poster.
+ * Both direct routes — the canvas draw and the raw fetch — need the Storage
+ * bucket to answer with CORS headers. When it doesn't (bucket CORS not
+ * configured), `downloadCreativePoster` falls back to fetching the bytes
+ * through the backend and rebuilding the poster from same-origin blob URLs,
+ * so the download works either way and becomes free again the moment the
+ * bucket is configured.
  */
 
 export interface PosterContent {
@@ -42,13 +47,104 @@ export async function downloadPoster(params: {
   try {
     const blob = await renderPosterBlob(params)
     saveBlob(blob, fileName)
-  } catch {
-    // Canvas failed (image CORS, most likely). Fall back to the raw visual.
-    if (!params.imageUrl) throw new Error('poster render failed')
+  } catch (error) {
+    // Canvas failed. A raw fetch of the visual can still succeed when the
+    // failure was canvas-specific — but not when the cause is missing CORS,
+    // which blocks fetch exactly the same way. That case is handled one
+    // level up, in downloadCreativePoster's backend fallback.
+    if (!params.imageUrl) throw new Error('poster render failed', { cause: error })
+    console.warn('[poster] canvas render failed, trying raw image', {
+      imageUrl: sanitizeUrlForLog(params.imageUrl),
+      reason: error instanceof Error ? error.message : 'unknown',
+    })
     const response = await fetch(params.imageUrl)
-    if (!response.ok) throw new Error('poster image fetch failed')
+    if (!response.ok) throw new Error('poster image fetch failed', { cause: error })
     saveBlob(await response.blob(), fileName)
   }
+}
+
+/**
+ * "Download Poster", end to end. Tries the direct Storage URLs first — free,
+ * and all it needs once the bucket's CORS configuration is applied. When the
+ * browser cannot read the image cross-origin, fetches the bytes through the
+ * authenticated backend callable and renders the same poster from
+ * same-origin blob URLs.
+ *
+ * The deps parameter exists for tests; callers pass only params.
+ */
+export async function downloadCreativePoster(
+  params: {
+    creativeId: string
+    content: PosterContent
+    style: PosterStyleSource | null
+    imageUrl: string | null
+    logoUrl?: string | null
+  },
+  deps: {
+    attemptDirect?: typeof downloadPoster
+    fetchImageBytes?: (creativeId: string) => Promise<AiResult<DownloadCreativeImageResponse>>
+  } = {},
+): Promise<void> {
+  const attemptDirect = deps.attemptDirect ?? downloadPoster
+  const fetchImageBytes =
+    deps.fetchImageBytes ?? ((creativeId: string) => downloadCreativeImage({ creativeId }))
+
+  try {
+    await attemptDirect(params)
+    return
+  } catch (error) {
+    // A text-only poster renders entirely locally; its failure is not a
+    // cross-origin problem the backend can solve.
+    if (!params.imageUrl) throw error
+    console.warn('[poster] direct download failed, using backend fallback', {
+      creativeId: params.creativeId,
+      imageUrl: sanitizeUrlForLog(params.imageUrl),
+      reason: error instanceof Error ? error.message : 'unknown',
+    })
+  }
+
+  const result = await fetchImageBytes(params.creativeId)
+  if (!result.ok) {
+    console.warn('[poster] backend image fetch failed', {
+      creativeId: params.creativeId,
+      code: result.error.code,
+    })
+    throw new Error('poster download failed')
+  }
+
+  const objectUrls: string[] = []
+  const asObjectUrl = (payload: CreativeImagePayload): string => {
+    const url = base64ToObjectUrl(payload)
+    objectUrls.push(url)
+    return url
+  }
+
+  try {
+    const imageUrl = result.data.image ? asObjectUrl(result.data.image) : null
+    // The logo only appears where the caller was already compositing one —
+    // the chat preview downloads without a logo today and stays that way.
+    const logoUrl = params.logoUrl && result.data.logo ? asObjectUrl(result.data.logo) : null
+    await attemptDirect({ content: params.content, style: params.style, imageUrl, logoUrl })
+  } finally {
+    for (const url of objectUrls) URL.revokeObjectURL(url)
+  }
+}
+
+/** Strips path details and query strings (download tokens) before a URL reaches a log. */
+function sanitizeUrlForLog(url: string | null | undefined): string {
+  if (!url) return '(none)'
+  try {
+    return new URL(url).origin
+  } catch {
+    return '(unparseable)'
+  }
+}
+
+function base64ToObjectUrl(payload: CreativeImagePayload): string {
+  const binary = atob(payload.base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return URL.createObjectURL(new Blob([bytes], { type: payload.contentType }))
 }
 
 export async function renderPosterBlob(params: {
