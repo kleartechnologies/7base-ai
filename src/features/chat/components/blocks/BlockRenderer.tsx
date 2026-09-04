@@ -1,5 +1,6 @@
 import { AlertCircle } from 'lucide-react'
 import type { MessageBlock } from '@/types'
+import { AttachmentBlockView } from './AttachmentBlockView'
 import { CampaignCard } from './CampaignCard'
 import { CreativePreview } from './CreativePreview'
 import { RecommendationCard } from './RecommendationCard'
@@ -14,7 +15,14 @@ import { RecommendationCard } from './RecommendationCard'
  * Unknown block types render nothing rather than throwing, so a client running
  * older code never breaks on a message from a newer backend.
  */
-export function BlockRenderer({ block }: { block: MessageBlock }) {
+export function BlockRenderer({
+  block,
+  conversationId,
+}: {
+  block: MessageBlock
+  /** Present in the thread view; enables attachment actions like Save to Assets. */
+  conversationId?: string
+}) {
   switch (block.type) {
     case 'text':
       return (
@@ -39,6 +47,9 @@ export function BlockRenderer({ block }: { block: MessageBlock }) {
 
     case 'creative_preview':
       return <CreativePreview block={block} />
+
+    case 'attachment':
+      return <AttachmentBlockView block={block} conversationId={conversationId} />
 
     // Declared in the type union, not yet rendered. Deliberately silent.
     case 'recommendation':

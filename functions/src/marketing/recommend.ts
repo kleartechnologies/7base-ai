@@ -1,5 +1,6 @@
 import { buildBusinessContext } from '../ai/context'
 import { runStructuredTask, type OrchestrationTurn } from '../ai/orchestrator'
+import type { SubscriptionPlan } from '../config/models'
 import type { StoredBusiness } from '../lib/business.types'
 import type { MessageMeta } from '../lib/types'
 import { assessBrainRichness, clampConfidence, type BrainRichness } from './grounding'
@@ -37,11 +38,14 @@ export async function generateMarketingRecommendation(params: {
   business: StoredBusiness
   /** Prior turns, oldest first, excluding the goal message itself. */
   recentTurns: OrchestrationTurn[]
+  /** Server-resolved subscription plan, from the callable boundary. */
+  plan: SubscriptionPlan
 }): Promise<RecommendationOutcome> {
   const richness = assessBrainRichness(params.business)
 
   const { data, meta } = await runStructuredTask<unknown>({
     task: 'campaign.diagnose',
+    plan: params.plan,
     systemPrompt: MARKETING_INTELLIGENCE_PROMPT,
     input: buildMarketingInput({
       goal: params.goal,

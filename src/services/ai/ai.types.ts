@@ -128,3 +128,17 @@ export interface RetryCreativeImageResponse {
   conversationId: EntityId | null
   imageReady: boolean
 }
+
+/**
+ * "Save to Assets" for one chat attachment. Only ids cross the wire — the
+ * backend re-reads the attachment, verifies ownership, and does the copy
+ * itself, so a tampered client cannot name someone else's file.
+ */
+export interface SaveAttachmentToAssetsRequest {
+  conversationId: EntityId
+  attachmentId: EntityId
+}
+
+export interface SaveAttachmentToAssetsResponse {
+  assetId: EntityId
+}

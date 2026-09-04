@@ -21,6 +21,8 @@ const OverviewPage = lazy(() => import('@/pages/OverviewPage'))
 const CampaignsPage = lazy(() => import('@/pages/CampaignsPage'))
 const CampaignDetailPage = lazy(() => import('@/pages/CampaignDetailPage'))
 const CreativePage = lazy(() => import('@/pages/CreativePage'))
+const AssetsPage = lazy(() => import('@/pages/AssetsPage'))
+const LibraryPage = lazy(() => import('@/pages/LibraryPage'))
 const CalendarPage = lazy(() => import('@/pages/CalendarPage'))
 const ResultsPage = lazy(() => import('@/pages/ResultsPage'))
 const BusinessPage = lazy(() => import('@/pages/BusinessPage'))
@@ -55,6 +57,8 @@ const routes: RouteObject[] = [
           { path: 'campaigns', element: withSuspense(<CampaignsPage />) },
           { path: 'campaigns/:campaignId', element: withSuspense(<CampaignDetailPage />) },
           { path: 'creative', element: withSuspense(<CreativePage />) },
+          { path: 'assets', element: withSuspense(<AssetsPage />) },
+          { path: 'library', element: withSuspense(<LibraryPage />) },
           { path: 'calendar', element: withSuspense(<CalendarPage />) },
           { path: 'results', element: withSuspense(<ResultsPage />) },
           { path: 'business', element: withSuspense(<BusinessPage />) },

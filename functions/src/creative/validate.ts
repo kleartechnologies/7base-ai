@@ -51,6 +51,13 @@ export interface CreativeImageRef {
   altText: string | null
   /** 'generated' imagery is never presented as a real product photo. */
   source: 'upload' | 'generated' | 'stock'
+  /**
+   * The business Asset this image was snapshotted from. Present only when
+   * `source` is 'upload' and the image came from the Assets library — a
+   * generated image never claims an asset. The path above is the creative's
+   * own copy, so this reference survives the asset being archived or deleted.
+   */
+  assetId?: string
 }
 
 export interface CreativeContent {
@@ -77,6 +84,12 @@ export interface CreativeStyle {
   headingFont: string | null
   bodyFont: string | null
   logoStoragePath: string | null
+  /**
+   * The logo Asset `logoStoragePath` was snapshotted from, when the business
+   * has a usable logo in its Assets. Server-set; the logo is composited onto
+   * the poster client-side and is never sent to the image model.
+   */
+  logoAssetId?: string | null
 }
 
 /**

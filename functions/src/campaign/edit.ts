@@ -1,4 +1,5 @@
 import { runStructuredTask } from '../ai/orchestrator'
+import type { SubscriptionPlan } from '../config/models'
 import type { MessageMeta } from '../lib/types'
 import { buildEditInput, CAMPAIGN_EDIT_PROMPT } from './prompt'
 import { CAMPAIGN_EDIT_SCHEMA, CAMPAIGN_EDIT_SCHEMA_NAME } from './schema'
@@ -117,9 +118,12 @@ export async function generateCampaignEdit(params: {
   instruction: string
   campaign: StoredCampaign
   businessName: string | null
+  /** Server-resolved subscription plan, from the callable boundary. */
+  plan: SubscriptionPlan
 }): Promise<CampaignEditOutcome> {
   const { data, meta } = await runStructuredTask<unknown>({
     task: 'campaign.edit',
+    plan: params.plan,
     systemPrompt: CAMPAIGN_EDIT_PROMPT,
     input: buildEditInput(params),
     schema: {

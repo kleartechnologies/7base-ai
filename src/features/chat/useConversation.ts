@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { observeMessages, sendMessage } from '@/services/chat/chat.service'
 import type { AiError } from '@/services/ai/ai.types'
-import type { Message } from '@/types'
+import type { AttachmentDraft, Message } from '@/types'
 
 interface ThreadState {
   /** Which conversation this state describes. */
@@ -15,7 +15,7 @@ interface ThreadState {
 }
 
 export interface UseConversationResult extends Omit<ThreadState, 'conversationId'> {
-  send: (text: string) => Promise<void>
+  send: (text: string, attachments?: AttachmentDraft[]) => Promise<void>
 }
 
 function emptyThread(conversationId: string | null): ThreadState {
@@ -89,7 +89,7 @@ export function useConversation(
   }, [conversationId])
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, attachments?: AttachmentDraft[]) => {
       if (!uid) return
 
       setState((current) => {
@@ -105,7 +105,7 @@ export function useConversation(
       })
 
       try {
-        const outcome = await sendMessage(uid, { conversationId, businessId, text })
+        const outcome = await sendMessage(uid, { conversationId, businessId, text, attachments })
         const settledId = outcome.conversationId
 
         if (!conversationId) {

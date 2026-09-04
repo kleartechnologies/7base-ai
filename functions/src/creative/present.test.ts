@@ -46,6 +46,7 @@ function makeCreative(overrides: Partial<StoredCreative> = {}): StoredCreative {
       whatsapp: null,
     },
     style: { palette: ['#C2410C'], headingFont: null, bodyFont: null, logoStoragePath: null },
+    assetIds: [],
     imageError: null,
     meta: null,
     now: 1000,

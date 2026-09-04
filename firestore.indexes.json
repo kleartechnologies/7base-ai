@@ -85,6 +85,34 @@
       ]
     },
     {
+      "collectionGroup": "recommendations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "assets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "results",
       "queryScope": "COLLECTION",
       "fields": [

@@ -7,7 +7,7 @@ import {
   runStructuredTask,
 } from '../ai/orchestrator'
 import { OPENAI_API_KEY } from '../ai/openai.client'
-import { assertOwnership, requireBusinessOwner, requireUid } from '../lib/auth'
+import { assertOwnership, requireBusinessOwner, requireUid, resolvePlanForUser } from '../lib/auth'
 import { internal, invalidArgument, permissionDenied } from '../lib/errors'
 import { COLLECTIONS, db, FieldValue } from '../lib/firebase'
 import type {
@@ -68,6 +68,9 @@ export const campaignBuildFromRecommendation = onCall(
     // Ownership of the business the recommendation points at, re-verified.
     const business = await requireBusinessOwner(recommendation.businessId, uid)
 
+    // Server-resolved plan; the request payload has no say in model choice.
+    const plan = await resolvePlanForUser(uid)
+
     try {
       let content: CampaignContent = draftCampaignFromRecommendation(recommendation)
       let meta: MessageMeta | null = null
@@ -76,6 +79,7 @@ export const campaignBuildFromRecommendation = onCall(
         const opportunity = recommendedOpportunity(recommendation)
         const polishResult = await runStructuredTask<unknown>({
           task: 'campaign.build',
+          plan,
           systemPrompt: CAMPAIGN_POLISH_PROMPT,
           input: buildPolishInput({
             businessName: typeof business?.name === 'string' ? business.name : null,

@@ -1,6 +1,12 @@
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https'
 import { logger } from 'firebase-functions'
-import { requireBusinessOwner, requireConversationOwner, requireUid } from '../lib/auth'
+import {
+  requireBusinessOwner,
+  requireConversationOwner,
+  requireUid,
+  resolvePlanForUser,
+} from '../lib/auth'
+import type { SubscriptionPlan } from '../config/models'
 import { internal, invalidArgument, notConfigured } from '../lib/errors'
 import { COLLECTIONS, db, FieldValue } from '../lib/firebase'
 import type {
@@ -21,6 +27,7 @@ import {
 } from '../ai/orchestrator'
 import { buildBusinessContext } from '../ai/context'
 import { buildChatSystemPrompt } from '../ai/prompts/system'
+import { buildUnavailableNote, resolveAttachmentInput } from './attachments'
 import {
   applyCampaignPatch,
   generateCampaignEdit,
@@ -35,6 +42,7 @@ import {
   type StoredCampaign,
 } from '../campaign/store'
 import { CampaignValidationError } from '../campaign/validate'
+import { resolveVisualEditImage } from '../creative/assets'
 import { buildCreativeEditCorpus } from '../creative/draft'
 import {
   applyCreativePatch,
@@ -42,7 +50,6 @@ import {
   generateCreativeEdit,
   withDirective,
 } from '../creative/edit'
-import { generateCreativeImage } from '../creative/image'
 import { buildCreativeEditPresentation } from '../creative/present'
 import {
   findLatestEditableCreative,
@@ -113,6 +120,11 @@ export const chatAssistantReply = onCall(
     }
 
     await requireConversationOwner(conversationId, uid)
+
+    // The plan is resolved from the server's own subscription record, once
+    // per request, and threaded to every model call below. The request
+    // payload has no say in it.
+    const plan = await resolvePlanForUser(uid)
 
     // Ownership is verified before the cast; the document shape is ours.
     const business = businessId
@@ -199,6 +211,7 @@ export const chatAssistantReply = onCall(
             business,
             writeAssistantMessage,
             conversationId,
+            plan,
           })
           return { conversationId, assistantMessageId }
         }
@@ -221,6 +234,7 @@ export const chatAssistantReply = onCall(
             instruction: latest.text,
             campaign: existing.campaign,
             businessName: typeof business?.name === 'string' ? business.name : null,
+            plan,
           })
 
           // Every field this instruction changes becomes owner-set; a later
@@ -289,6 +303,7 @@ export const chatAssistantReply = onCall(
           goal: latest.text,
           business,
           recentTurns: history.slice(0, -1).slice(-MARKETING_CONTEXT_TURNS),
+          plan,
         })
 
         const recommendationId = await saveRecommendation(
@@ -321,10 +336,27 @@ export const chatAssistantReply = onCall(
         return { conversationId, assistantMessageId }
       }
 
+      // Attachments on the *latest user message only* become model input.
+      // Historical images are never re-sent; a message without attachment
+      // blocks takes the exact text-only path this function always had.
+      // `resolveAttachmentInput` cannot throw — anything unresolvable is
+      // reported as skipped and the reply proceeds on text.
+      const latestStoredUser = [...stored].reverse().find((message) => message.role === 'user')
+      const attachmentInput = latestStoredUser
+        ? await resolveAttachmentInput({ uid, conversationId, message: latestStoredUser })
+        : { parts: [], skipped: [] }
+
+      const unavailableNote = buildUnavailableNote(attachmentInput.skipped)
+
       const result = await runTask({
         task: 'chat.reply',
-        systemPrompt: buildChatSystemPrompt(buildBusinessContext(business)),
-        history,
+        plan,
+        systemPrompt:
+          buildChatSystemPrompt(buildBusinessContext(business)) + (unavailableNote ?? ''),
+        history:
+          attachmentInput.parts.length > 0
+            ? [...history.slice(0, -1), { ...latest, parts: attachmentInput.parts }]
+            : history,
       })
 
       const assistantMessageId = await writeAssistantMessage(
@@ -388,13 +420,15 @@ async function editCreativeFromChat(params: {
   instruction: string
   business: StoredBusiness | null
   conversationId: string
+  /** Server-resolved subscription plan, from the callable boundary. */
+  plan: SubscriptionPlan
   writeAssistantMessage: (
     blocks: MessageBlock[],
     plainText: string,
     meta: MessageMeta | null,
   ) => Promise<string>
 }): Promise<string> {
-  const { existing, instruction, business, conversationId } = params
+  const { existing, instruction, business, conversationId, plan } = params
   const creative = existing.creative
 
   // The campaign, for grounding and context — if it still exists. Its
@@ -416,6 +450,7 @@ async function editCreativeFromChat(params: {
     campaign,
     businessName: typeof business?.name === 'string' ? business.name : null,
     corpus,
+    plan,
   })
 
   // Every field this instruction changes becomes owner-set; a later
@@ -433,23 +468,30 @@ async function editCreativeFromChat(params: {
   const directivesChanged = directives.length !== creative.ownerDirectives.length
   let next: StoredCreative = { ...patched, ownerDirectives: directives }
 
-  // A visual instruction regenerates the image; nothing else ever does.
+  // A visual instruction touches the image; nothing else ever does. What
+  // "touch" means depends on the image's source: a poster on the owner's own
+  // photo keeps that photo (the Asset is re-snapshotted, never swapped for
+  // AI imagery), while a generated poster regenerates from the brief.
   let imageChanged = false
+  let visualNote: string | null = null
   if (editDraft.visualChange) {
     try {
-      const generated = await generateCreativeImage({
-        businessId: creative.businessId,
-        brief: editDraft.visualChange,
-        altText: creative.content.image?.altText ?? null,
-        format: creative.format,
+      const resolved = await resolveVisualEditImage({
+        creative,
+        visualChange: editDraft.visualChange,
+        ownerId: creative.ownerId,
         business,
+        plan,
       })
-      next = {
-        ...next,
-        content: { ...next.content, image: generated.image, layout: 'image_full_bleed' },
-        imageError: null,
+      visualNote = resolved.note
+      if (resolved.action === 'replaced') {
+        next = {
+          ...next,
+          content: { ...next.content, image: resolved.image, layout: 'image_full_bleed' },
+          imageError: null,
+        }
+        imageChanged = true
       }
-      imageChanged = true
     } catch (imageError) {
       if (
         imageError instanceof AiNotConfiguredError ||
@@ -473,12 +515,10 @@ async function editCreativeFromChat(params: {
     await updateStoredCreative(existing.id, next)
   }
 
-  const presentation = buildCreativeEditPresentation(
-    existing.id,
-    next,
-    editDraft.reply,
-    changed,
-  )
+  // The kept-your-photo note rides with the model's reply so the owner is
+  // never told their photo was replaced when it was not.
+  const reply = [editDraft.reply, visualNote].filter(Boolean).join(' ') || null
+  const presentation = buildCreativeEditPresentation(existing.id, next, reply, changed)
   const assistantMessageId = await params.writeAssistantMessage(
     presentation.blocks,
     presentation.plainText,

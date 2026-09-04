@@ -1,7 +1,9 @@
 import {
   CalendarDays,
+  FolderOpen,
   Image,
   LayoutGrid,
+  LibraryBig,
   Megaphone,
   Settings,
   Store,
@@ -26,6 +28,8 @@ export const WORKSPACE_NAV: NavItem[] = [
   { label: 'Overview', to: ROUTES.overview, icon: LayoutGrid },
   { label: 'Campaigns', to: ROUTES.campaigns, icon: Megaphone },
   { label: 'Creative', to: ROUTES.creative, icon: Image },
+  { label: 'Assets', to: ROUTES.assets, icon: FolderOpen },
+  { label: 'Library', to: ROUTES.library, icon: LibraryBig },
   { label: 'Calendar', to: ROUTES.calendar, icon: CalendarDays },
   { label: 'Results', to: ROUTES.results, icon: TrendingUp },
   { label: 'Business', to: ROUTES.business, icon: Store },

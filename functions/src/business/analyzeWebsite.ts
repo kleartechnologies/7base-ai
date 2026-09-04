@@ -1,6 +1,6 @@
 import { onCall, type CallableRequest } from 'firebase-functions/v2/https'
 import { logger } from 'firebase-functions'
-import { requireBusinessOwner, requireUid } from '../lib/auth'
+import { requireBusinessOwner, requireUid, resolvePlanForUser } from '../lib/auth'
 import { internal, invalidArgument, notConfigured } from '../lib/errors'
 import { COLLECTIONS, db } from '../lib/firebase'
 import type {
@@ -219,6 +219,8 @@ export const businessRunWebsiteAnalysis = onCall(
 
       const { data, meta } = await runStructuredTask<unknown>({
         task: 'business.analyse_website',
+        // Server-resolved plan; the request payload has no say in model choice.
+        plan: await resolvePlanForUser(uid),
         systemPrompt: BUSINESS_ANALYSIS_PROMPT,
         input: buildWebsiteAnalysisInput({
           websiteUrl: site.startUrl,

@@ -38,6 +38,13 @@ export interface StoredCreative {
   content: CreativeContent
   captions: CreativeCaptions
   style: CreativeStyle
+  /**
+   * Every business Asset this creative actually uses — the snapshotted
+   * product photo and/or logo, nothing speculative. Server-owned and frozen
+   * by rules, like the provenance anchors. Empty for fully generated
+   * creatives; absent on creatives made before the Assets integration.
+   */
+  assetIds: string[]
   /** Flattened export, produced client-side from content + style. Not yet stored. */
   render: null
   /**
@@ -69,6 +76,7 @@ export function buildStoredCreative(params: {
   content: CreativeContent
   captions: CreativeCaptions
   style: CreativeStyle
+  assetIds: string[]
   imageError: string | null
   meta: MessageMeta | null
   now?: number
@@ -90,6 +98,7 @@ export function buildStoredCreative(params: {
     content: params.content,
     captions: params.captions,
     style: params.style,
+    assetIds: params.assetIds,
     render: null,
     userEdited: [],
     ownerDirectives: [],

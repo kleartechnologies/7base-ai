@@ -9,6 +9,8 @@ export const ROUTES = {
   campaigns: '/campaigns',
   campaignDetail: (id: string) => `/campaigns/${id}`,
   creative: '/creative',
+  assets: '/assets',
+  library: '/library',
   calendar: '/calendar',
   results: '/results',
   business: '/business',

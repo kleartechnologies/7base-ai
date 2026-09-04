@@ -4,6 +4,7 @@ import {
   resolveModelForTask,
   type AiTask,
   type ModelConfig,
+  type SubscriptionPlan,
 } from '../config/models'
 import type { MessageBlock, MessageMeta } from '../lib/types'
 import { classifyProviderError, type AiServiceError } from './errors'
@@ -24,6 +25,13 @@ import { getOpenAI, isConfigured } from './openai.client'
 
 export interface OrchestrationRequest {
   task: AiTask
+  /**
+   * The caller's subscription plan, resolved server-side by the callable
+   * boundary (lib/auth.ts `resolvePlanForUser`) — never taken from a client
+   * payload. Required on every request so a new task cannot silently forget
+   * to route by plan.
+   */
+  plan: SubscriptionPlan
   systemPrompt: string
   /** Prior turns, oldest first. */
   history: OrchestrationTurn[]
@@ -32,7 +40,19 @@ export interface OrchestrationRequest {
 export interface OrchestrationTurn {
   role: 'user' | 'assistant'
   text: string
+  /**
+   * Multimodal parts for this turn, already resolved to safe payloads by the
+   * caller (bytes fetched server-side from owned Storage objects, encoded as
+   * data URLs — never a client-supplied URL). Only the latest user turn ever
+   * carries parts; turns without them are sent exactly as before.
+   */
+  parts?: TurnAttachmentPart[]
 }
+
+/** One non-text input part, shaped for the Responses API. */
+export type TurnAttachmentPart =
+  | { type: 'input_image'; imageUrl: string }
+  | { type: 'input_file'; filename: string; fileData: string }
 
 export interface OrchestrationResult {
   blocks: MessageBlock[]
@@ -42,6 +62,8 @@ export interface OrchestrationResult {
 
 export interface StructuredRequest {
   task: AiTask
+  /** Server-resolved subscription plan; see OrchestrationRequest. */
+  plan: SubscriptionPlan
   systemPrompt: string
   /** The evidence the model reasons over. Never mixed into the instructions. */
   input: string
@@ -84,6 +106,8 @@ export class AiResponseError extends Error {
  */
 interface TimingRecord {
   task: AiTask
+  /** Which plan paid for this call — the axis the Basic/Pro cost comparison groups by. */
+  plan: SubscriptionPlan
   config: ModelConfig
   latencyMs: number
   promptChars: number
@@ -101,7 +125,7 @@ interface ProviderResponse {
   } | null
 }
 
-function recordTiming({ task, config, latencyMs, promptChars, response }: TimingRecord): void {
+function recordTiming({ task, plan, config, latencyMs, promptChars, response }: TimingRecord): void {
   const usage = response.usage
   const inputTokens = usage?.input_tokens ?? 0
   const outputTokens = usage?.output_tokens ?? 0
@@ -109,6 +133,7 @@ function recordTiming({ task, config, latencyMs, promptChars, response }: Timing
 
   logger.info('ai.request.complete', {
     task,
+    plan,
     model: config.model,
     status: response.status ?? 'completed',
     latencyMs,
@@ -134,6 +159,7 @@ function recordTiming({ task, config, latencyMs, promptChars, response }: Timing
 /** Logs a provider failure by code, never by message, and returns it classified. */
 function reportFailure(
   task: AiTask,
+  plan: SubscriptionPlan,
   config: ModelConfig,
   latencyMs: number,
   error: unknown,
@@ -141,6 +167,7 @@ function reportFailure(
   const classified = classifyProviderError(error)
   logger.warn('ai.request.failed', {
     task,
+    plan,
     model: config.model,
     latencyMs,
     ...classified.diagnostics,
@@ -163,7 +190,7 @@ export async function runStructuredTask<T>(
     throw new AiNotConfiguredError()
   }
 
-  const config = resolveModelForTask(request.task)
+  const config = resolveModelForTask(request.task, request.plan)
   const startedAt = Date.now()
 
   let response
@@ -184,12 +211,13 @@ export async function runStructuredTask<T>(
       },
     }, { timeout: config.timeoutMs, maxRetries: config.maxRetries })
   } catch (error) {
-    throw reportFailure(request.task, config, Date.now() - startedAt, error)
+    throw reportFailure(request.task, request.plan, config, Date.now() - startedAt, error)
   }
 
   const latencyMs = Date.now() - startedAt
   recordTiming({
     task: request.task,
+    plan: request.plan,
     config,
     latencyMs,
     promptChars: request.systemPrompt.length + request.input.length,
@@ -235,6 +263,12 @@ export async function runStructuredTask<T>(
 
 export interface ImageRequest {
   task: AiTask
+  /**
+   * Server-resolved subscription plan; see OrchestrationRequest. Both plans
+   * share one image model today — carried anyway so the telemetry can split
+   * image cost by plan.
+   */
+  plan: SubscriptionPlan
   /** Built from structured Creative/Campaign data — never raw user text. */
   prompt: string
   size: '1024x1024' | '1024x1536'
@@ -259,7 +293,7 @@ export async function runImageTask(request: ImageRequest): Promise<ImageResult> 
     throw new AiNotConfiguredError()
   }
 
-  const config = resolveModelForTask(request.task)
+  const config = resolveModelForTask(request.task, request.plan)
   const startedAt = Date.now()
 
   let response
@@ -277,12 +311,13 @@ export async function runImageTask(request: ImageRequest): Promise<ImageResult> 
       { timeout: config.timeoutMs, maxRetries: config.maxRetries },
     )
   } catch (error) {
-    throw reportFailure(request.task, config, Date.now() - startedAt, error)
+    throw reportFailure(request.task, request.plan, config, Date.now() - startedAt, error)
   }
 
   const latencyMs = Date.now() - startedAt
   recordTiming({
     task: request.task,
+    plan: request.plan,
     config,
     latencyMs,
     promptChars: request.prompt.length,
@@ -331,7 +366,7 @@ export async function runTask(request: OrchestrationRequest): Promise<Orchestrat
     throw new AiNotConfiguredError()
   }
 
-  const config = resolveModelForTask(request.task)
+  const config = resolveModelForTask(request.task, request.plan)
   const startedAt = Date.now()
 
   let response
@@ -339,21 +374,35 @@ export async function runTask(request: OrchestrationRequest): Promise<Orchestrat
     response = await getOpenAI().responses.create({
       model: config.model,
       instructions: request.systemPrompt,
-      input: request.history.map((turn) => ({
-        role: turn.role,
-        content: turn.text,
-      })),
+      // A turn without parts keeps the plain-string content it always had —
+      // text-only conversations produce a byte-identical request.
+      input: request.history.map((turn) =>
+        turn.parts && turn.parts.length > 0
+          ? {
+              role: turn.role,
+              content: [
+                { type: 'input_text' as const, text: turn.text },
+                ...turn.parts.map((part) =>
+                  part.type === 'input_image'
+                    ? { type: 'input_image' as const, detail: 'auto' as const, image_url: part.imageUrl }
+                    : { type: 'input_file' as const, filename: part.filename, file_data: part.fileData },
+                ),
+              ],
+            }
+          : { role: turn.role, content: turn.text },
+      ),
       max_output_tokens: config.maxOutputTokens,
       ...(config.temperature === null ? {} : { temperature: config.temperature }),
     }, { timeout: config.timeoutMs, maxRetries: config.maxRetries })
   } catch (error) {
-    throw reportFailure(request.task, config, Date.now() - startedAt, error)
+    throw reportFailure(request.task, request.plan, config, Date.now() - startedAt, error)
   }
 
   const text = response.output_text?.trim() ?? ''
   const latencyMs = Date.now() - startedAt
   recordTiming({
     task: request.task,
+    plan: request.plan,
     config,
     latencyMs,
     promptChars:

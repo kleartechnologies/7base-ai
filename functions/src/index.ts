@@ -10,6 +10,7 @@ import { setGlobalOptions } from 'firebase-functions/v2'
 setGlobalOptions({ region: 'asia-southeast1', maxInstances: 10 })
 
 export { chatAssistantReply } from './chat/assistantReply'
+export { chatSaveAttachmentToAssets } from './chat/saveAttachment'
 export { campaignBuildFromRecommendation } from './campaign/build'
 export { creativeGenerateFromCampaign, creativeRetryImage } from './creative/generate'
 export {

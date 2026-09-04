@@ -15,11 +15,36 @@ import { getFirebaseStorage } from '@/lib/firebase/app'
  * at call sites keeps every write inside the authorised namespace.
  */
 
-export type AssetKind = 'brand' | 'uploads' | 'creatives'
+export type AssetKind = 'brand' | 'uploads' | 'creatives' | 'assets'
+
+/** The one file-name sanitiser. Every Storage path builder goes through it. */
+export function sanitizeFileName(fileName: string): string {
+  return fileName.replace(/[^\w.-]+/g, '_')
+}
 
 export function buildAssetPath(businessId: string, kind: AssetKind, fileName: string): string {
-  const safeName = fileName.replace(/[^\w.-]+/g, '_')
-  return `businesses/${businessId}/${kind}/${Date.now()}_${safeName}`
+  return `businesses/${businessId}/${kind}/${Date.now()}_${sanitizeFileName(fileName)}`
+}
+
+/**
+ * Where a chat upload lives: under its conversation, never under the
+ * permanent Assets folder — an attachment is conversational context, not a
+ * business material, and the paths keep that distinction physical.
+ */
+export function buildAttachmentPath(
+  businessId: string,
+  conversationId: string,
+  attachmentId: string,
+  fileName: string,
+): string {
+  return `businesses/${businessId}/conversations/${conversationId}/attachments/${attachmentId}_${sanitizeFileName(fileName)}`
+}
+
+/** Uploads to an already-built path; callers build paths with the helpers above. */
+export async function uploadToPath(storagePath: string, file: File): Promise<void> {
+  await uploadBytes(ref(getFirebaseStorage(), storagePath), file, {
+    contentType: file.type || 'application/octet-stream',
+  })
 }
 
 export async function uploadAsset(

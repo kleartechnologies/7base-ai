@@ -1,4 +1,4 @@
-import { onCall, type CallableRequest } from 'firebase-functions/v2/https'
+import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https'
 import { logger } from 'firebase-functions'
 import { AiServiceError } from '../ai/errors'
 import {
@@ -8,7 +8,7 @@ import {
 } from '../ai/orchestrator'
 import { OPENAI_API_KEY } from '../ai/openai.client'
 import type { StoredCampaign } from '../campaign/store'
-import { assertOwnership, requireBusinessOwner, requireUid } from '../lib/auth'
+import { assertOwnership, requireBusinessOwner, requireUid, resolvePlanForUser } from '../lib/auth'
 import type { StoredBusiness } from '../lib/business.types'
 import { internal, invalidArgument, permissionDenied } from '../lib/errors'
 import { COLLECTIONS, db, FieldValue } from '../lib/firebase'
@@ -20,8 +20,18 @@ import type {
   RetryCreativeImageResponse,
   StoredMessage,
 } from '../lib/types'
+import {
+  AssetUnavailableError,
+  buildAssetImageRef,
+  buildCreativeAssetProvenance,
+  copyAssetToCreativeStorage,
+  listEligibleAssets,
+  resolveRetryImage,
+  selectCreativeAsset,
+  selectLogoAsset,
+} from './assets'
 import { buildGroundingCorpus, draftCreativeCopyFromCampaign, mergeCopy } from './draft'
-import { fetchAssetToStorage, generateCreativeImage, selectBusinessImage } from './image'
+import { generateCreativeImage } from './image'
 import {
   buildCreativePresentation,
   buildCreativeRetryPresentation,
@@ -90,9 +100,19 @@ export const creativeGenerateFromCampaign = onCall(
       | StoredBusiness
       | null
 
+    // Server-resolved plan; the request payload has no say in model choice.
+    const plan = await resolvePlanForUser(uid)
+
     try {
       const corpus = buildGroundingCorpus({ campaign, business })
-      const realImage = selectBusinessImage(business, campaign)
+
+      // The owner's Assets, resolved server-side and scoped to their own
+      // business: the poster photo and the logo are both chosen
+      // deterministically here — the image model never picks between a real
+      // photo and a generated one.
+      const assets = await listEligibleAssets(campaign.businessId, uid)
+      const productAsset = selectCreativeAsset(assets, campaign, business?.products ?? [])
+      const logoAsset = selectLogoAsset(assets)
 
       // 1. Copy: deterministic draft first, fast-tier wording on top.
       let draft = draftCreativeCopyFromCampaign(campaign)
@@ -107,6 +127,7 @@ export const creativeGenerateFromCampaign = onCall(
       try {
         const copyResult = await runStructuredTask<unknown>({
           task: 'creative.generate_copy',
+          plan,
           systemPrompt: CREATIVE_COPY_PROMPT,
           input: buildCopyInput({
             businessName: business?.name ?? null,
@@ -114,7 +135,7 @@ export const creativeGenerateFromCampaign = onCall(
             campaign,
             format,
             directives: [],
-            hasRealImage: realImage !== null,
+            hasRealImage: productAsset !== null,
           }),
           schema: {
             name: CREATIVE_COPY_SCHEMA_NAME,
@@ -142,21 +163,30 @@ export const creativeGenerateFromCampaign = onCall(
         }
       }
 
-      // 2. Visual: real business photo first, generated only when none fits.
+      // 2. Visual: the owner's own photo first, generated only when none
+      // fits. A selected asset is snapshotted into the creative's own
+      // Storage folder — GCS copy, no HTTP fetch — and the image model is
+      // never called for it.
       let image: CreativeImageRef | null = null
       let imageError: string | null = null
 
-      if (realImage) {
+      if (productAsset) {
         try {
-          image = await fetchAssetToStorage({
-            url: realImage.url,
-            businessId: campaign.businessId,
-            altText: altText ?? `Photo of ${realImage.product.name}`,
+          const snapshotPath = await copyAssetToCreativeStorage(
+            productAsset.asset,
+            campaign.businessId,
+          )
+          image = buildAssetImageRef({
+            assetId: productAsset.id,
+            asset: productAsset.asset,
+            storagePath: snapshotPath,
+            altText,
           })
-        } catch (fetchError) {
-          logger.warn('Real asset fetch failed; falling back to generation', {
+        } catch (copyError) {
+          logger.warn('Asset snapshot failed; falling back to generation', {
             campaignId,
-            reason: fetchError instanceof Error ? fetchError.message : 'unknown',
+            assetId: productAsset.id,
+            reason: copyError instanceof Error ? copyError.message : 'unknown',
           })
         }
       }
@@ -173,6 +203,7 @@ export const creativeGenerateFromCampaign = onCall(
             altText,
             format,
             business,
+            plan,
           })
           image = generated.image
           meta = meta ?? generated.meta
@@ -193,13 +224,33 @@ export const creativeGenerateFromCampaign = onCall(
         }
       }
 
-      // 3. Persist. The brand's stored style rides along for the renderer.
+      // 3. Logo: same deterministic path — snapshotted for the client-side
+      // compositor, never sent to (or recreated by) the image model. A logo
+      // failure only costs the logo, never the poster.
+      let logo: { assetId: string; storagePath: string } | null = null
+      if (logoAsset) {
+        try {
+          logo = {
+            assetId: logoAsset.id,
+            storagePath: await copyAssetToCreativeStorage(logoAsset.asset, campaign.businessId),
+          }
+        } catch (logoError) {
+          logger.warn('Logo snapshot failed; poster ships without a logo', {
+            campaignId,
+            assetId: logoAsset.id,
+            reason: logoError instanceof Error ? logoError.message : 'unknown',
+          })
+        }
+      }
+
+      // 4. Persist. The brand's stored style rides along for the renderer.
       const brand = business?.brand?.value ?? null
       const style: CreativeStyle = {
         palette: brand && brand.colors.length > 0 ? brand.colors.map((c) => c.hex) : null,
         headingFont: brand?.fontFamily ?? null,
         bodyFont: null,
-        logoStoragePath: null,
+        logoStoragePath: logo?.storagePath ?? null,
+        logoAssetId: logo?.assetId ?? null,
       }
       const built = buildStoredCreative({
         ownerId: uid,
@@ -212,6 +263,10 @@ export const creativeGenerateFromCampaign = onCall(
         content: { ...draft.content, image, layout: image ? 'image_full_bleed' : 'text_only' },
         captions: draft.captions,
         style,
+        assetIds: buildCreativeAssetProvenance({
+          productAssetId: image?.assetId ?? null,
+          logoAssetId: logo?.assetId ?? null,
+        }),
         imageError,
         meta,
       })
@@ -221,7 +276,7 @@ export const creativeGenerateFromCampaign = onCall(
       const stored: StoredCreative = copyFellBack ? { ...built, status: 'draft' } : built
       const creativeId = await saveCreative(stored)
 
-      // 4. Announce it in the thread it came from, if that thread exists.
+      // 5. Announce it in the thread it came from, if that thread exists.
       const conversationId = await announceInConversation(
         uid,
         stored.conversationId,
@@ -234,6 +289,10 @@ export const creativeGenerateFromCampaign = onCall(
         campaignId,
         conversationId,
         imageSource: image?.source ?? null,
+        // Asset-vs-generated origin: an assetId means the image model was
+        // never called for the poster visual.
+        productAssetId: image?.assetId ?? null,
+        logoAssetId: logo?.assetId ?? null,
         imageReady: image !== null,
         copied: !copyFellBack,
       })
@@ -246,8 +305,10 @@ export const creativeGenerateFromCampaign = onCall(
 )
 
 /**
- * [Try again] on a failed poster image. Regenerates the visual only — the
+ * [Try again] on a failed poster image. Refreshes the visual only — the
  * copy, the authority record and the creative's identity are untouched.
+ * An asset-backed poster re-snapshots its source Asset (never the image
+ * model); a generated poster regenerates.
  */
 export const creativeRetryImage = onCall(
   {
@@ -279,28 +340,28 @@ export const creativeRetryImage = onCall(
       | StoredBusiness
       | null
 
-    try {
-      const fallbackBrief = [creative.content.headline, creative.content.subheadline]
-        .filter(Boolean)
-        .join('. ')
-      const brief = creative.content.image?.prompt ?? (fallbackBrief || creative.name)
+    // Server-resolved plan; the request payload has no say in model choice.
+    const plan = await resolvePlanForUser(uid)
 
+    try {
       let next: StoredCreative
       try {
-        const generated = await generateCreativeImage({
-          businessId: creative.businessId,
-          brief,
-          altText: creative.content.image?.altText ?? null,
-          format: creative.format,
-          business,
-        })
+        const resolved = await resolveRetryImage({ creative, ownerId: uid, business, plan })
         next = {
           ...creative,
-          content: { ...creative.content, image: generated.image, layout: 'image_full_bleed' },
+          // Same assets as before: an upload retry keeps its assetId, a
+          // generated retry never gains one. Legacy docs are healed to [].
+          assetIds: creative.assetIds ?? [],
+          content: { ...creative.content, image: resolved.image, layout: 'image_full_bleed' },
           imageError: null,
           updatedAt: Date.now(),
         }
       } catch (imageErrorRaw) {
+        // The source Asset is gone or no longer usable. Fail with the
+        // actionable sentence — never silently substitute AI imagery.
+        if (imageErrorRaw instanceof AssetUnavailableError) {
+          throw new HttpsError('failed-precondition', imageErrorRaw.ownerMessage)
+        }
         if (
           imageErrorRaw instanceof AiNotConfiguredError ||
           imageErrorRaw instanceof AiServiceError ||
@@ -327,6 +388,8 @@ export const creativeRetryImage = onCall(
 
       return { creativeId, conversationId, imageReady: next.imageError === null }
     } catch (error) {
+      // The actionable asset-unavailable message must reach the owner as-is.
+      if (error instanceof HttpsError) throw error
       throw internal('creativeRetryImage', error)
     }
   },

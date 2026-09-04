@@ -58,6 +58,7 @@ export type MessageBlock =
   | ActionBlock
   | CampaignCardBlock
   | CreativePreviewBlock
+  | AttachmentBlock
 
 export interface BlockBase {
   id: string
@@ -168,11 +169,81 @@ export interface CreativePreviewBlock extends BlockBase {
   }
 }
 
+/**
+ * A file attached to one chat message. Distinct from an Asset on purpose: an
+ * attachment is conversational context, scoped to its thread; an Asset is a
+ * permanent business material. "Save to Assets" promotes a copy — it never
+ * turns one into the other.
+ *
+ * The document lives at `conversations/{conversationId}/attachments/{id}`;
+ * for `source: 'upload'` the file lives under the conversation's own Storage
+ * folder, for `source: 'asset'` the attachment references the existing
+ * Asset's file without duplicating it.
+ */
+export interface ChatAttachment {
+  id: EntityId
+  ownerId: EntityId
+  businessId: EntityId
+  conversationId: EntityId
+  /** The message this attachment belongs to, fixed before either is written. */
+  messageId: EntityId
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  storagePath: string
+  source: AttachmentSource
+  status: AttachmentStatus
+  /**
+   * For `source: 'asset'`, the Asset being referenced. For uploads, set by
+   * the backend when the owner saves the attachment to Assets — the document
+   * records the promotion; the message block never changes.
+   */
+  assetId: EntityId | null
+  createdAt: Millis
+}
+
+/** How the attachment arrived: a fresh upload, or a reference to an Asset. */
+export type AttachmentSource = 'upload' | 'asset'
+
+export type AttachmentStatus = 'active' | 'deleted'
+
+/**
+ * An attachment in a message. Carries everything historical rendering needs
+ * — including the immutable `storagePath`, like `CreativePreviewBlock` — so
+ * the thread stays renderable even if a referenced Asset is later archived.
+ */
+export interface AttachmentBlock extends BlockBase {
+  type: 'attachment'
+  attachmentId: EntityId
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  storagePath: string
+  /** Set when the attachment referenced an existing Asset at send time. */
+  assetId: EntityId | null
+}
+
+/** What the composer stages before send: a new file or an Asset reference. */
+export type AttachmentDraft =
+  | { kind: 'file'; file: File }
+  | {
+      kind: 'asset'
+      asset: {
+        id: EntityId
+        fileName: string
+        contentType: string
+        sizeBytes: number
+        storagePath: string
+      }
+    }
+
 /** What the client sends when the user submits the composer. */
 export interface SendMessageInput {
   conversationId: EntityId | null
   businessId: EntityId | null
   text: string
+  /** At most `MAX_ATTACHMENTS_PER_MESSAGE`; validated again before upload. */
+  attachments?: AttachmentDraft[]
 }
 
 export interface SendMessageResult {

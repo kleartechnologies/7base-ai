@@ -64,11 +64,14 @@ function CreativeCard({ creative }: { creative: Creative }) {
   // Keyed by storage path so a changed image stops matching instead of
   // needing a state reset inside the effect.
   const [resolved, setResolved] = useState<{ path: string; url: string } | null>(null)
+  const [resolvedLogo, setResolvedLogo] = useState<{ path: string; url: string } | null>(null)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState(false)
 
   const storagePath = creative.content.image?.storagePath ?? null
   const imageUrl = resolved && resolved.path === storagePath ? resolved.url : null
+  const logoPath = creative.style.logoStoragePath ?? null
+  const logoUrl = resolvedLogo && resolvedLogo.path === logoPath ? resolvedLogo.url : null
 
   useEffect(() => {
     if (!storagePath) return
@@ -85,6 +88,21 @@ function CreativeCard({ creative }: { creative: Creative }) {
     }
   }, [storagePath])
 
+  useEffect(() => {
+    if (!logoPath) return
+    let cancelled = false
+    getAssetUrl(logoPath)
+      .then((url) => {
+        if (!cancelled) setResolvedLogo({ path: logoPath, url })
+      })
+      .catch(() => {
+        // Poster renders without the logo; nothing else is lost.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [logoPath])
+
   const handleDownload = async () => {
     setDownloading(true)
     setDownloadError(false)
@@ -100,6 +118,7 @@ function CreativeCard({ creative }: { creative: Creative }) {
         },
         style: creative.style,
         imageUrl,
+        logoUrl,
       })
     } catch {
       setDownloadError(true)
@@ -138,6 +157,11 @@ function CreativeCard({ creative }: { creative: Creative }) {
           >
             {creative.content.offerText}
           </span>
+        ) : null}
+
+        {logoUrl ? (
+          // The real uploaded logo, same corner the canvas export draws it in.
+          <img src={logoUrl} alt="" className="absolute right-3 top-3 max-h-8 max-w-16 object-contain" />
         ) : null}
 
         <div className="absolute inset-x-0 bottom-0 p-3.5">

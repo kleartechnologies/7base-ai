@@ -20,6 +20,12 @@ export interface Creative extends OwnedEntity {
   /** Channel copy that travels with the poster. */
   captions: CreativeCaptions
   style: CreativeStyle
+  /**
+   * Every business Asset this creative actually uses (snapshotted product
+   * photo and/or logo). Server-set and frozen by rules; absent on creatives
+   * made before the Assets integration.
+   */
+  assetIds?: EntityId[]
   /** Flattened export, produced from `content` + `style`. */
   render: CreativeRender | null
   /**
@@ -79,6 +85,11 @@ export interface CreativeImage {
   prompt: string | null
   altText: string | null
   source: 'upload' | 'generated' | 'stock'
+  /**
+   * The business Asset an 'upload' image was snapshotted from. Server-set;
+   * a generated image never carries one.
+   */
+  assetId?: EntityId
 }
 
 /** Named arrangements rather than free-form coordinates, so layouts stay sane. */
@@ -94,6 +105,11 @@ export interface CreativeStyle {
   headingFont: string | null
   bodyFont: string | null
   logoStoragePath: string | null
+  /**
+   * The logo Asset `logoStoragePath` was snapshotted from. Server-set; the
+   * logo is composited onto the poster client-side, never by the image model.
+   */
+  logoAssetId?: EntityId | null
 }
 
 export interface CreativeRender {

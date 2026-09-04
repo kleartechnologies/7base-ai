@@ -118,6 +118,78 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if ownsConversation();
       }
+
+      // Chat attachments: conversation-scoped files referenced by message
+      // blocks. Identity is fixed at creation — every field that says what
+      // the file is, where it lives and how it arrived is frozen, so an
+      // attachment can never be repointed at a file that was not created
+      // for it. Only `status` may change (soft delete).
+      match /attachments/{attachmentId} {
+        function attachmentConversation() {
+          return get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+        }
+
+        function ownsAttachmentConversation() {
+          return isSignedIn() && attachmentConversation().ownerId == request.auth.uid;
+        }
+
+        // An uploaded file must sit in this conversation's own attachments
+        // folder, inside a business the caller actually owns.
+        function uploadAttachmentValid() {
+          return request.resource.data.assetId == null
+            && request.resource.data.storagePath
+              .matches('businesses/' + request.resource.data.businessId
+                + '/conversations/' + conversationId + '/attachments/.+')
+            && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
+              .data.ownerId == request.auth.uid;
+        }
+
+        // An Asset reference must name a real Asset the caller owns, in the
+        // same business, still active and cleared for EVA — and the recorded
+        // storagePath must be *that Asset's* path, never a client invention.
+        function assetAttachmentValid() {
+          let asset = get(/databases/$(database)/documents/assets/$(request.resource.data.assetId)).data;
+          return request.resource.data.assetId != null
+            && asset.ownerId == request.auth.uid
+            && asset.businessId == request.resource.data.businessId
+            && asset.status == 'active'
+            && asset.allowAiUse == true
+            && asset.storagePath == request.resource.data.storagePath;
+        }
+
+        function attachmentIdentityFrozen() {
+          return request.resource.data.get('ownerId', null) == resource.data.get('ownerId', null)
+            && request.resource.data.get('businessId', null) == resource.data.get('businessId', null)
+            && request.resource.data.get('conversationId', null) == resource.data.get('conversationId', null)
+            && request.resource.data.get('messageId', null) == resource.data.get('messageId', null)
+            && request.resource.data.get('fileName', null) == resource.data.get('fileName', null)
+            && request.resource.data.get('contentType', null) == resource.data.get('contentType', null)
+            && request.resource.data.get('sizeBytes', null) == resource.data.get('sizeBytes', null)
+            && request.resource.data.get('storagePath', null) == resource.data.get('storagePath', null)
+            && request.resource.data.get('source', null) == resource.data.get('source', null)
+            && request.resource.data.get('assetId', null) == resource.data.get('assetId', null)
+            && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
+        }
+
+        allow get, list: if ownsAttachmentConversation();
+
+        allow create: if ownsAttachmentConversation()
+          && ownsIncoming()
+          && request.resource.data.conversationId == conversationId
+          && request.resource.data.messageId is string
+          && request.resource.data.status == 'active'
+          && request.resource.data.contentType in
+            ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+          && request.resource.data.sizeBytes > 0
+          && request.resource.data.sizeBytes <= 10485760
+          && (
+            (request.resource.data.source == 'upload' && uploadAttachmentValid())
+            || (request.resource.data.source == 'asset' && assetAttachmentValid())
+          );
+
+        allow update: if ownsAttachmentConversation() && attachmentIdentityFrozen();
+        allow delete: if ownsAttachmentConversation();
+      }
     }
 
     // --- campaigns, creatives, calendar, results ------------------------
@@ -157,9 +229,12 @@ service cloud.firestore {
     // caller owns — a client that could create one could forge the chain
     // Creative → Campaign → Recommendation, so creation is refused outright.
     // The owner may edit the copy fields directly, but the provenance anchors
-    // (`campaignId`, `businessId`, `conversationId`, `sourceRecommendationId`)
-    // and the image reference (whose storagePath points into Storage the
-    // server wrote) are frozen.
+    // (`campaignId`, `businessId`, `conversationId`, `sourceRecommendationId`),
+    // the image reference (whose storagePath points into Storage the server
+    // wrote, and whose assetId names the source Asset), the asset provenance
+    // list (`assetIds`) and the logo snapshot fields are frozen — a client
+    // that could change any of them could claim another business's files or
+    // falsify which Assets a creative uses.
     match /creatives/{creativeId} {
 
       function creativeServerFieldsUnchanged() {
@@ -172,7 +247,13 @@ service cloud.firestore {
           && request.resource.data.get('sourceRecommendationId', null)
             == resource.data.get('sourceRecommendationId', null)
           && request.resource.data.get('content', {}).get('image', null)
-            == resource.data.get('content', {}).get('image', null);
+            == resource.data.get('content', {}).get('image', null)
+          && request.resource.data.get('assetIds', null)
+            == resource.data.get('assetIds', null)
+          && request.resource.data.get('style', {}).get('logoAssetId', null)
+            == resource.data.get('style', {}).get('logoAssetId', null)
+          && request.resource.data.get('style', {}).get('logoStoragePath', null)
+            == resource.data.get('style', {}).get('logoStoragePath', null);
       }
 
       allow get, list: if ownsExisting();
@@ -191,11 +272,63 @@ service cloud.firestore {
       allow delete: if ownsExisting();
     }
 
-    // Performance data is written by backend ingestion, never by the client.
+    // Performance data is written by backend ingestion, never by the client —
+    // a client that could write results could fabricate the numbers MARKA
+    // reports back as truth. Like recommendations: the owner may read their
+    // own and delete ones they no longer want; creation and edits are the
+    // backend's alone (Admin SDK, which bypasses these rules).
     match /results/{resultId} {
       allow get, list: if ownsExisting();
-      allow create: if ownsIncoming();
-      allow update: if ownsExisting() && ownsIncoming() && immutableFieldsUnchanged();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if ownsExisting();
+    }
+
+    // --- assets ----------------------------------------------------------
+    // Owner-uploaded business materials (photos, menus, logos, PDFs). The
+    // client uploads the file and then creates this document, so creation is
+    // allowed — but the storage path must point inside the assets folder of
+    // the business the document claims, and the file's identity (path, name,
+    // type, size, how it arrived) is frozen after creation so a document can
+    // never be repointed at a file that was not uploaded for it.
+    match /assets/{assetId} {
+
+      function assetPathInOwnAssets() {
+        return request.resource.data.storagePath
+          .matches('businesses/' + request.resource.data.businessId + '/assets/.+');
+      }
+
+      // The claimed business must actually belong to the caller. Without this
+      // lookup, a caller could create an asset document that claims someone
+      // else's business with a path-consistent storagePath — a forged pointer
+      // into files they do not own. Same ownership model as Storage's
+      // `ownsBusiness` and the chat attachment upload rule.
+      function ownsClaimedBusiness() {
+        return get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
+          .data.ownerId == request.auth.uid;
+      }
+
+      function assetServerFieldsUnchanged() {
+        return request.resource.data.get('businessId', null)
+            == resource.data.get('businessId', null)
+          && request.resource.data.get('storagePath', null)
+            == resource.data.get('storagePath', null)
+          && request.resource.data.get('fileName', null)
+            == resource.data.get('fileName', null)
+          && request.resource.data.get('contentType', null)
+            == resource.data.get('contentType', null)
+          && request.resource.data.get('sizeBytes', null)
+            == resource.data.get('sizeBytes', null)
+          && request.resource.data.get('source', null)
+            == resource.data.get('source', null);
+      }
+
+      allow get, list: if ownsExisting();
+      allow create: if ownsIncoming() && assetPathInOwnAssets() && ownsClaimedBusiness();
+      allow update: if ownsExisting()
+        && ownsIncoming()
+        && immutableFieldsUnchanged()
+        && assetServerFieldsUnchanged();
       allow delete: if ownsExisting();
     }
 
@@ -210,6 +343,18 @@ service cloud.firestore {
       allow create: if false;
       allow update: if false;
       allow delete: if ownsExisting();
+    }
+
+    // --- subscriptions --------------------------------------------------
+    // One document per uid: the account's subscription plan, which decides
+    // which AI models serve it. Like recommendations, it is written only by
+    // trusted server code through the Admin SDK — a client that could write
+    // it could upgrade itself to Pro models without paying, so every client
+    // write is refused. The owner may read their own plan.
+    match /subscriptions/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create, update, delete: if false;
     }
 
     // Anything not matched above is denied.

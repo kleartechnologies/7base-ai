@@ -13,6 +13,8 @@ import type {
   GenerateCreativeResponse,
   RetryCreativeImageRequest,
   RetryCreativeImageResponse,
+  SaveAttachmentToAssetsRequest,
+  SaveAttachmentToAssetsResponse,
   RunWebsiteAnalysisRequest,
   RunWebsiteAnalysisResponse,
   StartWebsiteAnalysisRequest,
@@ -38,6 +40,7 @@ const CALLABLES = {
   retryCreativeImage: 'creativeRetryImage',
   startWebsiteAnalysis: 'businessStartWebsiteAnalysis',
   runWebsiteAnalysis: 'businessRunWebsiteAnalysis',
+  saveAttachmentToAssets: 'chatSaveAttachmentToAssets',
 } as const
 
 /** Cloud Functions error codes → the app's smaller, actionable set. */
@@ -159,6 +162,20 @@ export function retryCreativeImage(
     CALLABLES.retryCreativeImage,
     request,
     RETRY_CREATIVE_IMAGE_TIMEOUT_MS,
+  )
+}
+
+/**
+ * Asks the backend to promote one chat attachment to a permanent Asset. The
+ * copy and the Asset document are created server-side; the attachment and
+ * its message are left untouched.
+ */
+export function saveChatAttachmentToAssets(
+  request: SaveAttachmentToAssetsRequest,
+): Promise<AiResult<SaveAttachmentToAssetsResponse>> {
+  return call<SaveAttachmentToAssetsRequest, SaveAttachmentToAssetsResponse>(
+    CALLABLES.saveAttachmentToAssets,
+    request,
   )
 }
 

@@ -8,18 +8,25 @@ import {
   onSnapshot,
   orderBy,
   query,
+  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore'
 import {
+  attachmentsCollection,
   conversationDoc,
   conversationsCollection,
   messagesCollection,
 } from '@/lib/firebase/collections'
+import { deleteAsset } from '@/services/storage/storage.service'
 import { fromSnapshot } from '@/lib/firebase/mapper'
-import type { Conversation, Message, SendMessageInput } from '@/types'
+import type { Conversation, Message, MessageBlock, SendMessageInput } from '@/types'
 import { requestAssistantReply } from '@/services/ai/ai.client'
 import type { AiError } from '@/services/ai/ai.types'
+import {
+  buildAttachmentBlocks,
+  createChatAttachments,
+} from '@/services/chat/attachment.service'
 
 /**
  * Chat persistence and the client half of the AI round trip.
@@ -96,14 +103,32 @@ export async function renameConversation(conversationId: string, title: string):
 }
 
 /**
- * Deletes a conversation and its messages.
+ * Deletes a conversation, its messages and its attachments.
  *
- * Firestore does not cascade, so messages are removed first; a client-side
+ * Firestore does not cascade, so children are removed first; a client-side
  * loop is acceptable at foundation scale and should move to a Cloud Function
- * once threads grow long.
+ * once threads grow long. Uploaded attachment files are deleted best-effort
+ * — an orphaned file costs quota, not correctness — and Asset-referenced
+ * attachments never touch the Asset's own file.
  */
 export async function deleteConversation(conversationId: string): Promise<void> {
-  const messages = await getDocs(messagesCollection(conversationId))
+  const [messages, attachments] = await Promise.all([
+    getDocs(messagesCollection(conversationId)),
+    getDocs(attachmentsCollection(conversationId)),
+  ])
+  await Promise.all(
+    attachments.docs.map(async (a) => {
+      const data = a.data()
+      if (data.source === 'upload') {
+        try {
+          await deleteAsset(data.storagePath)
+        } catch {
+          // Best-effort only; the document delete below is what matters.
+        }
+      }
+      await deleteDoc(a.ref)
+    }),
+  )
   await Promise.all(messages.docs.map((m) => deleteDoc(m.ref)))
   await deleteDoc(conversationDoc(conversationId))
 }
@@ -130,36 +155,73 @@ export async function sendMessage(
   input: SendMessageInput,
 ): Promise<SendMessageOutcome> {
   const text = input.text.trim()
-  if (!text) {
+  const drafts = input.attachments ?? []
+  if (!text && drafts.length === 0) {
     throw new Error('Cannot send an empty message.')
+  }
+  if (drafts.length > 0 && !input.businessId) {
+    // Attachment paths and documents are business-scoped; without a business
+    // there is nowhere authorised to put the file.
+    throw new Error('Set up your business before attaching files.')
   }
 
   let conversationId = input.conversationId
   if (!conversationId) {
-    const conversation = await createConversation(ownerId, input.businessId, deriveTitle(text))
+    const conversation = await createConversation(
+      ownerId,
+      input.businessId,
+      deriveTitle(text || drafts.map(draftFileName).join(', ')),
+    )
     conversationId = conversation.id
   }
+
+  // The message id is reserved before anything is written, so attachment
+  // documents carry their messageId from birth and the message itself never
+  // needs a mutating follow-up write.
+  const newMessageRef = doc(messagesCollection(conversationId))
+
+  // Attachments first: if any of them fails, nothing is sent — a message may
+  // never reference an attachment that does not exist.
+  const attachments =
+    drafts.length > 0
+      ? await createChatAttachments({
+          ownerId,
+          businessId: input.businessId as string,
+          conversationId,
+          messageId: newMessageRef.id,
+          drafts,
+        })
+      : []
+
+  // A send with only attachments still needs prose for previews, titles and
+  // the model's text channel — a deterministic line, never an invented one.
+  const plainText = text || `(attached: ${attachments.map((a) => a.fileName).join(', ')})`
+
+  const blocks: MessageBlock[] = [
+    ...(text ? [{ id: 'b0', type: 'text' as const, text }] : []),
+    ...buildAttachmentBlocks(attachments, text ? 1 : 0),
+  ]
 
   const now = Date.now()
   const message: Omit<Message, 'id'> = {
     ownerId,
     conversationId,
     role: 'user',
-    blocks: [{ id: 'b0', type: 'text', text }],
-    plainText: text,
+    blocks,
+    plainText,
     status: 'complete',
     meta: null,
     createdAt: now,
     updatedAt: now,
   }
 
-  const ref = await addDoc(messagesCollection(conversationId), message)
+  await setDoc(newMessageRef, message)
 
   // Every message write — here and in each Cloud Function that writes an
   // assistant turn — bumps `messageCount` with the same atomic increment, so
   // the counter stays correct however the writes interleave.
   await updateDoc(conversationDoc(conversationId), {
-    lastMessagePreview: text.slice(0, 140),
+    lastMessagePreview: plainText.slice(0, 140),
     messageCount: increment(1),
     updatedAt: now,
   })
@@ -167,14 +229,18 @@ export async function sendMessage(
   const reply = await requestAssistantReply({
     conversationId,
     businessId: input.businessId,
-    userMessageId: ref.id,
+    userMessageId: newMessageRef.id,
   })
 
   return {
     conversationId,
-    userMessageId: ref.id,
+    userMessageId: newMessageRef.id,
     replyError: reply.ok ? null : reply.error,
   }
+}
+
+function draftFileName(draft: NonNullable<SendMessageInput['attachments']>[number]): string {
+  return draft.kind === 'file' ? draft.file.name : draft.asset.fileName
 }
 
 /** Escape hatch for callers that need a raw message ref (e.g. retry). */

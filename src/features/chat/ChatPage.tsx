@@ -45,7 +45,7 @@ export default function ChatPage() {
         <div className="flex min-h-0 flex-1 flex-col justify-center px-6 pb-6">
           <EmptyState onPick={(text) => void send(text)} />
           <div className="mx-auto mt-10 w-full max-w-3xl">
-            <ChatComposer onSend={(text) => void send(text)} autoFocus />
+            <ChatComposer onSend={(text, attachments) => void send(text, attachments)} autoFocus />
             {error ? <ErrorNotice message={error} /> : null}
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function ChatPage() {
 
           <div className="shrink-0 px-6 pb-5">
             <div className="mx-auto w-full max-w-3xl">
-              <ChatComposer onSend={(text) => void send(text)} disabled={awaitingReply} />
+              <ChatComposer onSend={(text, attachments) => void send(text, attachments)} disabled={awaitingReply} />
               {error ? <ErrorNotice message={error} /> : null}
             </div>
           </div>

@@ -88,10 +88,15 @@ const allowedMoney = new Set(moneyTokens(corpus))
 
 /* --- 1. copy generation ------------------------------------------------- */
 
-console.log('\n-- 1. creative.generate_copy (fast tier, live) --')
+// Which subscription plan's models to exercise. 'pro' is the pre-plan
+// behaviour (mid-tier copy); SMOKE_PLAN=basic smokes the low-cost route.
+const SMOKE_PLAN = process.env.SMOKE_PLAN === 'basic' ? 'basic' : 'pro'
+
+console.log(`\n-- 1. creative.generate_copy (fast tier, plan=${SMOKE_PLAN}, live) --`)
 const t0 = Date.now()
 const { data, meta } = await runStructuredTask({
   task: 'creative.generate_copy',
+  plan: SMOKE_PLAN,
   systemPrompt: CREATIVE_COPY_PROMPT,
   input: buildCopyInput({
     businessName: business.name, brandVoice: null, campaign,
@@ -137,6 +142,7 @@ const instruction1 = 'Make the headline more premium'
 const edit1 = await generateCreativeEdit({
   instruction: instruction1, creative, campaign, businessName: business.name,
   corpus: buildCreativeEditCorpus({ creative, campaign, business, instruction: instruction1 }),
+  plan: SMOKE_PLAN,
 })
 console.log('  reply:', JSON.stringify(edit1.draft.reply))
 console.log('  patch:', JSON.stringify(edit1.draft.patch))
@@ -156,6 +162,7 @@ const instruction2 = "Don't mention discounts"
 const edit2 = await generateCreativeEdit({
   instruction: instruction2, creative, campaign, businessName: business.name,
   corpus: buildCreativeEditCorpus({ creative, campaign, business, instruction: instruction2 }),
+  plan: SMOKE_PLAN,
 })
 console.log('  reply:', JSON.stringify(edit2.draft.reply))
 console.log('  patch:', JSON.stringify(edit2.draft.patch))
@@ -186,7 +193,7 @@ if (process.env.SMOKE_IMAGE === '1') {
     format: 'square_post', paletteHexes: [], visualStyle: null,
   })
   const t1 = Date.now()
-  const image = await runImageTask({ task: 'creative.generate_image', prompt, size: '1024x1024' })
+  const image = await runImageTask({ task: 'creative.generate_image', plan: SMOKE_PLAN, prompt, size: '1024x1024' })
   console.log(`  model=${image.meta.model} latency=${Date.now() - t1}ms`)
   check('image bytes returned', image.imageBytes.length > 10_000, `${image.imageBytes.length} bytes`)
 } else {

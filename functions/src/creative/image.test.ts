@@ -1,95 +1,70 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { StoredCampaign } from '../campaign/store'
-import type { StoredBusiness } from '../lib/business.types'
-import { selectBusinessImage } from './image'
+import { generateCreativeImage } from './image'
 
 /**
- * Real photos beat generated ones — a product rule enforced by a
- * deterministic selector, not a model call. These tests pin the preference
- * order: named in the campaign, else the signature dish, else the first
- * usable photo; and only https images qualify.
+ * The generation fallback's provenance: a generated image is recorded as
+ * generated, stored under the creative folder, and never claims an assetId —
+ * so a generated creative can never falsely present itself as being built
+ * from one of the owner's own Assets.
  */
 
-const campaign = {
-  name: 'Weekday Lunch Growth',
-  objective: 'Increase weekday lunch customers',
-  targetAudience: null,
-  offer: { description: 'A weekday Nasi Lemak Ayam set', basis: 'recommendation' },
-  positioning: null,
-  keyMessage: 'Lunch without the wait',
-  callToAction: null,
-  channels: [],
-  durationDays: null,
-  startDate: null,
-  endDate: null,
-  notes: null,
-  assumptions: [],
-  unknowns: [],
-  ownerId: 'user1',
-  businessId: 'biz1',
-  conversationId: null,
-  sourceRecommendationId: null,
-  status: 'draft',
-  userEdited: [],
-  meta: null,
-  createdAt: 1,
-  updatedAt: 1,
-} as StoredCampaign
+const h = vi.hoisted(() => ({
+  saves: [] as { path: string; contentType: string }[],
+  prompts: [] as string[],
+}))
 
-function makeBusiness(products: unknown[]): StoredBusiness {
-  return { products } as unknown as StoredBusiness
-}
+vi.mock('../ai/orchestrator', () => ({
+  runImageTask: async (params: { prompt: string }) => {
+    h.prompts.push(params.prompt)
+    return {
+      imageBytes: Buffer.from('png-bytes'),
+      meta: { model: 'gpt-image-2', task: 'creative.generate_image', latencyMs: 1, usage: null },
+    }
+  },
+}))
 
-const laksa = {
-  name: 'Curry Laksa',
-  imageUrl: 'https://cdn.example/laksa.jpg',
-  isSignature: true,
-}
-const nasiLemak = {
-  name: 'Nasi Lemak Ayam',
-  imageUrl: 'https://cdn.example/nasi.jpg',
-  isSignature: false,
-}
-const teh = { name: 'Teh Tarik', imageUrl: 'https://cdn.example/teh.jpg', isSignature: false }
+vi.mock('../lib/firebase', () => ({
+  storageBucket: () => ({
+    file: (path: string) => ({
+      save: async (_bytes: Buffer, options: { contentType: string }) => {
+        h.saves.push({ path, contentType: options.contentType })
+      },
+    }),
+  }),
+}))
 
-describe('selectBusinessImage', () => {
-  it('returns null with no business or no usable photos', () => {
-    expect(selectBusinessImage(null, campaign)).toBeNull()
-    expect(selectBusinessImage(makeBusiness([]), campaign)).toBeNull()
-    expect(
-      selectBusinessImage(makeBusiness([{ name: 'X', imageUrl: null, isSignature: true }]), campaign),
-    ).toBeNull()
+beforeEach(() => {
+  h.saves = []
+  h.prompts = []
+})
+
+describe('generateCreativeImage', () => {
+  it('records the image as generated, with no assetId, in the creative folder', async () => {
+    const { image } = await generateCreativeImage({
+      businessId: 'biz1',
+      brief: 'A plate of nasi lemak on a wooden table',
+      altText: 'A plate of nasi lemak',
+      format: 'square_post',
+      business: null,
+      plan: 'basic' as never,
+    })
+    expect(image.source).toBe('generated')
+    expect('assetId' in image).toBe(false)
+    expect(image.storagePath).toMatch(/^businesses\/biz1\/creatives\/[0-9a-f-]{36}\.png$/)
+    expect(h.saves).toEqual([{ path: image.storagePath, contentType: 'image/png' }])
   })
 
-  it('only https images qualify — no http, no data URIs', () => {
-    expect(
-      selectBusinessImage(
-        makeBusiness([{ name: 'X', imageUrl: 'http://cdn.example/x.jpg', isSignature: true }]),
-        campaign,
-      ),
-    ).toBeNull()
-  })
-
-  it('prefers the product the campaign actually talks about', () => {
-    const selected = selectBusinessImage(makeBusiness([laksa, nasiLemak, teh]), campaign)
-    expect(selected?.product.name).toBe('Nasi Lemak Ayam')
-    expect(selected?.url).toBe('https://cdn.example/nasi.jpg')
-  })
-
-  it('falls back to the signature dish, then to the first photo', () => {
-    const noMention = { ...campaign, offer: null, name: 'Generic Push', objective: null }
-    const signature = selectBusinessImage(makeBusiness([teh, laksa]), noMention as StoredCampaign)
-    expect(signature?.product.name).toBe('Curry Laksa')
-
-    const first = selectBusinessImage(makeBusiness([teh, nasiLemak]), noMention as StoredCampaign)
-    expect(first?.product.name).toBe('Teh Tarik')
-  })
-
-  it('is deterministic — same inputs, same photo', () => {
-    const business = makeBusiness([laksa, nasiLemak, teh])
-    expect(selectBusinessImage(business, campaign)).toEqual(
-      selectBusinessImage(business, campaign),
-    )
+  it('keeps the no-text, no-logo instruction in every prompt sent to the model', async () => {
+    await generateCreativeImage({
+      businessId: 'biz1',
+      brief: 'A plate of nasi lemak',
+      altText: null,
+      format: 'square_post',
+      business: null,
+      plan: 'basic' as never,
+    })
+    expect(h.prompts[0]).toMatch(/no text/i)
+    expect(h.prompts[0]).toMatch(/no logos/i)
   })
 })

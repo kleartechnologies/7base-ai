@@ -35,6 +35,8 @@ export async function downloadPoster(params: {
   style: PosterStyleSource | null
   /** Resolved download URL of the visual, or null for a text-only poster. */
   imageUrl: string | null
+  /** Resolved download URL of the business logo snapshot, when one exists. */
+  logoUrl?: string | null
 }): Promise<void> {
   const fileName = posterFileName(params.content.name, params.content.format)
   try {
@@ -53,6 +55,7 @@ export async function renderPosterBlob(params: {
   content: PosterContent
   style: PosterStyleSource | null
   imageUrl: string | null
+  logoUrl?: string | null
 }): Promise<Blob> {
   const spec = posterSpec(params.content.format, params.style)
   const canvas = document.createElement('canvas')
@@ -62,7 +65,9 @@ export async function renderPosterBlob(params: {
   if (!ctx) throw new Error('canvas unavailable')
 
   const image = params.imageUrl ? await loadImage(params.imageUrl) : null
-  drawPoster(ctx, spec, params.content, image)
+  // The logo is optional garnish: a failed load costs the logo, not the poster.
+  const logo = params.logoUrl ? await loadImage(params.logoUrl).catch(() => null) : null
+  drawPoster(ctx, spec, params.content, image, logo)
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -77,6 +82,7 @@ function drawPoster(
   spec: PosterSpec,
   content: PosterContent,
   image: HTMLImageElement | null,
+  logo: HTMLImageElement | null = null,
 ): void {
   const { width, height, margin } = spec
 
@@ -141,7 +147,19 @@ function drawPoster(
     }
   }
 
-  // 4. Offer badge, top-left — separate from the narrative stack.
+  // 4. Logo, top-right — the real uploaded mark, composited deterministically
+  // (never drawn by an image model). Contained within a fixed box, aspect
+  // ratio preserved.
+  if (logo && logo.width > 0 && logo.height > 0) {
+    const maxLogoWidth = 220
+    const maxLogoHeight = 110
+    const scale = Math.min(maxLogoWidth / logo.width, maxLogoHeight / logo.height, 1)
+    const logoWidth = logo.width * scale
+    const logoHeight = logo.height * scale
+    ctx.drawImage(logo, width - margin - logoWidth, margin, logoWidth, logoHeight)
+  }
+
+  // 5. Offer badge, top-left — separate from the narrative stack.
   if (content.offerText) {
     ctx.font = `600 ${spec.offerSize}px ${spec.bodyFont}`
     const paddingX = 28

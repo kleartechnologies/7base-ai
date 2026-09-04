@@ -23,7 +23,7 @@ export function MessageBubble({ message }: { message: Message }) {
         )}
       >
         {message.blocks.map((block) => (
-          <BlockRenderer key={block.id} block={block} />
+          <BlockRenderer key={block.id} block={block} conversationId={message.conversationId} />
         ))}
       </div>
     </div>

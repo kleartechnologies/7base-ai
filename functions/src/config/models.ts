@@ -17,6 +17,26 @@
 /** What a task needs from a model, not which model it gets. */
 export type ModelTier = 'reasoning' | 'fast' | 'image'
 
+/**
+ * What the account pays for, not what the task needs. The two axes are
+ * deliberately independent: the tier decides the operational envelope
+ * (timeouts, output ceilings, retries — a reasoning call needs minutes
+ * whichever model runs it), and the plan decides which model fills it.
+ *
+ * 'basic' is the floor, not a punishment: it runs every task the product has
+ * on the low-cost model. 'pro' buys the flagship exactly where judgement is
+ * the product — the reasoning tier — and stays on the mid tier for
+ * transformations, because paying flagship rates to reword a decision that
+ * was already made would be cost without quality.
+ */
+export type SubscriptionPlan = 'basic' | 'pro'
+
+/**
+ * The fail-safe. Every unknown, missing, malformed or failed plan lookup
+ * lands here — an account must never be able to fall *upward* into Pro.
+ */
+export const DEFAULT_PLAN: SubscriptionPlan = 'basic'
+
 export interface ModelConfig {
   /** The provider's model identifier. */
   model: string
@@ -124,6 +144,73 @@ export function getModelConfig(tier: ModelTier): ModelConfig {
   return override ? { ...base, model: override } : base
 }
 
+/* --- plan-aware model selection ----------------------------------------- */
+
+/**
+ * Which model id each plan runs on each text tier.
+ *
+ * Pro's defaults are the tier defaults above — Pro *is* the behaviour MARKA
+ * shipped with (flagship reasoning, mid-tier chat). Basic runs everything on
+ * GPT-5.6 Luna ($0.20/$1.20 per 1M — ~20x cheaper than Sol on both sides),
+ * which is what makes an RM19.90/month plan able to include real campaign
+ * generation at all. The image tier is deliberately absent: both plans share
+ * one image model, priced and configured once.
+ */
+const PLAN_MODEL_DEFAULTS: Record<SubscriptionPlan, Record<'reasoning' | 'fast', string>> = {
+  basic: {
+    reasoning: 'gpt-5.6-luna',
+    fast: 'gpt-5.6-luna',
+  },
+  pro: {
+    reasoning: DEFAULTS.reasoning.model,
+    fast: DEFAULTS.fast.model,
+  },
+}
+
+/**
+ * Per-plan, per-tier deploy-time overrides. Precedence, most specific wins:
+ *
+ *   MARKA_MODEL_<PLAN>_<TIER>  >  MARKA_MODEL_<TIER>  >  default above
+ *
+ * The middle rung keeps the pre-plan variables meaningful: a deployment that
+ * sets MARKA_MODEL_REASONING still moves every plan's reasoning calls, exactly
+ * as it did before plans existed. Note the consequence: while a legacy
+ * variable is set, it also overrides Basic's cheap default — remove it (or set
+ * the plan-specific pair) to get per-plan pricing.
+ */
+const PLAN_ENV_OVERRIDES: Record<SubscriptionPlan, Record<'reasoning' | 'fast', string>> = {
+  basic: {
+    reasoning: 'MARKA_MODEL_BASIC_REASONING',
+    fast: 'MARKA_MODEL_BASIC_FAST',
+  },
+  pro: {
+    reasoning: 'MARKA_MODEL_PRO_REASONING',
+    fast: 'MARKA_MODEL_PRO_FAST',
+  },
+}
+
+/**
+ * Runtime guard behind the type: plan values originate in Firestore documents
+ * and environment variables, so a junk value must degrade to Basic rather
+ * than throw or, worse, resolve generously.
+ */
+function normalisePlanValue(plan: unknown): SubscriptionPlan {
+  return plan === 'pro' ? 'pro' : DEFAULT_PLAN
+}
+
+/** The model id `plan` runs on `tier`, after env overrides. */
+function resolveModelId(tier: ModelTier, plan: SubscriptionPlan): string {
+  // One image model for everyone — plan differentiation is a text-model
+  // decision in this product, and image pricing/config stays in one place.
+  if (tier === 'image') return getModelConfig('image').model
+
+  const planOverride = process.env[PLAN_ENV_OVERRIDES[plan][tier]]
+  if (planOverride) return planOverride
+  const tierOverride = process.env[ENV_OVERRIDES[tier]]
+  if (tierOverride) return tierOverride
+  return PLAN_MODEL_DEFAULTS[plan][tier]
+}
+
 /**
  * Which tier each MARKA task runs on.
  *
@@ -162,8 +249,18 @@ const TASK_TIERS: Record<AiTask, ModelTier> = {
   'creative.generate_image': 'image',
 }
 
-export function resolveModelForTask(task: AiTask): ModelConfig {
-  return getModelConfig(TASK_TIERS[task])
+/**
+ * The single model-selection seam: task + plan in, full model config out.
+ *
+ * The plan the caller passes here must be the one the server resolved from
+ * its own subscription record (see lib/auth.ts) — never a value from a client
+ * payload. Nothing a client sends can reach this function's `plan` argument,
+ * which is what makes "a Basic user edits the request to say pro" a no-op.
+ */
+export function resolveModelForTask(task: AiTask, plan: SubscriptionPlan): ModelConfig {
+  const tier = TASK_TIERS[task]
+  const safePlan = normalisePlanValue(plan)
+  return { ...getModelConfig(tier), model: resolveModelId(tier, safePlan) }
 }
 
 /**

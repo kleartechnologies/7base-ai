@@ -1,4 +1,5 @@
 import { runStructuredTask } from '../ai/orchestrator'
+import type { SubscriptionPlan } from '../config/models'
 import type { StoredCampaign } from '../campaign/store'
 import type { MessageMeta } from '../lib/types'
 import { buildCreativeEditInput, CREATIVE_EDIT_PROMPT } from './prompt'
@@ -134,9 +135,12 @@ export async function generateCreativeEdit(params: {
   businessName: string | null
   /** Grounding corpus; the instruction itself is already included by callers. */
   corpus: string
+  /** Server-resolved subscription plan, from the callable boundary. */
+  plan: SubscriptionPlan
 }): Promise<CreativeEditOutcome> {
   const { data, meta } = await runStructuredTask<unknown>({
     task: 'creative.edit',
+    plan: params.plan,
     systemPrompt: CREATIVE_EDIT_PROMPT,
     input: buildCreativeEditInput(params),
     schema: {

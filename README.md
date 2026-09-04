@@ -194,7 +194,31 @@ firebase functions:secrets:set OPENAI_API_KEY
 ```
 
 Optional per-deploy model overrides: `MARKA_MODEL_REASONING`,
-`MARKA_MODEL_FAST`, `MARKA_MODEL_IMAGE`.
+`MARKA_MODEL_FAST`, `MARKA_MODEL_IMAGE` (tier-wide, every plan), and
+`MARKA_MODEL_BASIC_REASONING`, `MARKA_MODEL_BASIC_FAST`,
+`MARKA_MODEL_PRO_REASONING`, `MARKA_MODEL_PRO_FAST` (per plan; beat the
+tier-wide ones). Defaults live in `functions/src/config/models.ts`.
+
+### Subscription plans (model routing)
+
+The AI model an account gets is decided server-side by its subscription plan
+— `basic` (the fail-safe default for every account) or `pro`. The source of
+truth is the Admin-only `subscriptions/{uid}` Firestore document
+(`planId: 'basic' | 'pro'`, `status: 'active' | 'past_due' | 'cancelled'`);
+security rules refuse every client write, so an account cannot upgrade
+itself. Pro requires `planId: 'pro'` **and** `status: 'active'`; anything
+else — including a missing document — routes as Basic.
+
+To test Pro locally, either set the env override for the Functions emulator
+(honoured only inside the emulator):
+
+```bash
+MARKA_DEV_PLAN_OVERRIDE=pro firebase emulators:start
+```
+
+or write a `subscriptions/<uid>` document with the Admin SDK / emulator UI.
+The selected plan and model appear in the `ai.request.complete` telemetry
+log line of every model call.
 
 ---
 

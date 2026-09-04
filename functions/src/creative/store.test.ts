@@ -27,6 +27,7 @@ const params = {
   },
   captions: { facebook: 'fb', instagram: 'ig', short: 's', whatsapp: null },
   style: { palette: null, headingFont: null, bodyFont: null, logoStoragePath: null },
+  assetIds: [],
   imageError: null,
   meta: null,
   now: 1234,
