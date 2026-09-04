@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Globe, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BusinessBrain } from '@/features/business/BusinessBrain'
+import { CompletionCard } from '@/features/business/components/CompletionCard'
 import { ROUTES } from '@/app/routes/paths'
 import { useAuth } from '@/hooks/useAuth'
 import { observeBusiness } from '@/services/business/business.service'
@@ -43,7 +44,8 @@ export default function BusinessPage() {
             EVA doesn’t know your business yet
           </h1>
           <p className="mx-auto mt-2 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-            Give EVA your website and it will work out the rest.
+            Give EVA one link — your website, Facebook Page, or Instagram profile — and she works
+            out the rest.
           </p>
           <Button asChild size="lg" className="mt-6">
             <Link to={ROUTES.onboarding}>Set up my business</Link>
@@ -93,6 +95,13 @@ export default function BusinessPage() {
             </div>
           ) : null}
         </header>
+
+        <div className="mb-4">
+          {/* "Help EVA finish your profile" — shown only while EVA still has
+              questions worth asking. The persistent home of profile
+              completion, so skipping it during onboarding costs nothing. */}
+          <CompletionCard business={business} onSaved={refresh} />
+        </div>
 
         {/* onSaved keeps the provider's one-shot copy in step with edits made
             here, so the rest of the app (chat context, guards) sees them too. */}

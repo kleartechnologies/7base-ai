@@ -314,6 +314,12 @@ export function describeSource(source: SourceMark | null | undefined): string | 
   switch (source.source) {
     case 'website':
       return 'From your website'
+    case 'facebook':
+      return 'From your Facebook Page'
+    case 'instagram':
+      return 'From your Instagram profile'
+    case 'google_business':
+      return 'From your Google Business Profile'
     case 'inferred':
       return 'EVA’s inference'
     case 'document':

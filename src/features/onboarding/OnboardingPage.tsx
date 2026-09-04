@@ -5,9 +5,11 @@ import { DEFAULT_AUTHENTICATED_ROUTE } from '@/app/routes/paths'
 import { useAuth } from '@/hooks/useAuth'
 import { toUserMessage } from '@/lib/firebase/errors'
 import { acceptBusinessBrain, createBusiness } from '@/services/business/business.service'
+import { missingQuestions } from '@/services/business/completion'
 import { setActiveBusiness, setOnboardingStep } from '@/services/business/user.service'
 import { AnalysingStep } from './components/AnalysingStep'
 import { AnalysisFailed } from './components/AnalysisFailed'
+import { CompletionStep } from './components/CompletionStep'
 import { ManualStep } from './components/ManualStep'
 import { MethodChoice } from './components/MethodChoice'
 import { OnboardingLayout } from './components/OnboardingLayout'
@@ -34,6 +36,8 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>('choose')
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
+  // Set once onboarding is complete and EVA still has questions worth asking.
+  const [completingId, setCompletingId] = useState<string | null>(null)
   // Shown wherever the failed submit happened — the review step and the manual
   // step both render it. A confirm that fails must never look like success.
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -45,6 +49,11 @@ export default function OnboardingPage() {
    * Accepting comes first and is not optional: without it, everything MARKA
    * discovered would stay unconfirmed and the next website analysis could
    * overwrite the very thing the owner just approved.
+   *
+   * Only after onboarding is fully recorded as complete does EVA offer to fill
+   * the gaps — the completion questions are a bonus on top of a finished
+   * setup, never a gate in front of one. Closing the tab mid-question loses
+   * nothing but the unanswered questions.
    */
   async function finish(business: Business) {
     if (!user) return
@@ -55,6 +64,11 @@ export default function OnboardingPage() {
       await setActiveBusiness(user.uid, business.id)
       await setOnboardingStep(user.uid, 'complete')
       await refresh()
+      if (missingQuestions(business).length > 0) {
+        setCompletingId(business.id)
+        setBusy(false)
+        return
+      }
       navigate(DEFAULT_AUTHENTICATED_ROUTE, { replace: true })
     } catch (caught) {
       setSubmitError(toUserMessage(caught, 'Could not finish setting up. Please try again.'))
@@ -78,6 +92,20 @@ export default function OnboardingPage() {
   function startAnalysis(nextUrl: string) {
     setUrl(nextUrl)
     void analysis.analyse(nextUrl)
+  }
+
+  if (completingId) {
+    return (
+      <OnboardingLayout
+        title="There’s still a little more EVA would like to learn"
+        subtitle="Answer what you can — skip anything. EVA will remember your answers, and you can always come back to this from the Business tab."
+      >
+        <CompletionStep
+          businessId={completingId}
+          onDone={() => navigate(DEFAULT_AUTHENTICATED_ROUTE, { replace: true })}
+        />
+      </OnboardingLayout>
+    )
   }
 
   if (analysis.phase === 'starting' || analysis.phase === 'running') {

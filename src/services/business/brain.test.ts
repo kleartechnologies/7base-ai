@@ -276,9 +276,13 @@ describe('describeSource', () => {
     expect(describeSource({ source: 'document', confirmed: false })).toBe(
       'From a document you uploaded',
     )
-    expect(describeSource({ source: 'instagram', confirmed: false })).toBe(
-      'From a connected source',
+    expect(describeSource({ source: 'facebook', confirmed: false })).toBe(
+      'From your Facebook Page',
     )
+    expect(describeSource({ source: 'instagram', confirmed: false })).toBe(
+      'From your Instagram profile',
+    )
+    expect(describeSource({ source: 'pos', confirmed: false })).toBe('From a connected source')
   })
 
   it('calls a confirmed guess what it now is: the owner\u2019s answer', () => {

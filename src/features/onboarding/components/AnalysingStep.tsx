@@ -9,7 +9,7 @@ import type { DiscoveryStage } from '@/types'
  * than inventing a percentage.
  */
 const STAGES: { id: DiscoveryStage; label: string }[] = [
-  { id: 'fetching', label: 'Opening your website' },
+  { id: 'fetching', label: 'Opening your link' },
   { id: 'reading_pages', label: 'Reading your pages' },
   { id: 'understanding', label: 'Working out what you offer' },
   { id: 'building_brain', label: 'Building your Business Brain' },

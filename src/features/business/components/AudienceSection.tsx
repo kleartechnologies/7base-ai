@@ -49,7 +49,7 @@ export function AudienceSection({
   return (
     <SectionCard
       title="Who EVA thinks your customers are"
-      hint="A first guess from your website. Correct it and EVA will keep your version."
+      hint="EVA’s best reading so far — pages rarely say this outright. Correct it and EVA will keep your version."
       provenance={business.audience}
       editing={editing}
       onEdit={open}
