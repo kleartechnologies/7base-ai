@@ -1,4 +1,9 @@
-import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https'
+import {
+  HttpsError,
+  onCall,
+  type CallableRequest,
+  type CallableResponse,
+} from 'firebase-functions/v2/https'
 import { logger } from 'firebase-functions'
 import {
   requireBusinessOwner,
@@ -12,6 +17,7 @@ import { COLLECTIONS, db, FieldValue } from '../lib/firebase'
 import type {
   AssistantReplyRequest,
   AssistantReplyResponse,
+  AssistantReplyStreamChunk,
   MessageBlock,
   MessageMeta,
   StoredMessage,
@@ -112,7 +118,13 @@ export const chatAssistantReply = onCall(
     maxInstances: 10,
     cors: true,
   },
-  async (request: CallableRequest<AssistantReplyRequest>): Promise<AssistantReplyResponse> => {
+  async (
+    request: CallableRequest<AssistantReplyRequest>,
+    // Present when the client called with `.stream()`. Only the conversational
+    // path below writes to it; every other path resolves whole, and sendChunk
+    // on a non-streaming request is a safe no-op anyway.
+    response?: CallableResponse<AssistantReplyStreamChunk>,
+  ): Promise<AssistantReplyResponse> => {
     const uid = requireUid(request)
     const { conversationId, businessId } = request.data ?? {}
 
@@ -359,6 +371,22 @@ export const chatAssistantReply = onCall(
 
       const unavailableNote = buildUnavailableNote(attachmentInput.skipped)
 
+      // Live delivery, when the client asked for it: each text delta is
+      // pushed over the callable's own stream as the model produces it, so
+      // the reply starts rendering before it is finished. sendChunk is
+      // fire-and-forget — a client that disconnects mid-reply must not stall
+      // or fail a generation that is billed and persisted regardless.
+      let clientGone = false
+      const sendDelta =
+        request.acceptsStreaming && response
+          ? (delta: string) => {
+              if (clientGone) return
+              response.sendChunk({ type: 'delta', text: delta }).catch(() => {
+                clientGone = true
+              })
+            }
+          : undefined
+
       const result = await runTask({
         task: 'chat.reply',
         uid,
@@ -369,6 +397,7 @@ export const chatAssistantReply = onCall(
           attachmentInput.parts.length > 0
             ? [...history.slice(0, -1), { ...latest, parts: attachmentInput.parts }]
             : history,
+        onDelta: sendDelta,
       })
 
       const assistantMessageId = await writeAssistantMessage(

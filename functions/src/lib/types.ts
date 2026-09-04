@@ -155,6 +155,18 @@ export interface AssistantReplyResponse {
   assistantMessageId: string
 }
 
+/**
+ * One chunk of a streamed assistant reply, sent over the callable's own
+ * stream while the reply is being generated. Only the conversational path
+ * streams; structured replies (recommendations, campaign and creative edits)
+ * arrive whole, exactly as before. Mirrored in the frontend's ai.types.ts.
+ */
+export interface AssistantReplyStreamChunk {
+  type: 'delta'
+  /** The next piece of the reply's text, in order. */
+  text: string
+}
+
 export interface BuildCampaignRequest {
   recommendationId: string
 }

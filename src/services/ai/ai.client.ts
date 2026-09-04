@@ -7,6 +7,7 @@ import type {
   AiResult,
   AssistantReplyRequest,
   AssistantReplyResponse,
+  AssistantReplyStreamChunk,
   BuildCampaignRequest,
   BuildCampaignResponse,
   DownloadCreativeImageRequest,
@@ -113,6 +114,54 @@ export function requestAssistantReply(
   request: AssistantReplyRequest,
 ): Promise<AiResult<AssistantReplyResponse>> {
   return call<AssistantReplyRequest, AssistantReplyResponse>(CALLABLES.assistantReply, request)
+}
+
+/**
+ * The reply generation itself can outlast the 70s callable default: the
+ * marketing path's reasoning tier has a 110s model budget and the function
+ * allows 180s in total, so the client-side deadline matches the function's.
+ */
+const ASSISTANT_REPLY_TIMEOUT_MS = 180_000
+
+/**
+ * Like {@link requestAssistantReply}, but delivered live: text deltas arrive
+ * through `onDelta` while EVA is composing, and the promise resolves with the
+ * final response once the reply is complete and stored.
+ *
+ * Streaming is delivery only. The backend decides the model, enforces plan
+ * and usage limits, and writes the assistant message exactly as on the
+ * non-streamed path — a reply whose kind doesn't stream (a recommendation, a
+ * campaign or creative edit) simply yields no chunks before resolving.
+ *
+ * If the stream breaks mid-reply, the caller gets `{ ok: false }`; any text
+ * already forwarded through `onDelta` must be treated as interrupted, not as
+ * EVA's finished answer.
+ */
+export async function streamAssistantReply(
+  request: AssistantReplyRequest,
+  onDelta: (text: string) => void,
+): Promise<AiResult<AssistantReplyResponse>> {
+  try {
+    const callable = httpsCallable<
+      AssistantReplyRequest,
+      AssistantReplyResponse,
+      AssistantReplyStreamChunk
+    >(getFirebaseFunctions(), CALLABLES.assistantReply, { timeout: ASSISTANT_REPLY_TIMEOUT_MS })
+    const { stream, data } = await callable.stream(request)
+    try {
+      for await (const chunk of stream) {
+        if (chunk?.type === 'delta' && typeof chunk.text === 'string') {
+          onDelta(chunk.text)
+        }
+      }
+    } catch {
+      // A broken stream surfaces its real error (with a proper code) through
+      // the `data` promise below; iteration failures carry no extra signal.
+    }
+    return { ok: true, data: await data }
+  } catch (error) {
+    return { ok: false, error: toAiError(error) }
+  }
 }
 
 /** Build may wait out fast-tier retries; give it more than the 70s default. */

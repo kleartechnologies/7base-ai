@@ -39,6 +39,18 @@ export interface AssistantReplyResponse {
 }
 
 /**
+ * One chunk of a streamed assistant reply — the next piece of EVA's text, in
+ * order. Only conversational replies stream; structured replies
+ * (recommendations, campaign and creative edits) arrive whole, so a stream
+ * with zero chunks followed by the final response is normal. Mirrors
+ * functions/src/lib/types.ts.
+ */
+export interface AssistantReplyStreamChunk {
+  type: 'delta'
+  text: string
+}
+
+/**
  * Website analysis is two calls, not one.
  *
  * `start` returns as soon as the business exists and is marked as analysing,

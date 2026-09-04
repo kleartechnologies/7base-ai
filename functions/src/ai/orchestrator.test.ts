@@ -287,3 +287,167 @@ describe('usage guardrail ordering', () => {
     expect(createMock).not.toHaveBeenCalled()
   })
 })
+
+/* --- streaming ----------------------------------------------------------- */
+
+/**
+ * The streaming seam in `runTask`: with `onDelta`, the same request runs with
+ * `stream: true`, forwards each text delta as it arrives, and reads status
+ * and usage from the terminal event. What must hold is that streaming changes
+ * NOTHING about accounting — one reservation before the provider, one
+ * settlement after, one request counted, whether the reply arrives as one
+ * body or five hundred chunks — and that a stream that dies midway settles as
+ * a failure instead of leaving the reservation inflight.
+ */
+
+function streamOf(events: unknown[], failAfter?: number) {
+  return {
+    async *[Symbol.asyncIterator]() {
+      let index = 0
+      for (const event of events) {
+        if (failAfter !== undefined && index === failAfter) {
+          throw Object.assign(new Error('connection reset'), { name: 'APIConnectionError' })
+        }
+        index += 1
+        yield event
+      }
+      if (failAfter !== undefined && failAfter >= events.length) {
+        throw Object.assign(new Error('connection reset'), { name: 'APIConnectionError' })
+      }
+    },
+  }
+}
+
+const delta = (text: string) => ({ type: 'response.output_text.delta', delta: text })
+const completed = (usage: Record<string, unknown> = { input_tokens: 10, output_tokens: 5 }) => ({
+  type: 'response.completed',
+  response: { status: 'completed', usage },
+})
+
+describe('runTask streaming', () => {
+  const HISTORY = [{ role: 'user' as const, text: 'apa patut saya promote minggu ni?' }]
+
+  it('forwards every delta in order and assembles the identical final text', async () => {
+    createMock.mockResolvedValue(
+      streamOf([delta('Kalau ikut '), delta('apa yang saya tahu'), delta('…'), completed()]),
+    )
+
+    const seen: string[] = []
+    const result = await runTask({ ...BASE, history: HISTORY, onDelta: (d) => seen.push(d) })
+
+    expect(seen).toEqual(['Kalau ikut ', 'apa yang saya tahu', '…'])
+    expect(result.plainText).toBe('Kalau ikut apa yang saya tahu…')
+    expect(result.blocks).toEqual([
+      { id: 'b0', type: 'text', text: 'Kalau ikut apa yang saya tahu…' },
+    ])
+    // The provider request is the buffered request plus the stream flag.
+    expect(createMock.mock.calls[0]![0].stream).toBe(true)
+    expect(createMock.mock.calls[0]![0].input).toEqual([
+      { role: 'user', content: 'apa patut saya promote minggu ni?' },
+    ])
+  })
+
+  it('a streamed reply is ONE request: one reservation before, one settlement after', async () => {
+    let reservationsWhenProviderRan = -1
+    createMock.mockImplementation(async () => {
+      reservationsWhenProviderRan = vi.mocked(reserveAiUsage).mock.calls.length
+      return streamOf([delta('a'), delta('b'), delta('c'), delta('d'),
+        completed({ input_tokens: 900, output_tokens: 120, input_tokens_details: { cached_tokens: 300 } })])
+    })
+
+    await runTask({ ...BASE, history: HISTORY, onDelta: () => {} })
+
+    expect(reservationsWhenProviderRan).toBe(1)
+    expect(reserveAiUsage).toHaveBeenCalledTimes(1)
+    expect(settleAiUsage).toHaveBeenCalledTimes(1)
+    // Settlement uses the terminal event's usage — chunks are not counted.
+    const [, actual] = vi.mocked(settleAiUsage).mock.calls[0]!
+    expect(actual.inputTokens).toBe(900)
+    expect(actual.outputTokens).toBe(120)
+    expect(actual.cachedInputTokens).toBe(300)
+  })
+
+  it('a stream that dies mid-reply settles as a failure — reservation released, attempt kept', async () => {
+    createMock.mockResolvedValue(streamOf([delta('Hello'), delta(' there')], 2))
+
+    const seen: string[] = []
+    await expect(
+      runTask({ ...BASE, history: HISTORY, onDelta: (d) => seen.push(d) }),
+    ).rejects.toMatchObject({ name: 'AiServiceError' })
+
+    // The partial text did reach the consumer before the failure…
+    expect(seen).toEqual(['Hello', ' there'])
+    // …but accounting closed out exactly as for any other provider failure.
+    expect(settleAiUsageFailure).toHaveBeenCalledTimes(1)
+    expect(settleAiUsage).not.toHaveBeenCalled()
+  })
+
+  it('a stream failing before any token behaves like a plain provider failure', async () => {
+    createMock.mockResolvedValue(streamOf([], 0))
+
+    const seen: string[] = []
+    await expect(
+      runTask({ ...BASE, history: HISTORY, onDelta: (d) => seen.push(d) }),
+    ).rejects.toMatchObject({ name: 'AiServiceError' })
+    expect(seen).toEqual([])
+    expect(settleAiUsageFailure).toHaveBeenCalledTimes(1)
+  })
+
+  it('a stream that ends without a terminal event is a failure, never a silent half-answer', async () => {
+    createMock.mockResolvedValue(streamOf([delta('half an ans')]))
+
+    await expect(runTask({ ...BASE, history: HISTORY, onDelta: () => {} })).rejects.toMatchObject({
+      name: 'AiServiceError',
+    })
+    expect(settleAiUsageFailure).toHaveBeenCalledTimes(1)
+    expect(settleAiUsage).not.toHaveBeenCalled()
+  })
+
+  it('a response.failed terminal event is classified like a thrown provider error', async () => {
+    createMock.mockResolvedValue(
+      streamOf([
+        {
+          type: 'response.failed',
+          response: { status: 'failed', error: { code: 'server_error' }, usage: null },
+        },
+      ]),
+    )
+
+    await expect(runTask({ ...BASE, history: HISTORY, onDelta: () => {} })).rejects.toMatchObject({
+      name: 'AiServiceError',
+    })
+    expect(settleAiUsageFailure).toHaveBeenCalledTimes(1)
+  })
+
+  it('an empty completed stream falls back to the same apology as the buffered path', async () => {
+    createMock.mockResolvedValue(streamOf([completed()]))
+
+    const result = await runTask({ ...BASE, history: HISTORY, onDelta: () => {} })
+    expect(result.plainText).toBe('')
+    expect(result.blocks[0]!.type).toBe('text')
+    expect((result.blocks[0] as { text: string }).text).toContain('could not put together a reply')
+    // Billed and settled: the provider ran even though it said nothing.
+    expect(settleAiUsage).toHaveBeenCalledTimes(1)
+  })
+
+  it('a throwing consumer cannot break the reply or its accounting', async () => {
+    createMock.mockResolvedValue(streamOf([delta('still '), delta('fine'), completed()]))
+
+    const result = await runTask({
+      ...BASE,
+      history: HISTORY,
+      onDelta: () => {
+        throw new Error('client vanished')
+      },
+    })
+
+    expect(result.plainText).toBe('still fine')
+    expect(settleAiUsage).toHaveBeenCalledTimes(1)
+    expect(settleAiUsageFailure).not.toHaveBeenCalled()
+  })
+
+  it('without onDelta the request is byte-identical to before streaming existed', async () => {
+    await runTask({ ...BASE, history: HISTORY })
+    expect('stream' in createMock.mock.calls[0]![0]).toBe(false)
+  })
+})

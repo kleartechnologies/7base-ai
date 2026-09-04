@@ -50,6 +50,16 @@ export interface OrchestrationRequest {
   systemPrompt: string
   /** Prior turns, oldest first. */
   history: OrchestrationTurn[]
+  /**
+   * When present, the provider call streams and each text delta is forwarded
+   * here the moment it arrives — before the full reply exists. Everything
+   * else is identical to the buffered path: same reservation before the call,
+   * same settlement from the provider's final usage report, same single
+   * request counted. The callback must not throw; anything it raises is
+   * swallowed so a broken consumer (say, a disconnected client) can never
+   * corrupt usage accounting for a reply that is still being billed.
+   */
+  onDelta?: (delta: string) => void
 }
 
 export interface OrchestrationTurn {
@@ -129,6 +139,13 @@ interface TimingRecord {
   latencyMs: number
   promptChars: number
   response: ProviderResponse
+  /**
+   * Streamed calls only: how long the user waited before the first visible
+   * text. This is the number streaming exists to improve — total latency can
+   * stay identical while the product feels twice as fast. Null for buffered
+   * calls, where "first token" and "whole answer" are the same moment.
+   */
+  timeToFirstTokenMs?: number | null
 }
 
 /** The slice of the Responses API result telemetry reads. */
@@ -142,7 +159,15 @@ interface ProviderResponse {
   } | null
 }
 
-function recordTiming({ task, plan, config, latencyMs, promptChars, response }: TimingRecord): void {
+function recordTiming({
+  task,
+  plan,
+  config,
+  latencyMs,
+  promptChars,
+  response,
+  timeToFirstTokenMs,
+}: TimingRecord): void {
   const usage = response.usage
   const inputTokens = usage?.input_tokens ?? 0
   const outputTokens = usage?.output_tokens ?? 0
@@ -154,6 +179,7 @@ function recordTiming({ task, plan, config, latencyMs, promptChars, response }: 
     model: config.model,
     status: response.status ?? 'completed',
     latencyMs,
+    timeToFirstTokenMs: timeToFirstTokenMs ?? null,
     promptChars,
     inputTokens,
     outputTokens,
@@ -512,32 +538,81 @@ export async function runTask(request: OrchestrationRequest): Promise<Orchestrat
     }),
   })
 
+  const params = {
+    model: config.model,
+    instructions: request.systemPrompt,
+    // A turn without parts keeps the plain-string content it always had —
+    // text-only conversations produce a byte-identical request.
+    input: request.history.map((turn) =>
+      turn.parts && turn.parts.length > 0
+        ? {
+            role: turn.role,
+            content: [
+              { type: 'input_text' as const, text: turn.text },
+              ...turn.parts.map((part) =>
+                part.type === 'input_image'
+                  ? { type: 'input_image' as const, detail: 'auto' as const, image_url: part.imageUrl }
+                  : { type: 'input_file' as const, filename: part.filename, file_data: part.fileData },
+              ),
+            ],
+          }
+        : { role: turn.role, content: turn.text },
+    ),
+    max_output_tokens: config.maxOutputTokens,
+    ...(config.temperature === null ? {} : { temperature: config.temperature }),
+  }
+  const requestOptions = { timeout: config.timeoutMs, maxRetries: config.maxRetries }
+
   const startedAt = Date.now()
-  let response
+  let firstTokenAt: number | null = null
+  let streamedText = ''
+  let response: ProviderResponse & { output_text?: string | null }
   try {
-    response = await getOpenAI().responses.create({
-      model: config.model,
-      instructions: request.systemPrompt,
-      // A turn without parts keeps the plain-string content it always had —
-      // text-only conversations produce a byte-identical request.
-      input: request.history.map((turn) =>
-        turn.parts && turn.parts.length > 0
-          ? {
-              role: turn.role,
-              content: [
-                { type: 'input_text' as const, text: turn.text },
-                ...turn.parts.map((part) =>
-                  part.type === 'input_image'
-                    ? { type: 'input_image' as const, detail: 'auto' as const, image_url: part.imageUrl }
-                    : { type: 'input_file' as const, filename: part.filename, file_data: part.fileData },
-                ),
-              ],
-            }
-          : { role: turn.role, content: turn.text },
-      ),
-      max_output_tokens: config.maxOutputTokens,
-      ...(config.temperature === null ? {} : { temperature: config.temperature }),
-    }, { timeout: config.timeoutMs, maxRetries: config.maxRetries })
+    if (request.onDelta) {
+      // The streamed and buffered calls are the same request to the same
+      // model with the same limits — only the delivery differs. The terminal
+      // event carries the same status and usage the buffered path reads, so
+      // settlement and telemetry below are shared, not duplicated.
+      const stream = await getOpenAI().responses.create(
+        { ...params, stream: true as const },
+        requestOptions,
+      )
+      let terminal: (ProviderResponse & { output_text?: string | null }) | null = null
+      for await (const event of stream) {
+        if (event.type === 'response.output_text.delta') {
+          if (firstTokenAt === null) firstTokenAt = Date.now()
+          streamedText += event.delta
+          try {
+            request.onDelta(event.delta)
+          } catch {
+            // A broken consumer (say, a client that disconnected mid-reply)
+            // must not abort a generation that is being billed regardless —
+            // the finished reply is still persisted and settled.
+          }
+        } else if (
+          event.type === 'response.completed' ||
+          event.type === 'response.incomplete' ||
+          event.type === 'response.failed'
+        ) {
+          terminal = event.response
+        }
+      }
+      if (!terminal) {
+        // The connection dropped before the provider said how it ended.
+        throw new Error('The response stream ended without completing.')
+      }
+      if (terminal.status === 'failed') {
+        // Streamed failures arrive as an event, not a thrown error. Rethrow
+        // with the provider's code so classification (and the owner-safe
+        // sentence it picks) works exactly as on the buffered path.
+        throw Object.assign(new Error('The response stream reported failure.'), {
+          code: (terminal as { error?: { code?: string | null } }).error?.code ?? null,
+        })
+      }
+      response = terminal
+    } else {
+      response = await getOpenAI().responses.create(params, requestOptions)
+    }
   } catch (error) {
     await settleAiUsageFailure(handle)
     throw reportFailure(request.task, request.plan, config, Date.now() - startedAt, error)
@@ -545,7 +620,9 @@ export async function runTask(request: OrchestrationRequest): Promise<Orchestrat
 
   await settleAiUsage(handle, textActual(config.model, response))
 
-  const text = response.output_text?.trim() ?? ''
+  // The deltas are the source of truth for a streamed reply: the terminal
+  // event's raw JSON does not carry the SDK's aggregated `output_text`.
+  const text = (request.onDelta ? streamedText : response.output_text ?? '').trim()
   const latencyMs = Date.now() - startedAt
   recordTiming({
     task: request.task,
@@ -554,6 +631,7 @@ export async function runTask(request: OrchestrationRequest): Promise<Orchestrat
     latencyMs,
     promptChars,
     response,
+    timeToFirstTokenMs: firstTokenAt === null ? null : firstTokenAt - startedAt,
   })
 
   if (!text) {

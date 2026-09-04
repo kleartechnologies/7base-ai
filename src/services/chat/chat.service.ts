@@ -21,7 +21,7 @@ import {
 import { deleteAsset } from '@/services/storage/storage.service'
 import { fromSnapshot } from '@/lib/firebase/mapper'
 import type { Conversation, Message, MessageBlock, SendMessageInput } from '@/types'
-import { requestAssistantReply } from '@/services/ai/ai.client'
+import { requestAssistantReply, streamAssistantReply } from '@/services/ai/ai.client'
 import type { AiError } from '@/services/ai/ai.types'
 import {
   buildAttachmentBlocks,
@@ -147,12 +147,16 @@ export interface SendMessageOutcome {
 /**
  * Writes the user's message, then asks the backend for a reply.
  *
- * Resolves as soon as the user message is stored. The assistant reply lands
- * separately through the `observeMessages` subscription.
+ * The user message is stored first, then the reply is requested and awaited.
+ * When `onAssistantDelta` is given, the reply is requested as a stream and
+ * each piece of EVA's text is forwarded as it is generated — the finished
+ * assistant message still lands through the `observeMessages` subscription,
+ * written once, server-side, exactly as on the non-streamed path.
  */
 export async function sendMessage(
   ownerId: string,
   input: SendMessageInput,
+  onAssistantDelta?: (text: string) => void,
 ): Promise<SendMessageOutcome> {
   const text = input.text.trim()
   const drafts = input.attachments ?? []
@@ -226,11 +230,14 @@ export async function sendMessage(
     updatedAt: now,
   })
 
-  const reply = await requestAssistantReply({
+  const replyRequest = {
     conversationId,
     businessId: input.businessId,
     userMessageId: newMessageRef.id,
-  })
+  }
+  const reply = onAssistantDelta
+    ? await streamAssistantReply(replyRequest, onAssistantDelta)
+    : await requestAssistantReply(replyRequest)
 
   return {
     conversationId,

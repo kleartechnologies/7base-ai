@@ -4,6 +4,7 @@ import { toUserMessage } from '@/lib/firebase/errors'
 import { observeMessages, sendMessage } from '@/services/chat/chat.service'
 import type { AiError } from '@/services/ai/ai.types'
 import type { AttachmentDraft, Message } from '@/types'
+import { createStreamBuffer } from './streamBuffer'
 
 interface ThreadState {
   /** Which conversation this state describes. */
@@ -12,6 +13,14 @@ interface ThreadState {
   loading: boolean
   /** True from submit until MARKA's reply lands in the thread. */
   awaitingReply: boolean
+  /**
+   * EVA's reply as it is being composed, streamed ahead of the stored
+   * message. Null when nothing is streaming; the empty string means the
+   * stream is open but no text has arrived yet (the thinking state). It is
+   * local render state only — the finished message always arrives whole
+   * through the Firestore subscription, which is when this clears.
+   */
+  streamingText: string | null
   error: string | null
 }
 
@@ -19,12 +28,16 @@ export interface UseConversationResult extends Omit<ThreadState, 'conversationId
   send: (text: string, attachments?: AttachmentDraft[]) => Promise<void>
 }
 
+/** Shown when a reply broke after some of it was already on screen (§ honesty). */
+const INTERRUPTED_MESSAGE = 'EVA’s response was interrupted. Please try again.'
+
 function emptyThread(conversationId: string | null): ThreadState {
   return {
     conversationId,
     messages: [],
     loading: Boolean(conversationId),
     awaitingReply: false,
+    streamingText: null,
     error: null,
   }
 }
@@ -34,7 +47,11 @@ function emptyThread(conversationId: string | null): ThreadState {
  *
  * The user's message and MARKA's reply arrive through the same Firestore
  * subscription, so there is no separate "response" path to keep in sync — the
- * thread is whatever Firestore says it is.
+ * thread is whatever Firestore says it is. Streaming does not change that
+ * contract: while EVA composes, her text is mirrored into `streamingText` for
+ * immediate rendering, and the moment the stored assistant message arrives it
+ * replaces the mirror in the same render. Nothing streamed is ever persisted
+ * from the client.
  *
  * State is tagged with the conversation it belongs to and discarded during
  * render when the route changes, rather than being cleared from an effect.
@@ -63,15 +80,19 @@ export function useConversation(
     const unsubscribe = observeMessages(
       conversationId,
       (messages) => {
+        // MARKA has answered once the newest turn is hers — which also means
+        // any locally streamed mirror of that answer is now redundant.
+        const replyArrived = messages.at(-1)?.role === 'assistant'
         setState((current) => ({
           conversationId,
           messages,
           loading: false,
-          // MARKA has answered once the newest turn is hers.
           awaitingReply:
-            current.conversationId === conversationId &&
-            current.awaitingReply &&
-            messages.at(-1)?.role !== 'assistant',
+            current.conversationId === conversationId && current.awaitingReply && !replyArrived,
+          streamingText:
+            current.conversationId === conversationId && !replyArrived
+              ? current.streamingText
+              : null,
           error: current.conversationId === conversationId ? current.error : null,
         }))
       },
@@ -81,6 +102,7 @@ export function useConversation(
           conversationId,
           loading: false,
           awaitingReply: false,
+          streamingText: null,
           error: 'Could not load this conversation.',
         }))
       },
@@ -101,12 +123,35 @@ export function useConversation(
           // the thinking indicator is visible while the reply is generated.
           loading: conversationId ? base.loading : true,
           awaitingReply: true,
+          streamingText: null,
           error: null,
         }
       })
 
+      // EVA's text, streamed ahead of the stored message. Deltas arrive while
+      // the state is still tagged with the id this send started from (a new
+      // thread is re-tagged only after the reply completes), so the closure id
+      // is the right guard. Flushes are coalesced so a fast stream does not
+      // render per token.
+      let streamedAny = false
+      const buffer = createStreamBuffer((fullText) => {
+        streamedAny = true
+        // The awaitingReply guard closes a race: once the stored reply has
+        // arrived (or failed), a trailing flush must not resurrect the mirror.
+        setState((current) =>
+          current.conversationId === conversationId && current.awaitingReply
+            ? { ...current, streamingText: fullText }
+            : current,
+        )
+      })
+
       try {
-        const outcome = await sendMessage(uid, { conversationId, businessId, text, attachments })
+        const outcome = await sendMessage(
+          uid,
+          { conversationId, businessId, text, attachments },
+          (delta) => buffer.push(delta),
+        )
+        buffer.finish()
         const settledId = outcome.conversationId
 
         if (!conversationId) {
@@ -122,14 +167,26 @@ export function useConversation(
         }
 
         if (outcome.replyError) {
-          const message = describeReplyError(outcome.replyError)
+          // A reply that broke after text was already on screen must say so —
+          // pretending the visible fragment was EVA's whole answer would be a
+          // lie. The fragment is dropped, never stored; retry is a fresh send.
+          const message = streamedAny
+            ? INTERRUPTED_MESSAGE
+            : describeReplyError(outcome.replyError)
           setState((current) =>
             current.conversationId === settledId || current.conversationId === conversationId
-              ? { ...current, conversationId: settledId, awaitingReply: false, error: message }
+              ? {
+                  ...current,
+                  conversationId: settledId,
+                  awaitingReply: false,
+                  streamingText: null,
+                  error: message,
+                }
               : current,
           )
         }
       } catch (caught) {
+        buffer.finish()
         // The send itself failed, so no navigation happened; the state is
         // still tagged with the id this send started from.
         setState((current) =>
@@ -138,6 +195,7 @@ export function useConversation(
                 ...current,
                 loading: Boolean(conversationId) && current.loading,
                 awaitingReply: false,
+                streamingText: null,
                 error: toUserMessage(caught, 'Your message could not be sent. Please try again.'),
               }
             : current,
@@ -151,6 +209,7 @@ export function useConversation(
     messages: thread.messages,
     loading: thread.loading,
     awaitingReply: thread.awaitingReply,
+    streamingText: thread.streamingText,
     error: thread.error,
     send,
   }

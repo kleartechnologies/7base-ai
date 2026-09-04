@@ -6,6 +6,7 @@ import { useConversation } from './useConversation'
 import { ChatComposer } from './components/ChatComposer'
 import { EmptyState } from './components/EmptyState'
 import { MessageBubble } from './components/MessageBubble'
+import { StreamingMessage } from './components/StreamingMessage'
 import { ThinkingIndicator } from './components/ThinkingIndicator'
 
 /**
@@ -28,7 +29,7 @@ export default function ChatPage() {
     [navigate],
   )
 
-  const { messages, loading, awaitingReply, error, send } = useConversation(
+  const { messages, loading, awaitingReply, streamingText, error, send } = useConversation(
     conversationId ?? null,
     handleConversationCreated,
   )
@@ -36,6 +37,8 @@ export default function ChatPage() {
   // Opening a thread jumps to the newest message. After that, new content only
   // scrolls the view when the user is already at (or near) the bottom — never
   // yanking someone away from an older message they scrolled up to read.
+  // Streamed text growth follows the same rule: the view keeps up with EVA's
+  // typing only for a reader already at the bottom.
   const scrolledThreadRef = useRef<string | null>(null)
   useEffect(() => {
     const container = scrollRef.current
@@ -52,7 +55,7 @@ export default function ChatPage() {
     if (messages.length > 0) {
       scrolledThreadRef.current = threadKey
     }
-  }, [conversationId, messages.length, awaitingReply])
+  }, [conversationId, messages.length, awaitingReply, streamingText?.length])
 
   const isEmpty = !loading && messages.length === 0
 
@@ -73,7 +76,13 @@ export default function ChatPage() {
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
               ))}
-              {awaitingReply ? <ThinkingIndicator /> : null}
+              {streamingText ? (
+                // EVA's reply, rendered as it is generated. Swapped for the
+                // stored message in the same render the snapshot delivers it.
+                <StreamingMessage text={streamingText} />
+              ) : awaitingReply ? (
+                <ThinkingIndicator />
+              ) : null}
               <div ref={bottomRef} />
             </div>
           </div>
