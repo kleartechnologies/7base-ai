@@ -1,6 +1,11 @@
 import { cn } from '@/lib/utils'
 
-/** The wordmark. Restrained by design — no gradient, no glow. */
+/**
+ * The wordmark. Restrained by design — no gradient, no glow.
+ *
+ * The customer-facing product name is 7BASE AI; the component keeps its
+ * historical identifier, which is internal and safe to leave.
+ */
 export function MarkaLogo({ className }: { className?: string }) {
   return (
     <span
@@ -9,7 +14,7 @@ export function MarkaLogo({ className }: { className?: string }) {
         className,
       )}
     >
-      MARKA
+      7BASE AI
     </span>
   )
 }

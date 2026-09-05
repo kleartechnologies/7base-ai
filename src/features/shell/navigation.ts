@@ -11,9 +11,11 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
+import type { MessageKey } from '@/i18n/translate'
 
 export interface NavItem {
-  label: string
+  /** Dictionary key — resolved with `t()` at render time so labels re-translate. */
+  labelKey: MessageKey
   to: string
   icon: LucideIcon
 }
@@ -25,18 +27,18 @@ export interface NavItem {
  * is separated so the working tabs read as one group.
  */
 export const WORKSPACE_NAV: NavItem[] = [
-  { label: 'Overview', to: ROUTES.overview, icon: LayoutGrid },
-  { label: 'Campaigns', to: ROUTES.campaigns, icon: Megaphone },
-  { label: 'Creative', to: ROUTES.creative, icon: Image },
-  { label: 'Assets', to: ROUTES.assets, icon: FolderOpen },
-  { label: 'Library', to: ROUTES.library, icon: LibraryBig },
-  { label: 'Calendar', to: ROUTES.calendar, icon: CalendarDays },
-  { label: 'Results', to: ROUTES.results, icon: TrendingUp },
-  { label: 'Business', to: ROUTES.business, icon: Store },
+  { labelKey: 'nav.overview', to: ROUTES.overview, icon: LayoutGrid },
+  { labelKey: 'nav.campaigns', to: ROUTES.campaigns, icon: Megaphone },
+  { labelKey: 'nav.creative', to: ROUTES.creative, icon: Image },
+  { labelKey: 'nav.assets', to: ROUTES.assets, icon: FolderOpen },
+  { labelKey: 'nav.library', to: ROUTES.library, icon: LibraryBig },
+  { labelKey: 'nav.calendar', to: ROUTES.calendar, icon: CalendarDays },
+  { labelKey: 'nav.results', to: ROUTES.results, icon: TrendingUp },
+  { labelKey: 'nav.business', to: ROUTES.business, icon: Store },
 ]
 
 export const SETTINGS_NAV: NavItem = {
-  label: 'Settings',
+  labelKey: 'nav.settings',
   to: ROUTES.settings,
   icon: Settings,
 }

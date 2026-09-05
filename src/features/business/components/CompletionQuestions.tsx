@@ -3,6 +3,7 @@ import { Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/useI18n'
 import { toUserMessage } from '@/lib/firebase/errors'
 import {
   applyAnswer,
@@ -38,6 +39,7 @@ export function CompletionQuestions({
   /** Called once, when the last question has been answered or skipped. */
   onFinished?: () => void
 }) {
+  const { t } = useI18n()
   // Fixed at mount so answering one question never reshuffles the rest.
   const [questions] = useState<CompletionQuestion[]>(() => missingQuestions(business))
   const [index, setIndex] = useState(0)
@@ -73,7 +75,7 @@ export function CompletionQuestions({
       await onSaved?.()
       advance()
     } catch (caught) {
-      setError(toUserMessage(caught, 'Could not save that. Please try again.'))
+      setError(toUserMessage(caught, t('business.saveAnswerFailed')))
     } finally {
       setBusy(false)
     }
@@ -85,7 +87,7 @@ export function CompletionQuestions({
     return (
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
         <Check className="size-4 shrink-0" aria-hidden />
-        That’s everything for now — EVA will remember your answers.
+        {t('business.completionDone')}
       </p>
     )
   }
@@ -96,7 +98,7 @@ export function CompletionQuestions({
     <form onSubmit={submit} className="space-y-4">
       {questions.length > 1 ? (
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
-          {index + 1} of {questions.length}
+          {t('business.questionProgress', { current: index + 1, total: questions.length })}
         </p>
       ) : null}
 
@@ -158,10 +160,10 @@ export function CompletionQuestions({
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={busy || !hasAnswer}>
           {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
-          Save answer
+          {t('business.saveAnswer')}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={advance} disabled={busy}>
-          Skip
+          {t('business.skip')}
         </Button>
       </div>
     </form>

@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { useI18n } from '@/hooks/useI18n'
 import { FullPageError } from '@/components/FullPageError'
 import { FullPageLoader } from '@/components/FullPageLoader'
 import { decideProtectedRoute } from './routeDecision'
@@ -16,6 +17,7 @@ import { ROUTES } from './paths'
  */
 export function ProtectedRoute() {
   const { status, profile, business, error, refresh } = useAuth()
+  const { t } = useI18n()
   const location = useLocation()
 
   const decision = decideProtectedRoute({
@@ -33,12 +35,12 @@ export function ProtectedRoute() {
 
   switch (decision) {
     case 'loading':
-      return <FullPageLoader label="Loading MARKA" />
+      return <FullPageLoader label={t('app.loading')} />
     case 'signIn':
       // Remember where they were headed so sign-in can return them there.
       return <Navigate to={ROUTES.signIn} replace state={{ from: location.pathname }} />
     case 'error':
-      return <FullPageError message={error ?? 'Something went wrong.'} onRetry={refresh} />
+      return <FullPageError message={error ?? t('firebaseError.fallback')} onRetry={refresh} />
     case 'onboarding':
       return <Navigate to={ROUTES.onboarding} replace />
     case 'app':

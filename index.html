@@ -4,7 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="MARKA — an AI marketing manager for small businesses." />
+    <meta name="description" content="7BASE AI — an AI marketing manager for small businesses." />
+    <script>
+      // Pre-paint preference bootstrap: applies the saved theme and language
+      // before the app bundle loads, so a dark-mode user never sees a white
+      // flash. The storage keys and accepted values duplicate
+      // src/lib/theme.ts and src/i18n/language.ts — keep the two in sync.
+      ;(function () {
+        try {
+          var root = document.documentElement
+          var appearance = localStorage.getItem('sevenbase.appearance')
+          var dark =
+            appearance === 'dark' ||
+            (appearance !== 'light' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          root.classList.toggle('dark', dark)
+          root.style.colorScheme = dark ? 'dark' : 'light'
+          var language = localStorage.getItem('sevenbase.language')
+          if (language === 'ms') root.lang = 'ms'
+        } catch (e) {
+          /* Storage unavailable (private mode, etc.) — defaults are fine. */
+        }
+      })()
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,7 +34,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <title>MARKA</title>
+    <title>7BASE AI</title>
   </head>
   <body>
     <div id="root"></div>

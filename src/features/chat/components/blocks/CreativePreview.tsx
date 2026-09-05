@@ -5,6 +5,7 @@ import { firstUsableColor, readableTextOn } from '@/features/creative/posterSpec
 import { retryCreativeImage } from '@/services/ai/ai.client'
 import { getAssetUrl } from '@/services/storage/storage.service'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/useI18n'
 import type { CreativePreviewBlock } from '@/types'
 
 /**
@@ -18,6 +19,7 @@ import type { CreativePreviewBlock } from '@/types'
  * over polish.
  */
 export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
+  const { t } = useI18n()
   // The resolved URL and any load failure are keyed by the storage path, so a
   // changed image simply stops matching — no state reset inside the effect.
   const storagePath = block.image?.storagePath ?? null
@@ -78,7 +80,7 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
     if (!result.ok) {
       setRetryNote(result.error.message)
     } else if (!result.data.imageReady) {
-      setRetryNote('The image still could not be created. Your copy is untouched — try again in a moment.')
+      setRetryNote(t('creative.retryStillFailed'))
     }
     // On success the updated preview arrives as a new message in the thread.
   }
@@ -91,14 +93,14 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
       <div className="border-b border-border px-5 py-3">
         <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           <Images className="size-3.5" aria-hidden />
-          Marketing materials
+          {t('creative.marketingMaterials')}
           {block.image?.source === 'generated' ? (
             <span className="ml-auto rounded-full border border-border px-1.5 py-px text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
-              AI-generated image
+              {t('creative.aiGeneratedImage')}
             </span>
           ) : block.image?.source === 'upload' ? (
             <span className="ml-auto rounded-full border border-border px-1.5 py-px text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
-              Your photo
+              {t('creative.yourPhoto')}
             </span>
           ) : null}
         </p>
@@ -110,7 +112,7 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
       {/* The poster: visual + live text overlay, same layout the export draws. */}
       <div className="px-5 pt-4">
         <div
-          className={`relative w-full max-w-sm overflow-hidden rounded-lg bg-[#20242b] ${
+          className={`relative w-full max-w-sm overflow-hidden rounded-lg bg-poster-surface ${
             block.format === 'portrait_post' ? 'aspect-[4/5]' : 'aspect-square'
           }`}
         >
@@ -161,7 +163,7 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
           <div className="mt-3 flex max-w-sm items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-[13px] leading-relaxed text-muted-foreground">
             <ImageOff className="mt-px size-4 shrink-0" aria-hidden />
             <div>
-              <p>The poster image couldn’t be created — your marketing copy below is ready to use.</p>
+              <p>{t('creative.imageFailed')}</p>
               <Button
                 size="sm"
                 variant="outline"
@@ -170,7 +172,7 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
                 disabled={retrying}
               >
                 <RefreshCw className={`size-3.5 ${retrying ? 'animate-spin' : ''}`} aria-hidden />
-                {retrying ? 'Creating the image…' : 'Try the image again'}
+                {retrying ? t('creative.retryingImage') : t('creative.retryImage')}
               </Button>
               {retryNote ? <p className="mt-2">{retryNote}</p> : null}
             </div>
@@ -180,26 +182,26 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
 
       {/* Captions: each channel's copy, one click to use it. */}
       <div className="space-y-4 px-5 py-4">
-        <Caption label="Facebook caption" text={block.captions.facebook} />
-        <Caption label="Instagram caption" text={block.captions.instagram} />
-        <Caption label="Short copy" text={block.captions.short} />
-        <Caption label="WhatsApp message" text={block.captions.whatsapp} />
+        <Caption label={t('creative.captionFacebook')} text={block.captions.facebook} />
+        <Caption label={t('creative.captionInstagram')} text={block.captions.instagram} />
+        <Caption label={t('creative.captionShort')} text={block.captions.short} />
+        <Caption label={t('creative.captionWhatsapp')} text={block.captions.whatsapp} />
       </div>
 
       <div className="border-t border-border px-5 py-3.5">
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={handleDownload} disabled={downloading}>
             <Download className="size-3.5" aria-hidden />
-            {downloading ? 'Preparing…' : 'Download Poster'}
+            {downloading ? t('creative.preparingDownload') : t('creative.downloadPoster')}
           </Button>
         </div>
         {downloadError ? (
           <p className="mt-2 text-[13px] leading-relaxed text-destructive">
-            The poster could not be downloaded. Please try again.
+            {t('creative.downloadFailed')}
           </p>
         ) : null}
         <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-          Tell me what to change — the headline, the captions, or the image.
+          {t('creative.editHint')}
         </p>
       </div>
     </div>
@@ -207,6 +209,7 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
 }
 
 function Caption({ label, text }: { label: string; text: string | null }) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -230,7 +233,7 @@ function Caption({ label, text }: { label: string; text: string | null }) {
           onClick={handleCopy}
           className="ml-auto rounded-full border border-border px-2 py-px text-[11px] font-normal normal-case tracking-normal text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          {copied ? 'Copied.' : 'Copy'}
+          {copied ? t('creative.copied') : t('creative.copy')}
         </button>
       </p>
       <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-foreground">{text}</p>

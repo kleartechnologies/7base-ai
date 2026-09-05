@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ROUTES } from '@/app/routes/paths'
+import { useI18n } from '@/hooks/useI18n'
 import { cn } from '@/lib/utils'
 import type { Conversation } from '@/types'
 
@@ -28,6 +29,7 @@ export function ChatHistoryList({
   onDelete,
   onNavigate,
 }: ChatHistoryListProps) {
+  const { t } = useI18n()
   // Deleting a conversation is permanent, so the menu action only *asks* —
   // the row swaps to an inline confirm and nothing is removed until the owner
   // clicks Delete a second time.
@@ -57,7 +59,7 @@ export function ChatHistoryList({
     }
     return (
       <p className="px-2.5 py-2 text-[13px] leading-relaxed text-muted-foreground">
-        Your conversations with EVA will appear here.
+        {t('shell.historyEmpty')}
       </p>
     )
   }
@@ -78,7 +80,7 @@ export function ChatHistoryList({
             >
               <p className="truncate text-[13px] text-foreground">{conversation.title}</p>
               <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-                Delete this conversation? This can’t be undone.
+                {t('shell.deleteConversationConfirm')}
               </p>
               <div className="mt-1.5 flex items-center gap-1.5">
                 <Button
@@ -89,10 +91,10 @@ export function ChatHistoryList({
                     onDelete(conversation.id)
                   }}
                 >
-                  Delete
+                  {t('common.delete')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setPendingDeleteId(null)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             </li>
@@ -118,7 +120,7 @@ export function ChatHistoryList({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`Options for ${conversation.title}`}
+                aria-label={t('shell.conversationOptions', { title: conversation.title })}
                 className="absolute right-0.5 top-1/2 size-7 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover/item:opacity-100 data-[state=open]:opacity-100"
               >
                 <MoreHorizontal />
@@ -130,7 +132,7 @@ export function ChatHistoryList({
                 onSelect={() => setPendingDeleteId(conversation.id)}
               >
                 <Trash2 />
-                Delete
+                {t('common.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

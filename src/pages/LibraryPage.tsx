@@ -4,7 +4,7 @@ import { Copy, Check, LibraryBig } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { copyTextToClipboard } from '@/features/creative/poster'
 import {
-  COPY_CHANNEL_LABELS,
+  COPY_CHANNEL_LABEL_KEYS,
   LIBRARY_TABS,
   filterByTab,
   type LibraryItem,
@@ -12,6 +12,8 @@ import {
 } from '@/features/library/libraryItem'
 import { useLibrary } from '@/features/library/useLibrary'
 import { useAuth } from '@/hooks/useAuth'
+import { useI18n } from '@/hooks/useI18n'
+import type { MessageKey } from '@/i18n/translate'
 import { getAssetUrl } from '@/services/storage/storage.service'
 import { Button } from '@/components/ui/button'
 
@@ -27,33 +29,38 @@ import { Button } from '@/components/ui/button'
  */
 
 /** Owner-facing names, not schema names. */
-const TYPE_LABELS: Record<LibraryItem['type'], string> = {
-  creative: 'Poster',
-  copy: 'Caption',
-  campaign: 'Campaign',
-  recommendation: 'Idea',
+const TYPE_KEYS: Record<LibraryItem['type'], MessageKey> = {
+  creative: 'library.typePoster',
+  copy: 'library.typeCaption',
+  campaign: 'library.typeCampaign',
+  recommendation: 'library.typeIdea',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'Draft',
-  generating: 'Generating',
-  ready: 'Ready',
-  failed: 'Failed',
-  archived: 'Archived',
+const STATUS_KEYS: Record<string, MessageKey> = {
+  draft: 'library.statusDraft',
+  generating: 'library.statusGenerating',
+  ready: 'library.statusReady',
+  failed: 'library.statusFailed',
+  archived: 'library.statusArchived',
 }
 
-const EMPTY_COPY: Record<LibraryTab, string> = {
-  all: 'No marketing work yet. Ask EVA in the chat — the recommendations, campaigns, posters and captions you build together are collected here.',
-  creatives:
-    'No creatives yet. Open a campaign and choose “Create Marketing Materials” — posters land here.',
-  copywriting:
-    'No copywriting yet. Captions arrive together with each creative EVA makes.',
-  campaigns:
-    'No campaigns yet. When EVA recommends a move in the chat, one click turns it into a campaign.',
-  recommendations: 'No recommendations yet. Ask EVA what you want to achieve.',
+const EMPTY_KEYS: Record<LibraryTab, MessageKey> = {
+  all: 'library.emptyAll',
+  creatives: 'library.emptyCreatives',
+  copywriting: 'library.emptyCopywriting',
+  campaigns: 'library.emptyCampaigns',
+  recommendations: 'library.emptyRecommendations',
+}
+
+/** `failedSources` carries stable source ids; name them in the UI language. */
+const SOURCE_KEYS: Record<string, MessageKey> = {
+  creatives: 'library.tabCreatives',
+  campaigns: 'library.tabCampaigns',
+  recommendations: 'library.tabRecommendations',
 }
 
 export default function LibraryPage() {
+  const { t } = useI18n()
   const { user } = useAuth()
   const [tab, setTab] = useState<LibraryTab>('all')
   const { items, campaignNames, builtByRecommendation, loading, failedSources } = useLibrary(
@@ -68,48 +75,57 @@ export default function LibraryPage() {
       <header>
         <h1 className="flex items-center gap-2.5 text-[22px] font-semibold tracking-[-0.01em] text-foreground">
           <LibraryBig className="size-5 text-muted-foreground" aria-hidden />
-          Library
+          {t('library.pageTitle')}
         </h1>
         <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          Everything EVA has created for your business, in one place — newest first.
+          {t('library.pageIntro')}
         </p>
       </header>
 
-      <div className="mt-6 flex flex-wrap gap-1.5" role="tablist" aria-label="Library sections">
-        {LIBRARY_TABS.map(({ tab: t, label }) => (
+      <div
+        className="mt-6 flex flex-wrap gap-1.5"
+        role="tablist"
+        aria-label={t('library.sectionsAria')}
+      >
+        {LIBRARY_TABS.map(({ tab: tabKey, labelKey }) => (
           <button
-            key={t}
+            key={tabKey}
             type="button"
             role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
+            aria-selected={tab === tabKey}
+            onClick={() => setTab(tabKey)}
             className={`rounded-full border px-3 py-1 text-[13px] transition-colors ${
-              tab === t
+              tab === tabKey
                 ? 'border-foreground bg-foreground text-background'
                 : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
             }`}
           >
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>
 
       {failedSources.length > 0 && !allFailed ? (
         <p className="mt-4 text-[13px] text-destructive">
-          Some of your work could not be loaded ({failedSources.join(', ')}). The rest is shown
-          below — refresh to try again.
+          {t('library.partialLoadFailed', {
+            sources: failedSources
+              .map((source) => (SOURCE_KEYS[source] ? t(SOURCE_KEYS[source]) : source))
+              .join(', '),
+          })}
         </p>
       ) : null}
 
       {loading ? (
-        <p className="mt-10 text-[14px] text-muted-foreground">Loading…</p>
+        <p className="mt-10 text-[14px] text-muted-foreground">{t('common.loadingEllipsis')}</p>
       ) : allFailed ? (
         <p className="mt-10 max-w-xl text-[14px] leading-relaxed text-destructive">
-          Your library could not be loaded. Check your connection and refresh to try again.
+          {t('library.loadFailed')}
         </p>
       ) : visible.length === 0 ? (
         <p className="mt-10 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          {EMPTY_COPY[tab]}
+          {/* The quoted button name comes from the same dictionary as the
+              button itself, so the two can never drift apart. */}
+          {t(EMPTY_KEYS[tab], { createMaterials: t('campaign.createMaterials') })}
         </p>
       ) : (
         <ul className="mt-8 space-y-3">
@@ -141,6 +157,8 @@ function LibraryCard({
   campaignName?: string
   builtCampaignId?: string
 }) {
+  const { t, language } = useI18n()
+
   if (item.type === 'copy') {
     return <CopyCard item={item} campaignName={campaignName} />
   }
@@ -161,13 +179,14 @@ function LibraryCard({
           ? ROUTES.conversation(item.conversationId)
           : ROUTES.creative
 
+  const statusKey = item.status ? STATUS_KEYS[item.status] : undefined
   const statusLabel =
     item.type === 'recommendation'
       ? builtCampaignId
-        ? 'Campaign built'
-        : 'Proposed'
-      : item.status
-        ? (STATUS_LABELS[item.status] ?? null)
+        ? t('library.campaignBuilt')
+        : t('library.proposed')
+      : statusKey
+        ? t(statusKey)
         : null
 
   return (
@@ -179,7 +198,7 @@ function LibraryCard({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {TYPE_LABELS[item.type]}
+            {t(TYPE_KEYS[item.type])}
           </span>
           <h2 className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
             {item.title}
@@ -197,7 +216,11 @@ function LibraryCard({
         ) : null}
         <p className="mt-2 text-[12px] text-muted-foreground">
           {item.type !== 'campaign' && campaignName ? `${campaignName} · ` : ''}
-          Updated {new Date(item.updatedAt).toLocaleDateString()}
+          {t('library.updatedOn', {
+            date: new Date(item.updatedAt).toLocaleDateString(
+              language === 'ms' ? 'ms-MY' : 'en-MY',
+            ),
+          })}
         </p>
       </div>
     </Link>
@@ -210,6 +233,7 @@ function LibraryCard({
  * never from a chat block snapshot.
  */
 function CopyCard({ item, campaignName }: { item: LibraryItem; campaignName?: string }) {
+  const { t, language } = useI18n()
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -225,7 +249,7 @@ function CopyCard({ item, campaignName }: { item: LibraryItem; campaignName?: st
     <div className="rounded-xl border border-border bg-card px-5 py-4">
       <div className="flex items-center gap-2">
         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-          {item.channel ? COPY_CHANNEL_LABELS[item.channel] : TYPE_LABELS.copy}
+          {item.channel ? t(COPY_CHANNEL_LABEL_KEYS[item.channel]) : t(TYPE_KEYS.copy)}
         </span>
         <h2 className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
           {item.title}
@@ -239,16 +263,16 @@ function CopyCard({ item, campaignName }: { item: LibraryItem; campaignName?: st
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" onClick={() => void handleCopy()}>
           {copied ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
-          {copied ? 'Copied' : 'Copy text'}
+          {copied ? t('library.copied') : t('library.copyText')}
         </Button>
         {item.conversationId ? (
           <Button size="sm" variant="ghost" asChild>
-            <Link to={ROUTES.conversation(item.conversationId)}>Edit in chat</Link>
+            <Link to={ROUTES.conversation(item.conversationId)}>{t('creative.editInChat')}</Link>
           </Button>
         ) : null}
         <span className="ml-auto text-[12px] text-muted-foreground">
           {campaignName ? `${campaignName} · ` : ''}
-          {new Date(item.updatedAt).toLocaleDateString()}
+          {new Date(item.updatedAt).toLocaleDateString(language === 'ms' ? 'ms-MY' : 'en-MY')}
         </span>
       </div>
     </div>
@@ -281,7 +305,7 @@ function CreativeThumb({ item }: { item: LibraryItem }) {
   }, [item.imagePath])
 
   return (
-    <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#20242b]">
+    <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-poster-surface">
       {imageUrl ? (
         <img src={imageUrl} alt="" className="size-full object-cover" />
       ) : null}

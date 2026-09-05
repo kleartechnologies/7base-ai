@@ -1,13 +1,15 @@
 import { TrendingUp } from 'lucide-react'
+import { useI18n } from '@/hooks/useI18n'
 import { PlaceholderPage } from './PlaceholderPage'
 
 export default function ResultsPage() {
+  const { t } = useI18n()
   return (
     <PlaceholderPage
-      title="Results"
-      description="How your marketing performed, and what EVA learned from it."
+      title={t('results.title')}
+      description={t('results.description')}
       icon={TrendingUp}
-      hint="After a campaign runs, its results will appear here and feed into EVA’s future recommendations."
+      hint={t('results.hint')}
     />
   )
 }

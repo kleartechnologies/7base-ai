@@ -91,7 +91,7 @@ describe('useConversation streaming state', () => {
   })
 
   it('a reply that broke after partial text says so — and drops the fragment', () => {
-    expect(hook).toContain('EVA’s response was interrupted. Please try again.')
+    expect(hook).toContain("t('chat.interrupted')")
     expect(hook).toContain('streamedAny')
     // Every error path clears the streamed mirror; nothing partial survives.
     expect(hook.match(/streamingText: null/g)?.length).toBeGreaterThanOrEqual(4)

@@ -1,3 +1,4 @@
+import { t } from '@/i18n/store'
 import type { FileLike } from '@/features/assets/assetFile'
 
 /**
@@ -42,20 +43,19 @@ export interface AttachmentFileCheck {
 }
 
 export function validateAttachmentFile(file: FileLike): AttachmentFileCheck {
+  // Reasons resolve through the i18n store at validation time, so they follow
+  // the active UI language without this module depending on React.
   if (file.type === 'image/svg+xml') {
-    return { ok: false, reason: 'SVG files are not supported. Please use JPEG, PNG or WebP.' }
+    return { ok: false, reason: t('attachment.svgUnsupported') }
   }
   if (!(ACCEPTED_ATTACHMENT_MIME_TYPES as readonly string[]).includes(file.type)) {
-    return {
-      ok: false,
-      reason: 'This file type is not supported. Please attach a JPEG, PNG, WebP or PDF.',
-    }
+    return { ok: false, reason: t('attachment.typeUnsupported') }
   }
   if (file.size > MAX_ATTACHMENT_BYTES) {
-    return { ok: false, reason: 'This file is too large. The maximum size is 10 MB.' }
+    return { ok: false, reason: t('attachment.tooLarge') }
   }
   if (file.size <= 0) {
-    return { ok: false, reason: 'This file is empty.' }
+    return { ok: false, reason: t('attachment.empty') }
   }
   return { ok: true, reason: null }
 }

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/useI18n'
 
 /**
  * The fallback, kept as small as it can possibly be.
@@ -23,6 +24,7 @@ export function ManualStep({
   onSubmit: (name: string, offering: string) => void
   onBack: () => void
 }) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [offering, setOffering] = useState('')
 
@@ -35,24 +37,24 @@ export function ManualStep({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
-        <Label htmlFor="manual-name">Business name</Label>
+        <Label htmlFor="manual-name">{t('onboarding.businessName')}</Label>
         <Input
           id="manual-name"
           autoFocus
           required
           value={name}
-          placeholder="Warung Pak Din"
+          placeholder={t('onboarding.businessNamePlaceholder')}
           onChange={(event) => setName(event.target.value)}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="manual-offering">What do you sell?</Label>
+        <Label htmlFor="manual-offering">{t('onboarding.whatDoYouSell')}</Label>
         <Textarea
           id="manual-offering"
           rows={3}
           value={offering}
-          placeholder="Home-style Malay food — nasi lemak, rendang, set lunches for offices nearby."
+          placeholder={t('onboarding.offeringPlaceholder')}
           onChange={(event) => setOffering(event.target.value)}
         />
       </div>
@@ -66,10 +68,10 @@ export function ManualStep({
       <div className="flex items-center gap-2">
         <Button type="submit" size="lg" disabled={busy || !name.trim()}>
           {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
-          Continue
+          {t('common.continue')}
         </Button>
         <Button type="button" variant="ghost" size="lg" onClick={onBack} disabled={busy}>
-          Back
+          {t('common.back')}
         </Button>
       </div>
     </form>

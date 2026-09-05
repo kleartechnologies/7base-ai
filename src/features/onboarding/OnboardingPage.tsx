@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Business } from '@/types'
 import { DEFAULT_AUTHENTICATED_ROUTE } from '@/app/routes/paths'
 import { useAuth } from '@/hooks/useAuth'
+import { useI18n } from '@/hooks/useI18n'
 import { toUserMessage } from '@/lib/firebase/errors'
 import { acceptBusinessBrain, createBusiness } from '@/services/business/business.service'
 import { missingQuestions } from '@/services/business/completion'
@@ -31,6 +32,7 @@ type Step = 'choose' | 'website' | 'manual'
 export default function OnboardingPage() {
   const navigate = useNavigate()
   const { user, refresh } = useAuth()
+  const { t } = useI18n()
   const analysis = useWebsiteAnalysis()
 
   const [step, setStep] = useState<Step>('choose')
@@ -71,7 +73,7 @@ export default function OnboardingPage() {
       }
       navigate(DEFAULT_AUTHENTICATED_ROUTE, { replace: true })
     } catch (caught) {
-      setSubmitError(toUserMessage(caught, 'Could not finish setting up. Please try again.'))
+      setSubmitError(toUserMessage(caught, t('onboarding.finishFailed')))
       setBusy(false)
     }
   }
@@ -84,7 +86,7 @@ export default function OnboardingPage() {
       const created = await createBusiness(user.uid, { name, offering: offering || null })
       await finish(created)
     } catch (caught) {
-      setSubmitError(toUserMessage(caught, 'Could not save your business. Please try again.'))
+      setSubmitError(toUserMessage(caught, t('onboarding.saveBusinessFailed')))
       setBusy(false)
     }
   }
@@ -97,8 +99,8 @@ export default function OnboardingPage() {
   if (completingId) {
     return (
       <OnboardingLayout
-        title="There’s still a little more EVA would like to learn"
-        subtitle="Answer what you can — skip anything. EVA will remember your answers, and you can always come back to this from the Business tab."
+        title={t('onboarding.completionTitle')}
+        subtitle={t('onboarding.completionSubtitle')}
       >
         <CompletionStep
           businessId={completingId}
@@ -111,8 +113,8 @@ export default function OnboardingPage() {
   if (analysis.phase === 'starting' || analysis.phase === 'running') {
     return (
       <OnboardingLayout
-        title="EVA is taking a look"
-        subtitle={`Reading ${displaySource(url)}. This usually takes under a minute.`}
+        title={t('onboarding.analysingTitle')}
+        subtitle={t('onboarding.analysingSubtitle', { source: displaySource(url) })}
       >
         <AnalysingStep stage={analysis.stage} />
       </OnboardingLayout>
@@ -121,7 +123,7 @@ export default function OnboardingPage() {
 
   if (analysis.phase === 'failed' && analysis.failure) {
     return (
-      <OnboardingLayout title="EVA couldn’t do that">
+      <OnboardingLayout title={t('onboarding.failedTitle')}>
         <AnalysisFailed
           failure={analysis.failure}
           onRetryWebsite={() => {
@@ -141,8 +143,8 @@ export default function OnboardingPage() {
     return (
       <OnboardingLayout
         wide
-        title="Here’s what EVA understood"
-        subtitle="Have a quick look. Fix anything that’s wrong — EVA will remember your version."
+        title={t('onboarding.reviewTitle')}
+        subtitle={t('onboarding.reviewSubtitle')}
       >
         <ReviewStep
           business={analysis.business}
@@ -161,8 +163,8 @@ export default function OnboardingPage() {
   if (step === 'website') {
     return (
       <OnboardingLayout
-        title="Where can EVA learn about your business?"
-        subtitle="One link is enough — EVA reads it and works out the rest. You just check what she found."
+        title={t('onboarding.websiteTitle')}
+        subtitle={t('onboarding.websiteSubtitle')}
       >
         <WebsiteStep
           initialUrl={url}
@@ -178,8 +180,8 @@ export default function OnboardingPage() {
   if (step === 'manual') {
     return (
       <OnboardingLayout
-        title="Tell EVA the basics"
-        subtitle="Two things is enough. EVA will learn the rest as you work together."
+        title={t('onboarding.manualTitle')}
+        subtitle={t('onboarding.manualSubtitle')}
       >
         <ManualStep
           busy={busy}
@@ -193,8 +195,8 @@ export default function OnboardingPage() {
 
   return (
     <OnboardingLayout
-      title="Let’s get EVA up to speed"
-      subtitle="Rather than asking you to fill in a profile, EVA would rather go and find out."
+      title={t('onboarding.chooseTitle')}
+      subtitle={t('onboarding.chooseSubtitle')}
     >
       <MethodChoice onChooseWebsite={() => setStep('website')} />
       <button
@@ -202,7 +204,7 @@ export default function OnboardingPage() {
         onClick={() => setStep('manual')}
         className="mt-6 text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
-        I’d rather type it in myself
+        {t('onboarding.typeItMyself')}
       </button>
     </OnboardingLayout>
   )

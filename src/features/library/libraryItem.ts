@@ -1,3 +1,4 @@
+import type { MessageKey } from '@/i18n/translate'
 import type { Campaign, Creative, EntityId, MarketingRecommendation, Millis } from '@/types'
 
 /**
@@ -30,11 +31,12 @@ export const COPY_CHANNELS: readonly CopyChannel[] = [
   'whatsapp',
 ]
 
-export const COPY_CHANNEL_LABELS: Record<CopyChannel, string> = {
-  facebook: 'Facebook caption',
-  instagram: 'Instagram caption',
-  short: 'Short copy',
-  whatsapp: 'WhatsApp message',
+/** Same dictionary entries the creative preview uses for its caption labels. */
+export const COPY_CHANNEL_LABEL_KEYS: Record<CopyChannel, MessageKey> = {
+  facebook: 'creative.captionFacebook',
+  instagram: 'creative.captionInstagram',
+  short: 'creative.captionShort',
+  whatsapp: 'creative.captionWhatsapp',
 }
 
 export interface LibraryItem {
@@ -64,12 +66,12 @@ export interface LibraryItem {
 
 export type LibraryTab = 'all' | 'creatives' | 'copywriting' | 'campaigns' | 'recommendations'
 
-export const LIBRARY_TABS: readonly { tab: LibraryTab; label: string }[] = [
-  { tab: 'all', label: 'All' },
-  { tab: 'creatives', label: 'Creatives' },
-  { tab: 'copywriting', label: 'Copywriting' },
-  { tab: 'campaigns', label: 'Campaigns' },
-  { tab: 'recommendations', label: 'Recommendations' },
+export const LIBRARY_TABS: readonly { tab: LibraryTab; labelKey: MessageKey }[] = [
+  { tab: 'all', labelKey: 'library.tabAll' },
+  { tab: 'creatives', labelKey: 'library.tabCreatives' },
+  { tab: 'copywriting', labelKey: 'library.tabCopywriting' },
+  { tab: 'campaigns', labelKey: 'library.tabCampaigns' },
+  { tab: 'recommendations', labelKey: 'library.tabRecommendations' },
 ]
 
 const TAB_TYPES: Record<Exclude<LibraryTab, 'all'>, LibraryItemType> = {

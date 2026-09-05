@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/useI18n'
 import type { DiscoveryErrorCode } from '@/types'
 import type { AnalysisFailure } from '../useWebsiteAnalysis'
 
@@ -39,6 +40,7 @@ export function AnalysisFailed({
   onRetryWebsite: () => void
   onContinueManually: () => void
 }) {
+  const { t } = useI18n()
   const offerManual = OFFER_MANUAL.includes(failure.code)
   // When retrying cannot help, the manual path leads and the website button
   // becomes the quiet alternative rather than the obvious thing to press.
@@ -50,14 +52,13 @@ export function AnalysisFailed({
 
       {failure.code === 'ai_unavailable' ? (
         <p className="text-[13px] leading-relaxed text-muted-foreground">
-          Nothing you did caused this, and trying again won’t clear it. You can still set EVA up
-          yourself in the meantime.
+          {t('onboarding.aiUnavailableNote')}
         </p>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button size="lg" variant={manualLeads ? 'outline' : 'default'} onClick={onRetryWebsite}>
-          Try another link
+          {t('onboarding.tryAnotherLink')}
         </Button>
         {offerManual ? (
           <Button
@@ -65,7 +66,7 @@ export function AnalysisFailed({
             variant={manualLeads ? 'default' : 'ghost'}
             onClick={onContinueManually}
           >
-            Continue manually
+            {t('onboarding.continueManually')}
           </Button>
         ) : null}
       </div>

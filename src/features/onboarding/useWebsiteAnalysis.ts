@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { observeBusiness } from '@/services/business/business.service'
+import { t } from '@/i18n/store'
 import { runWebsiteAnalysis, startWebsiteAnalysis } from '@/services/ai'
 import type { Business, DiscoveryErrorCode, DiscoveryStage } from '@/types'
 
@@ -30,9 +31,10 @@ export interface WebsiteAnalysis {
   reset: () => void
 }
 
-const GENERIC_FAILURE: AnalysisFailure = {
-  code: 'internal',
-  message: 'EVA couldn’t finish analysing the business right now. Please try again.',
+// Built at the moment it is shown, so the message follows the active UI
+// language rather than the one loaded when this module was first imported.
+function genericFailure(): AnalysisFailure {
+  return { code: 'internal', message: t('onboarding.analysisFailed') }
 }
 
 export function useWebsiteAnalysis(): WebsiteAnalysis {
@@ -49,7 +51,7 @@ export function useWebsiteAnalysis(): WebsiteAnalysis {
   useEffect(() => {
     if (!businessId) return
     return observeBusiness(businessId, setBusiness, () => {
-      setLocalFailure(GENERIC_FAILURE)
+      setLocalFailure(genericFailure())
       setLocalPhase('failed')
     })
   }, [businessId])
@@ -73,9 +75,9 @@ export function useWebsiteAnalysis(): WebsiteAnalysis {
       : discovery?.status === 'failed'
         ? {
             code: discovery.errorCode ?? 'internal',
-            message: discovery.error ?? GENERIC_FAILURE.message,
+            message: discovery.error ?? genericFailure().message,
           }
-        : (localFailure ?? GENERIC_FAILURE)
+        : (localFailure ?? genericFailure())
 
   const analyse = useCallback(async (websiteUrl: string) => {
     setLocalPhase('starting')
@@ -87,7 +89,7 @@ export function useWebsiteAnalysis(): WebsiteAnalysis {
     if (!started.ok) {
       setLocalFailure({
         code: started.error.code === 'invalid_request' ? 'invalid_url' : 'internal',
-        message: started.error.message || GENERIC_FAILURE.message,
+        message: started.error.message || genericFailure().message,
       })
       setLocalPhase('failed')
       return
@@ -103,7 +105,7 @@ export function useWebsiteAnalysis(): WebsiteAnalysis {
       // The callable's message is already owner-readable, so keep it.
       setLocalFailure({
         code: 'internal',
-        message: finished.error.message || GENERIC_FAILURE.message,
+        message: finished.error.message || genericFailure().message,
       })
       setLocalPhase('failed')
     }

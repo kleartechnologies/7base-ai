@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FileText, FolderCheck, ImageOff } from 'lucide-react'
 import { formatFileSize } from '@/features/assets/assetFile'
 import { isPdfAttachment } from '@/features/chat/attachmentFile'
+import { useI18n } from '@/hooks/useI18n'
 import { saveAttachmentToAssets } from '@/services/chat/attachment.service'
 import { getAssetUrl } from '@/services/storage/storage.service'
 import type { AttachmentBlock } from '@/types'
@@ -24,6 +25,7 @@ export function AttachmentBlockView({
   /** Enables "Save to Assets"; absent in contexts without a thread. */
   conversationId?: string
 }) {
+  const { t } = useI18n()
   const storagePath = block.storagePath
   const [resolved, setResolved] = useState<{ path: string; url: string } | null>(null)
   const [failedPath, setFailedPath] = useState<string | null>(null)
@@ -66,13 +68,13 @@ export function AttachmentBlockView({
   const saveAction = block.assetId ? (
     <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
       <FolderCheck className="size-3.5" aria-hidden />
-      {saveState === 'saved' ? 'Saved to Assets' : 'From your Assets'}
+      {saveState === 'saved' ? t('attachment.savedToAssets') : t('chat.fromYourAssets')}
     </span>
   ) : conversationId ? (
     saveState === 'saved' ? (
       <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
         <FolderCheck className="size-3.5" aria-hidden />
-        Saved to Assets
+        {t('attachment.savedToAssets')}
       </span>
     ) : (
       <button
@@ -81,7 +83,7 @@ export function AttachmentBlockView({
         disabled={saveState === 'saving'}
         className="rounded-full border border-border px-2 py-px text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
       >
-        {saveState === 'saving' ? 'Saving…' : 'Save to Assets'}
+        {saveState === 'saving' ? t('common.saving') : t('attachment.saveToAssets')}
       </button>
     )
   ) : null
@@ -91,7 +93,7 @@ export function AttachmentBlockView({
       <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground">
         <ImageOff className="size-4 shrink-0" aria-hidden />
         <span className="truncate">{block.fileName}</span>
-        <span className="shrink-0">— no longer available</span>
+        <span className="shrink-0">{t('attachment.noLongerAvailable')}</span>
       </div>
     )
   }
@@ -113,16 +115,14 @@ export function AttachmentBlockView({
                 rel="noopener noreferrer"
                 className="rounded-full border border-border px-2 py-px text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                Open
+                {t('attachment.open')}
               </a>
             ) : null}
             {saveAction}
           </div>
         </div>
         {saveState === 'error' ? (
-          <p className="mt-1 text-[12px] text-destructive">
-            Could not save to Assets. Please try again.
-          </p>
+          <p className="mt-1 text-[12px] text-destructive">{t('attachment.saveFailed')}</p>
         ) : null}
       </div>
     )
@@ -149,9 +149,7 @@ export function AttachmentBlockView({
         {saveAction}
       </figcaption>
       {saveState === 'error' ? (
-        <p className="mt-1 text-[12px] text-destructive">
-          Could not save to Assets. Please try again.
-        </p>
+        <p className="mt-1 text-[12px] text-destructive">{t('attachment.saveFailed')}</p>
       ) : null}
     </figure>
   )

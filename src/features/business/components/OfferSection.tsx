@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useI18n } from '@/hooks/useI18n'
 import type { Business, Product } from '@/types'
 import { EditActions, SectionCard, SourceTag } from './SectionCard'
 import { formatPrice, fromMajorUnits, toMajorUnits, trimmedOrNull } from './fields'
@@ -24,6 +25,7 @@ export function OfferSection({
   startOpen?: boolean
   onSave: (products: Product[]) => Promise<void>
 }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(startOpen)
   const [busy, setBusy] = useState(false)
   const [rows, setRows] = useState<ProductRow[]>(() => business.products.map(toRow))
@@ -49,11 +51,13 @@ export function OfferSection({
 
   return (
     <SectionCard
-      title="What you offer"
+      title={t('business.offerTitle')}
       hint={
         business.products.length > 0
-          ? `EVA found ${business.products.length} ${business.products.length === 1 ? 'item' : 'items'}. Fix anything that looks wrong.`
-          : 'Nothing found yet. Add what you sell so EVA can write about it.'
+          ? business.products.length === 1
+            ? t('business.offerFoundOne')
+            : t('business.offerFoundMany', { count: business.products.length })
+          : t('business.offerEmptyHint')
       }
       editing={editing}
       onEdit={open}
@@ -64,19 +68,19 @@ export function OfferSection({
             {rows.map((row, index) => (
               <div key={row.key} className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
                 <div className="space-y-1.5">
-                  {index === 0 ? <Label className="text-[13px]">Item</Label> : null}
+                  {index === 0 ? <Label className="text-[13px]">{t('business.itemLabel')}</Label> : null}
                   <Input
                     value={row.name}
-                    placeholder="Nasi lemak ayam"
+                    placeholder={t('business.itemPlaceholder')}
                     onChange={(event) => update(setRows, index, { name: event.target.value })}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  {index === 0 ? <Label className="text-[13px]">Price (RM)</Label> : null}
+                  {index === 0 ? <Label className="text-[13px]">{t('business.priceLabel')}</Label> : null}
                   <Input
                     inputMode="decimal"
                     value={row.price}
-                    placeholder="12.90"
+                    placeholder={t('business.pricePlaceholder')}
                     onChange={(event) => update(setRows, index, { price: event.target.value })}
                   />
                 </div>
@@ -84,7 +88,7 @@ export function OfferSection({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-label={`Remove ${row.name || 'item'}`}
+                  aria-label={t('business.removeItem', { name: row.name || t('business.itemGeneric') })}
                   onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
                 >
                   <Trash2 aria-hidden />
@@ -101,13 +105,13 @@ export function OfferSection({
             onClick={() => setRows((current) => [...current, blankRow()])}
           >
             <Plus aria-hidden />
-            Add item
+            {t('business.addItem')}
           </Button>
 
           <EditActions busy={busy} onCancel={() => setEditing(false)} />
         </form>
       ) : business.products.length === 0 ? (
-        <p className="text-sm text-muted-foreground/60">Not known yet</p>
+        <p className="text-sm text-muted-foreground/60">{t('business.notKnownYet')}</p>
       ) : (
         <ul className="divide-y divide-border">
           {business.products.map((product) => (

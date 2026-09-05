@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useI18n } from '@/hooks/useI18n'
 import { toUserMessage } from '@/lib/firebase/errors'
 import { signInWithEmail, signInWithGoogle } from '@/services/auth/auth.service'
 import { AuthLayout } from './components/AuthLayout'
@@ -14,6 +15,7 @@ import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/app/routes/paths'
 export default function SignInPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -29,7 +31,7 @@ export default function SignInPage() {
       await action()
       navigate(redirectTo, { replace: true })
     } catch (caught) {
-      setError(toUserMessage(caught, 'Could not sign in. Please try again.'))
+      setError(toUserMessage(caught, t('auth.signInFailed')))
     } finally {
       setBusy(false)
     }
@@ -42,27 +44,27 @@ export default function SignInPage() {
 
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle="Sign in to continue with MARKA."
+      title={t('auth.welcomeBack')}
+      subtitle={t('auth.signInSubtitle')}
       footer={
         <>
-          New to MARKA?{' '}
+          {t('auth.newHere')}{' '}
           <Link to={ROUTES.signUp} className="font-medium text-foreground hover:underline">
-            Create an account
+            {t('auth.createAccountLink')}
           </Link>
         </>
       }
     >
       <div className="space-y-5">
         <GoogleButton
-          label="Continue with Google"
+          label={t('auth.continueWithGoogle')}
           disabled={busy}
           onClick={() => void run(signInWithGoogle)}
         />
 
         <div className="flex items-center gap-3">
           <span className="h-px flex-1 bg-border" />
-          <span className="text-xs text-muted-foreground">or</span>
+          <span className="text-xs text-muted-foreground">{t('common.or')}</span>
           <span className="h-px flex-1 bg-border" />
         </div>
 
@@ -70,7 +72,7 @@ export default function SignInPage() {
           <FormError message={error} />
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <Input
               id="email"
               type="email"
@@ -78,12 +80,12 @@ export default function SignInPage() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@restaurant.com"
+              placeholder={t('auth.emailPlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t('auth.password')}</Label>
             <Input
               id="password"
               type="password"
@@ -97,7 +99,7 @@ export default function SignInPage() {
 
           <Button type="submit" className="h-10 w-full" disabled={busy}>
             {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
-            Sign in
+            {t('auth.signIn')}
           </Button>
         </form>
       </div>

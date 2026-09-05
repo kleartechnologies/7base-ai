@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { t } from '@/i18n/store'
 
 /**
  * Full-page failure state for errors that block the whole app shell —
@@ -35,10 +36,10 @@ export function FullPageError({
           {retrying ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden />
-              Retrying…
+              {t('common.retrying')}
             </>
           ) : (
-            'Try again'
+            t('common.tryAgain')
           )}
         </Button>
       </div>

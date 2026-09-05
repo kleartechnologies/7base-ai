@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/useI18n'
 import type { Audience, Business } from '@/types'
 import { Chips, EditActions, SectionCard } from './SectionCard'
 import { fromLines, toLines, trimmedOrNull } from './fields'
@@ -21,6 +22,7 @@ export function AudienceSection({
   startOpen?: boolean
   onSave: (audience: Audience) => Promise<void>
 }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(startOpen)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState(() => toForm(business))
@@ -48,8 +50,8 @@ export function AudienceSection({
 
   return (
     <SectionCard
-      title="Who EVA thinks your customers are"
-      hint="EVA’s best reading so far — pages rarely say this outright. Correct it and EVA will keep your version."
+      title={t('business.audienceTitle')}
+      hint={t('business.audienceHint')}
       provenance={business.audience}
       editing={editing}
       onEdit={open}
@@ -57,7 +59,7 @@ export function AudienceSection({
       {editing ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="audience-summary">In a sentence</Label>
+            <Label htmlFor="audience-summary">{t('business.inASentence')}</Label>
             <Textarea
               id="audience-summary"
               rows={2}
@@ -66,7 +68,7 @@ export function AudienceSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="audience-types">Customer types — one per line</Label>
+            <Label htmlFor="audience-types">{t('business.customerTypesPerLine')}</Label>
             <Textarea
               id="audience-types"
               rows={4}
@@ -75,7 +77,7 @@ export function AudienceSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="audience-needs">What they come for — one per line</Label>
+            <Label htmlFor="audience-needs">{t('business.needsPerLine')}</Label>
             <Textarea
               id="audience-needs"
               rows={3}
@@ -88,15 +90,15 @@ export function AudienceSection({
       ) : (
         <div className="space-y-4">
           <p className={audience?.summary ? 'text-sm text-foreground' : 'text-sm text-muted-foreground/60'}>
-            {audience?.summary ?? 'Not known yet'}
+            {audience?.summary ?? t('business.notKnownYet')}
           </p>
           <div className="space-y-2">
-            <p className="text-[13px] text-muted-foreground">Customer types</p>
+            <p className="text-[13px] text-muted-foreground">{t('business.chipCustomerTypes')}</p>
             <Chips items={audience?.customerTypes ?? []} />
           </div>
           {audience?.needs.length ? (
             <div className="space-y-2">
-              <p className="text-[13px] text-muted-foreground">What they come for</p>
+              <p className="text-[13px] text-muted-foreground">{t('business.chipComeFor')}</p>
               <Chips items={audience.needs} />
             </div>
           ) : null}

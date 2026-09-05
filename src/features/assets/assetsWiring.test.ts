@@ -14,11 +14,11 @@ describe('assets route wiring', () => {
   })
 
   it('has an Assets entry in the workspace nav, between Creative and Library', () => {
-    const labels = WORKSPACE_NAV.map((item) => item.label)
-    const assets = WORKSPACE_NAV.find((item) => item.label === 'Assets')
+    const labelKeys = WORKSPACE_NAV.map((item) => item.labelKey)
+    const assets = WORKSPACE_NAV.find((item) => item.labelKey === 'nav.assets')
     expect(assets?.to).toBe(ROUTES.assets)
-    expect(labels.indexOf('Assets')).toBe(labels.indexOf('Creative') + 1)
-    expect(labels.indexOf('Library')).toBe(labels.indexOf('Assets') + 1)
+    expect(labelKeys.indexOf('nav.assets')).toBe(labelKeys.indexOf('nav.creative') + 1)
+    expect(labelKeys.indexOf('nav.library')).toBe(labelKeys.indexOf('nav.assets') + 1)
   })
 })
 

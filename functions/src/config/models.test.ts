@@ -113,6 +113,37 @@ describe('creative task routing', () => {
   })
 })
 
+describe('Phase 7B plan-model matrix', () => {
+  // The complete customer-facing model strategy, pinned cell by cell:
+  //
+  //            reasoning        fast             image
+  //   basic    gpt-5.6-luna     gpt-5.6-luna     gpt-image-2
+  //   pro      gpt-5.6-sol      gpt-5.6-terra    gpt-image-2
+  //
+  // One representative task per tier; the per-task routing above already
+  // proves which task lands on which tier.
+  const MATRIX = [
+    ['basic', 'campaign.diagnose', 'gpt-5.6-luna'],
+    ['basic', 'chat.reply', 'gpt-5.6-luna'],
+    ['basic', 'creative.generate_image', 'gpt-image-2'],
+    ['pro', 'campaign.diagnose', 'gpt-5.6-sol'],
+    ['pro', 'chat.reply', 'gpt-5.6-terra'],
+    ['pro', 'creative.generate_image', 'gpt-image-2'],
+  ] as const
+
+  for (const [plan, task, model] of MATRIX) {
+    it(`${plan} runs ${task} on ${model}`, () => {
+      expect(resolveModelForTask(task, plan).model).toBe(model)
+    })
+  }
+
+  it('a missing plan resolves to the Basic matrix row', () => {
+    expect(resolveModelForTask('chat.reply', undefined as unknown as SubscriptionPlan).model).toBe(
+      'gpt-5.6-luna',
+    )
+  })
+})
+
 describe('subscription plan model routing', () => {
   afterEach(() => {
     vi.unstubAllEnvs()

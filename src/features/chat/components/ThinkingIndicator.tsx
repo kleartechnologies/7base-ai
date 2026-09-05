@@ -1,7 +1,10 @@
-/** A quiet three-dot pulse while MARKA composes its reply. */
+import { useI18n } from '@/hooks/useI18n'
+
+/** A quiet three-dot pulse while EVA composes its reply. */
 export function ThinkingIndicator() {
+  const { t } = useI18n()
   return (
-    <div className="flex items-center gap-1.5 py-1" role="status" aria-label="EVA is thinking">
+    <div className="flex items-center gap-1.5 py-1" role="status" aria-label={t('chat.thinking')}>
       {[0, 150, 300].map((delay) => (
         <span
           key={delay}

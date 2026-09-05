@@ -9,6 +9,7 @@ import {
   requireBusinessOwner,
   requireConversationOwner,
   requireUid,
+  resolveLanguageForUser,
   resolvePlanForUser,
 } from '../lib/auth'
 import type { SubscriptionPlan } from '../config/models'
@@ -175,8 +176,13 @@ export const chatAssistantReply = onCall(
     async function generateReply(): Promise<AssistantReplyResponse> {
     // The plan is resolved from the server's own subscription record, once
     // per request, and threaded to every model call below. The request
-    // payload has no say in it.
-    const plan = await resolvePlanForUser(uid)
+    // payload has no say in it. The saved app language rides along as a
+    // deterministic default-language signal for the reply — read from the
+    // user's own profile, never from the payload.
+    const [plan, preferredLanguage] = await Promise.all([
+      resolvePlanForUser(uid),
+      resolveLanguageForUser(uid),
+    ])
 
     // Ownership is verified before the cast; the document shape is ours.
     const business = businessId
@@ -431,7 +437,8 @@ export const chatAssistantReply = onCall(
         uid,
         plan,
         systemPrompt:
-          buildChatSystemPrompt(buildBusinessContext(business)) + (unavailableNote ?? ''),
+          buildChatSystemPrompt(buildBusinessContext(business), { preferredLanguage }) +
+          (unavailableNote ?? ''),
         history:
           attachmentInput.parts.length > 0
             ? [...history.slice(0, -1), { ...latest, parts: attachmentInput.parts }]

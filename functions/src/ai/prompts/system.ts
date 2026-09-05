@@ -25,9 +25,23 @@ How you speak:
 Which language you speak:
 - Mirror the language of the owner's latest message.
 - English message: reply in natural English.
-- Bahasa Melayu message: reply in natural Bahasa Melayu.
+- Bahasa Melayu message: reply in natural Malaysian Bahasa Melayu — the everyday register a Malaysian owner actually uses, not textbook or formal prose. Keep the common English words Malaysians keep ("promo", "lunch", "weekend"): "Boleh. Kita boleh buat promo lunch untuk weekday." Malaysian Malay only, never Indonesian words or spelling (say "boleh", not "bisa"; "percuma", not "gratis"). Do not drift into Manglish unless the owner writes Manglish.
 - Manglish (mixed Malay-English, the way many Malaysians actually type): reply in natural, respectful Manglish. Do not translate it into formal Bahasa Melayu, and do not switch to full English.
 - Keep the owner's own words for their products, offers and channels in whichever language they used them.`
+
+/**
+ * Appended only when the owner has set the app language to Bahasa Melayu.
+ *
+ * This is a deterministic signal, not a classifier: the saved preference
+ * (read server-side from the user's own profile) biases which language EVA
+ * *defaults* to when a message has no language of its own. The mirroring
+ * rules in EVA_IDENTITY stay authoritative — an owner who saved BM but types
+ * in English still gets English back.
+ */
+export const BM_PREFERENCE_NOTE = `Language preference:
+- This owner set their app language to Bahasa Melayu.
+- When their latest message has no clear language of its own — a bare "ok", a number, an attachment without words — default to natural Malaysian Bahasa Melayu instead of English.
+- A clear language in their latest message always wins over this preference. The mirroring rules above are unchanged.`
 
 export const CURRENT_CAPABILITIES = `What you can do here, and how — be accurate about this if asked:
 - You can discuss their business, diagnose problems, advise, and recommend marketing moves.
@@ -59,8 +73,14 @@ export const BRAIN_USAGE_RULES = `Using what you know about this business:
 - Anything not listed below, you do not know. Best sellers, margins, customer numbers, what worked last year: ask, never guess.
 - If the owner corrects you, that correction wins from then on.`
 
-export function buildChatSystemPrompt(businessContext: string | null): string {
+export function buildChatSystemPrompt(
+  businessContext: string | null,
+  options?: { preferredLanguage?: 'en' | 'ms' },
+): string {
   const parts = [EVA_IDENTITY]
+  if (options?.preferredLanguage === 'ms') {
+    parts.push(BM_PREFERENCE_NOTE)
+  }
   if (businessContext) {
     parts.push(BRAIN_USAGE_RULES)
     parts.push(`What you know about this business:\n${businessContext}`)

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildChatSystemPrompt, CURRENT_CAPABILITIES, EVA_IDENTITY } from './system'
+import {
+  BM_PREFERENCE_NOTE,
+  buildChatSystemPrompt,
+  CURRENT_CAPABILITIES,
+  EVA_IDENTITY,
+} from './system'
 
 /**
  * The capability block is the product's honesty contract: EVA must claim
@@ -21,6 +26,48 @@ describe('EVA identity', () => {
     expect(EVA_IDENTITY).toContain('Manglish')
     // Manglish must not be formalised away.
     expect(EVA_IDENTITY).toContain('Do not translate it into formal Bahasa Melayu')
+  })
+
+  it('asks for natural Malaysian BM, not textbook prose or Indonesian', () => {
+    expect(EVA_IDENTITY).toContain('natural Malaysian Bahasa Melayu')
+    expect(EVA_IDENTITY).toContain('not textbook')
+    expect(EVA_IDENTITY).toContain('never Indonesian')
+    // The register is anchored with a concrete example, not an adjective.
+    expect(EVA_IDENTITY).toContain('Boleh. Kita boleh buat promo lunch untuk weekday.')
+    // BM stays BM: the preference must not shove owners into Manglish.
+    expect(EVA_IDENTITY).toContain('Do not drift into Manglish unless the owner writes Manglish')
+  })
+})
+
+describe('saved-language preference', () => {
+  it('appends the BM default note only when the saved preference is ms', () => {
+    expect(buildChatSystemPrompt(null, { preferredLanguage: 'ms' })).toContain(BM_PREFERENCE_NOTE)
+    expect(buildChatSystemPrompt(null, { preferredLanguage: 'en' })).not.toContain(
+      'Language preference:',
+    )
+    expect(buildChatSystemPrompt(null)).not.toContain('Language preference:')
+  })
+
+  it('biases the default without overriding mirroring', () => {
+    // The note is deterministic prompt text keyed off the stored preference —
+    // no classifier, no extra model call — and it must defer to the latest
+    // message: an owner who saved BM but types English still gets English.
+    expect(BM_PREFERENCE_NOTE).toContain('no clear language of its own')
+    expect(BM_PREFERENCE_NOTE).toContain(
+      'A clear language in their latest message always wins over this preference.',
+    )
+  })
+
+  it('keeps the prompt frame intact around the note', () => {
+    const prompt = buildChatSystemPrompt('- Name: Warung Uji', { preferredLanguage: 'ms' })
+    expect(prompt.startsWith(EVA_IDENTITY)).toBe(true)
+    expect(prompt.endsWith(CURRENT_CAPABILITIES)).toBe(true)
+    // Identity (with its mirroring rules) first, then the preference note,
+    // then the brain — "the mirroring rules above" must actually be above.
+    expect(prompt.indexOf(BM_PREFERENCE_NOTE)).toBeGreaterThan(prompt.indexOf(EVA_IDENTITY))
+    expect(prompt.indexOf(BM_PREFERENCE_NOTE)).toBeLessThan(
+      prompt.indexOf('What you know about this business:'),
+    )
   })
 })
 

@@ -1,8 +1,10 @@
 import { NavLink } from 'react-router-dom'
+import { useI18n } from '@/hooks/useI18n'
 import { cn } from '@/lib/utils'
 import type { NavItem } from '../navigation'
 
 export function SidebarNavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+  const { t } = useI18n()
   const Icon = item.icon
   return (
     <NavLink
@@ -18,7 +20,7 @@ export function SidebarNavLink({ item, onNavigate }: { item: NavItem; onNavigate
       }
     >
       <Icon className="size-4 shrink-0" aria-hidden />
-      <span className="truncate">{item.label}</span>
+      <span className="truncate">{t(item.labelKey)}</span>
     </NavLink>
   )
 }

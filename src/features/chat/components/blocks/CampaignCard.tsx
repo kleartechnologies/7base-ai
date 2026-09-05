@@ -4,15 +4,16 @@ import { Megaphone } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { generateCreativeMaterials } from '@/services/ai/ai.client'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/useI18n'
 import type { CampaignCardBlock } from '@/types'
 
-const CHANNEL_LABELS: Record<CampaignCardBlock['channels'][number], string> = {
+// Channel proper nouns read the same in every language; only the two
+// non-brand channels (in-store, website) go through the dictionary.
+const CHANNEL_PROPER_NOUNS: Partial<Record<CampaignCardBlock['channels'][number], string>> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
   whatsapp: 'WhatsApp',
   tiktok: 'TikTok',
-  in_store: 'In-store',
-  website: 'Website',
 }
 
 /**
@@ -27,8 +28,16 @@ const CHANNEL_LABELS: Record<CampaignCardBlock['channels'][number], string> = {
  * button only needs to start the work and say that it is happening.
  */
 export function CampaignCard({ block }: { block: CampaignCardBlock }) {
+  const { t } = useI18n()
   const [creating, setCreating] = useState(false)
   const [materialsError, setMaterialsError] = useState<string | null>(null)
+
+  const channelLabel = (channel: CampaignCardBlock['channels'][number]) =>
+    channel === 'in_store'
+      ? t('campaign.channelInStore')
+      : channel === 'website'
+        ? t('campaign.channelWebsite')
+        : (CHANNEL_PROPER_NOUNS[channel] ?? channel)
 
   const handleCreateMaterials = async () => {
     setCreating(true)
@@ -44,9 +53,13 @@ export function CampaignCard({ block }: { block: CampaignCardBlock }) {
       <div className="border-b border-border px-5 py-3">
         <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           <Megaphone className="size-3.5" aria-hidden />
-          Campaign
+          {t('campaign.title')}
           <span className="ml-auto rounded-full border border-border px-1.5 py-px text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
-            {block.status === 'draft' ? 'Draft' : block.status === 'ready' ? 'Ready' : 'Archived'}
+            {block.status === 'draft'
+              ? t('campaign.statusDraft')
+              : block.status === 'ready'
+                ? t('campaign.statusReady')
+                : t('campaign.statusArchived')}
           </span>
         </p>
         <h3 className="mt-1 text-[16px] font-semibold tracking-[-0.01em] text-foreground">
@@ -55,48 +68,60 @@ export function CampaignCard({ block }: { block: CampaignCardBlock }) {
       </div>
 
       <div className="space-y-4 px-5 py-4">
-        {block.objective ? <Row label="Objective">{block.objective}</Row> : null}
+        {block.objective ? <Row label={t('campaign.objective')}>{block.objective}</Row> : null}
 
         {block.audience ? (
-          <Row label="Audience" tag={block.audience.basis === 'known' ? 'Known' : 'Hypothesis'}>
+          <Row
+            label={t('campaign.audience')}
+            tag={block.audience.basis === 'known' ? t('campaign.tagKnown') : t('campaign.tagHypothesis')}
+          >
             {block.audience.description}
           </Row>
         ) : null}
 
         {block.offer ? (
           <Row
-            label="Offer"
-            tag={block.offer.basis === 'existing' ? 'Existing' : 'Recommendation'}
+            label={t('campaign.offer')}
+            tag={
+              block.offer.basis === 'existing'
+                ? t('campaign.tagExisting')
+                : t('campaign.tagRecommendation')
+            }
           >
             {block.offer.description}
           </Row>
         ) : null}
 
-        {block.keyMessage ? <Row label="Message">{block.keyMessage}</Row> : null}
-        {block.callToAction ? <Row label="Call to action">{block.callToAction}</Row> : null}
+        {block.keyMessage ? <Row label={t('campaign.message')}>{block.keyMessage}</Row> : null}
+        {block.callToAction ? (
+          <Row label={t('campaign.callToAction')}>{block.callToAction}</Row>
+        ) : null}
 
         {block.channels.length > 0 ? (
-          <Row label="Channels">
-            {block.channels.map((channel) => CHANNEL_LABELS[channel]).join(' · ')}
+          <Row label={t('campaign.channels')}>
+            {block.channels.map(channelLabel).join(' · ')}
           </Row>
         ) : null}
 
-        {block.durationDays ? <Row label="Duration">{block.durationDays} days</Row> : null}
+        {block.durationDays ? (
+          <Row label={t('campaign.duration')}>
+            {t('campaign.durationDays', { days: block.durationDays })}
+          </Row>
+        ) : null}
       </div>
 
       <div className="border-t border-border px-5 py-3.5">
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" asChild>
-            <Link to={ROUTES.campaignDetail(block.campaignId)}>Edit</Link>
+            <Link to={ROUTES.campaignDetail(block.campaignId)}>{t('common.edit')}</Link>
           </Button>
           <Button size="sm" onClick={handleCreateMaterials} disabled={creating}>
-            {creating ? 'Creating your marketing materials…' : 'Create Marketing Materials'}
+            {creating ? t('campaign.creatingMaterials') : t('campaign.createMaterials')}
           </Button>
         </div>
         {creating ? (
           <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-            EVA is writing your copy and preparing the poster. They’ll appear here as a new
-            message — this can take a minute or two.
+            {t('campaign.creatingMaterialsNote')}
           </p>
         ) : null}
         {materialsError ? (

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Check, Globe, Pencil, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/useI18n'
 import { describeSource, sourceTone, type SourceMark } from '@/services/business/brain'
 
 /** Anything that carries provenance: a section, a field stamp, a product. */
@@ -28,6 +29,7 @@ export function SectionCard({
   onEdit: () => void
   children: ReactNode
 }) {
+  const { t } = useI18n()
   return (
     <section className="rounded-xl border border-border bg-card px-6 py-5">
       <header className="mb-4 flex items-start justify-between gap-4">
@@ -42,7 +44,7 @@ export function SectionCard({
           {editing ? null : (
             <Button variant="ghost" size="sm" onClick={onEdit}>
               <Pencil aria-hidden />
-              Edit
+              {t('common.edit')}
             </Button>
           )}
         </div>
@@ -70,6 +72,9 @@ const TONE_ICON = {
  * The wording lives in `describeSource` so the Brain and the UI cannot drift.
  */
 export function SourceBadge({ provenance }: { provenance: SourceClaim }) {
+  // Subscribes to language changes; the wording itself comes from
+  // `describeSource`, which resolves through the same i18n store.
+  useI18n()
   const label = describeSource(provenance)
   const tone = sourceTone(provenance)
   if (!label || !tone) return null
@@ -89,6 +94,7 @@ export function SourceBadge({ provenance }: { provenance: SourceClaim }) {
  * from?" without opening anything.
  */
 export function SourceTag({ provenance }: { provenance: SourceClaim }) {
+  useI18n()
   const label = describeSource(provenance)
   const tone = sourceTone(provenance)
   if (!label || !tone) return null
@@ -120,12 +126,13 @@ export function Field({
   value: string | null | undefined
   provenance?: SourceClaim
 }) {
+  const { t } = useI18n()
   return (
     <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-4 py-1.5 text-sm">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className={value ? 'text-foreground' : 'text-muted-foreground/60'}>
         <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span>{value || 'Not known yet'}</span>
+          <span>{value || t('business.notKnownYet')}</span>
           {value ? <SourceTag provenance={provenance} /> : null}
         </span>
       </dd>
@@ -156,8 +163,9 @@ export function ChipGroup({
 
 /** Short list values, shown as calm chips rather than bullet lists. */
 export function Chips({ items }: { items: string[] }) {
+  const { t } = useI18n()
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground/60">Not known yet</p>
+    return <p className="text-sm text-muted-foreground/60">{t('business.notKnownYet')}</p>
   }
   return (
     <ul className="flex flex-wrap gap-1.5">
@@ -181,13 +189,14 @@ export function EditActions({
   busy: boolean
   onCancel: () => void
 }) {
+  const { t } = useI18n()
   return (
     <div className="mt-5 flex items-center gap-2">
       <Button type="submit" size="sm" disabled={busy}>
-        Save
+        {t('common.save')}
       </Button>
       <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
-        Cancel
+        {t('common.cancel')}
       </Button>
     </div>
   )

@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/hooks/useAuth'
+import { useI18n } from '@/hooks/useI18n'
+import type { MessageKey } from '@/i18n/translate'
 import {
   ASSET_FILE_ACCEPT,
   formatFileSize,
@@ -31,33 +33,33 @@ import { cn } from '@/lib/utils'
  * the normal removal, deletion is a deliberate two-step.
  */
 
-const TYPE_LABELS: Record<AssetType, string> = {
-  product: 'Product',
-  menu: 'Menu',
-  logo: 'Logo',
-  brand: 'Brand',
-  photo: 'Photo',
-  document: 'Document',
-  promotional: 'Promotional',
-  other: 'Other',
+const TYPE_KEYS: Record<AssetType, MessageKey> = {
+  product: 'asset.typeProduct',
+  menu: 'asset.typeMenu',
+  logo: 'asset.typeLogo',
+  brand: 'asset.typeBrand',
+  photo: 'asset.typePhoto',
+  document: 'asset.typeDocument',
+  promotional: 'asset.typePromotional',
+  other: 'asset.typeOther',
 }
 
 type StatusFilter = 'active' | 'archived' | 'all'
 
-const FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: 'active', label: 'Active' },
-  { key: 'archived', label: 'Archived' },
-  { key: 'all', label: 'All' },
+const FILTERS: { key: StatusFilter; labelKey: MessageKey }[] = [
+  { key: 'active', labelKey: 'asset.filterActive' },
+  { key: 'archived', labelKey: 'asset.filterArchived' },
+  { key: 'all', labelKey: 'asset.filterAll' },
 ]
 
-const EMPTY_COPY: Record<StatusFilter, string> = {
-  active:
-    'Nothing here yet. Upload a dish photo, your menu or your logo — everything you add is kept here for your marketing.',
-  archived: 'Nothing archived. Assets you archive are kept here, out of the way.',
-  all: 'Nothing here yet. Upload a dish photo, your menu or your logo to get started.',
+const EMPTY_KEYS: Record<StatusFilter, MessageKey> = {
+  active: 'asset.emptyActive',
+  archived: 'asset.emptyArchived',
+  all: 'asset.emptyAll',
 }
 
 export default function AssetsPage() {
+  const { t } = useI18n()
   const { user, business } = useAuth()
   const [assets, setAssets] = useState<Asset[] | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -96,7 +98,7 @@ export default function AssetsPage() {
       const created = await createAssetFromFile(user.uid, business.id, file)
       setEditingId(created.id)
     } catch {
-      setUploadError('The upload failed. Please check your connection and try again.')
+      setUploadError(t('asset.uploadFailed'))
     } finally {
       setUploading(false)
     }
@@ -111,11 +113,10 @@ export default function AssetsPage() {
       <header>
         <h1 className="flex items-center gap-2.5 text-[22px] font-semibold tracking-[-0.01em] text-foreground">
           <FolderOpen className="size-5 text-muted-foreground" aria-hidden />
-          Assets
+          {t('asset.pageTitle')}
         </h1>
         <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          Store the photos, menus, logos and other business materials EVA can use in your
-          marketing.
+          {t('asset.pageIntro')}
         </p>
       </header>
 
@@ -125,7 +126,7 @@ export default function AssetsPage() {
           type="file"
           accept={ASSET_FILE_ACCEPT}
           className="sr-only"
-          aria-label="Upload asset file"
+          aria-label={t('asset.uploadFileAria')}
           onChange={(event) => void handleFileChange(event)}
         />
         <Button
@@ -133,11 +134,11 @@ export default function AssetsPage() {
           disabled={uploading || !business}
         >
           <Upload className="size-3.5" aria-hidden />
-          {uploading ? 'Uploading…' : 'Upload Asset'}
+          {uploading ? t('asset.uploading') : t('asset.upload')}
         </Button>
 
         <div className="ml-auto flex items-center gap-1.5">
-          {FILTERS.map(({ key, label }) => (
+          {FILTERS.map(({ key, labelKey }) => (
             <button
               key={key}
               type="button"
@@ -149,31 +150,27 @@ export default function AssetsPage() {
                   : 'border-border text-muted-foreground hover:text-foreground',
               )}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
       </div>
 
       {!business ? (
-        <p className="mt-4 text-[13px] text-muted-foreground">
-          Set up your business first — assets are stored against your business.
-        </p>
+        <p className="mt-4 text-[13px] text-muted-foreground">{t('asset.needBusiness')}</p>
       ) : null}
       {uploadError ? (
         <p className="mt-4 text-[13px] text-destructive">{uploadError}</p>
       ) : null}
       {loadFailed ? (
-        <p className="mt-4 text-[13px] text-destructive">
-          Your assets could not be loaded. Please refresh the page to try again.
-        </p>
+        <p className="mt-4 text-[13px] text-destructive">{t('asset.loadFailed')}</p>
       ) : null}
 
       {assets === null ? (
-        <p className="mt-10 text-[14px] text-muted-foreground">Loading…</p>
+        <p className="mt-10 text-[14px] text-muted-foreground">{t('common.loadingEllipsis')}</p>
       ) : visible.length === 0 ? (
         <p className="mt-10 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          {EMPTY_COPY[filter]}
+          {t(EMPTY_KEYS[filter])}
         </p>
       ) : (
         <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -260,6 +257,7 @@ function AssetCard({
   showStatus: boolean
   onEdit: () => void
 }) {
+  const { t } = useI18n()
   const url = useAssetDownloadUrl(asset.storagePath)
   const [busy, setBusy] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -275,7 +273,7 @@ function AssetCard({
     try {
       await archiveAsset(asset.id, asset.status === 'active')
     } catch {
-      setActionError('That change could not be saved. Please try again.')
+      setActionError(t('asset.actionFailed'))
     } finally {
       setBusy(false)
     }
@@ -287,7 +285,7 @@ function AssetCard({
     try {
       await deleteAssetCompletely(asset)
     } catch {
-      setActionError('The file could not be deleted. Nothing was removed — please try again.')
+      setActionError(t('asset.deleteFailed'))
       setConfirmingDelete(false)
     } finally {
       setBusy(false)
@@ -305,14 +303,14 @@ function AssetCard({
           </h2>
           {showStatus && asset.status === 'archived' ? (
             <span className="ml-auto shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-              Archived
+              {t('asset.statusArchived')}
             </span>
           ) : null}
         </div>
 
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-            {TYPE_LABELS[asset.type]}
+            {t(TYPE_KEYS[asset.type])}
           </span>
           {productName ? (
             <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
@@ -332,14 +330,14 @@ function AssetCard({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {confirmingDelete ? (
             <>
-              <span className="text-[12px] text-destructive">Delete permanently?</span>
+              <span className="text-[12px] text-destructive">{t('asset.deleteConfirm')}</span>
               <Button
                 size="sm"
                 variant="destructive"
                 onClick={() => void handleDelete()}
                 disabled={busy}
               >
-                {busy ? 'Deleting…' : 'Delete'}
+                {busy ? t('asset.deleting') : t('common.delete')}
               </Button>
               <Button
                 size="sm"
@@ -347,18 +345,18 @@ function AssetCard({
                 onClick={() => setConfirmingDelete(false)}
                 disabled={busy}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             </>
           ) : (
             <>
               <Button size="sm" variant="outline" onClick={onEdit} disabled={busy}>
-                Edit
+                {t('common.edit')}
               </Button>
               {asset.contentType === 'application/pdf' && url ? (
                 <Button size="sm" variant="outline" asChild>
                   <a href={url} target="_blank" rel="noopener noreferrer">
-                    Open
+                    {t('asset.open')}
                   </a>
                 </Button>
               ) : null}
@@ -368,7 +366,7 @@ function AssetCard({
                 onClick={() => void handleArchiveToggle()}
                 disabled={busy}
               >
-                {asset.status === 'active' ? 'Archive' : 'Restore'}
+                {asset.status === 'active' ? t('asset.archive') : t('asset.restore')}
               </Button>
               <Button
                 size="sm"
@@ -377,7 +375,7 @@ function AssetCard({
                 onClick={() => setConfirmingDelete(true)}
                 disabled={busy}
               >
-                Delete
+                {t('common.delete')}
               </Button>
             </>
           )}
@@ -400,6 +398,7 @@ function AssetEditor({
   products: Product[]
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const url = useAssetDownloadUrl(asset.storagePath)
   const [name, setName] = useState(asset.name)
   const [type, setType] = useState<AssetType>(asset.type)
@@ -443,7 +442,7 @@ function AssetEditor({
         <div className="min-w-0 grow space-y-3.5">
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="asset-name">Name</Label>
+              <Label htmlFor="asset-name">{t('asset.fieldName')}</Label>
               <Input
                 id="asset-name"
                 value={name}
@@ -452,7 +451,7 @@ function AssetEditor({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="asset-type">Type</Label>
+              <Label htmlFor="asset-type">{t('asset.fieldType')}</Label>
               <select
                 id="asset-type"
                 value={type}
@@ -464,7 +463,7 @@ function AssetEditor({
               >
                 {ASSET_TYPES.map((option) => (
                   <option key={option} value={option}>
-                    {TYPE_LABELS[option]}
+                    {t(TYPE_KEYS[option])}
                   </option>
                 ))}
               </select>
@@ -472,12 +471,12 @@ function AssetEditor({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="asset-description">Description</Label>
+            <Label htmlFor="asset-description">{t('asset.fieldDescription')}</Label>
             <Textarea
               id="asset-description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="What this shows, e.g. our chicken mandhi set for two"
+              placeholder={t('asset.descriptionPlaceholder')}
               rows={2}
               disabled={busy}
             />
@@ -485,17 +484,17 @@ function AssetEditor({
 
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="asset-tags">Tags</Label>
+              <Label htmlFor="asset-tags">{t('asset.fieldTags')}</Label>
               <Input
                 id="asset-tags"
                 value={tags}
                 onChange={(event) => setTags(event.target.value)}
-                placeholder="mandhi, chicken, lunch"
+                placeholder={t('asset.tagsPlaceholder')}
                 disabled={busy}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="asset-product">Product</Label>
+              <Label htmlFor="asset-product">{t('asset.fieldProduct')}</Label>
               <select
                 id="asset-product"
                 value={productId}
@@ -503,7 +502,7 @@ function AssetEditor({
                 disabled={busy}
                 className={selectClassName}
               >
-                <option value="">No product</option>
+                <option value="">{t('asset.noProduct')}</option>
                 {products.map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.name}
@@ -521,24 +520,22 @@ function AssetEditor({
               disabled={busy}
               className="size-4 accent-foreground"
             />
-            Allow EVA to use this asset in your marketing
+            {t('asset.allowAiUse')}
           </label>
 
           <div className="flex items-center gap-2 pt-1">
             <Button type="submit" size="sm" disabled={busy}>
-              {busy ? 'Saving…' : 'Save'}
+              {busy ? t('common.saving') : t('common.save')}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={onClose} disabled={busy}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <span className="ml-auto truncate text-[12px] text-muted-foreground">
               {asset.fileName} · {formatFileSize(asset.sizeBytes)}
             </span>
           </div>
           {error ? (
-            <p className="text-[12px] text-destructive">
-              Your changes could not be saved. Please try again.
-            </p>
+            <p className="text-[12px] text-destructive">{t('asset.saveFailed')}</p>
           ) : null}
         </div>
       </div>

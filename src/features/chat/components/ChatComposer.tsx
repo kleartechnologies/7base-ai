@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/useAuth'
+import { useI18n } from '@/hooks/useI18n'
 import { formatFileSize } from '@/features/assets/assetFile'
 import {
   ACCEPTED_ATTACHMENT_MIME_TYPES,
@@ -49,7 +50,7 @@ interface PendingAttachment {
 export function ChatComposer({
   onSend,
   disabled,
-  placeholder = 'Tell EVA what you want to achieve…',
+  placeholder,
   autoFocus = false,
 }: {
   onSend: (text: string, attachments: AttachmentDraft[]) => void
@@ -58,6 +59,7 @@ export function ChatComposer({
   autoFocus?: boolean
 }) {
   const { user, business } = useAuth()
+  const { t } = useI18n()
   const [value, setValue] = useState('')
   const [pending, setPending] = useState<PendingAttachment[]>([])
   const [attachError, setAttachError] = useState<string | null>(null)
@@ -83,9 +85,9 @@ export function ChatComposer({
     if (!pickerWanted || !user) return
     return observeAssets(user.uid, setAssets, () => {
       // Say so rather than showing an empty picker that looks like "no assets".
-      setAttachError('Your Assets could not be loaded. Please try again.')
+      setAttachError(t('chat.assetsLoadFailed'))
     })
-  }, [pickerWanted, user])
+  }, [pickerWanted, user, t])
 
   // Preview URLs for rows still staged at unmount are released here; rows
   // removed or sent release theirs at that moment.
@@ -116,7 +118,7 @@ export function ChatComposer({
     let staged = pending
     for (const file of Array.from(files)) {
       if (staged.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
-        setAttachError(`You can attach up to ${MAX_ATTACHMENTS_PER_MESSAGE} files per message.`)
+        setAttachError(t('chat.attachmentLimit', { max: MAX_ATTACHMENTS_PER_MESSAGE }))
         break
       }
       const check = validateAttachmentFile(file)
@@ -142,7 +144,7 @@ export function ChatComposer({
   function addAsset(asset: Asset) {
     setAttachError(null)
     if (pending.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
-      setAttachError(`You can attach up to ${MAX_ATTACHMENTS_PER_MESSAGE} files per message.`)
+      setAttachError(t('chat.attachmentLimit', { max: MAX_ATTACHMENTS_PER_MESSAGE }))
       return
     }
     if (pending.some((item) => item.draft.kind === 'asset' && item.draft.asset.id === asset.id)) {
@@ -205,7 +207,7 @@ export function ChatComposer({
     <form onSubmit={handleSubmit} className="w-full">
       <div className="rounded-2xl border border-input bg-card px-3.5 py-2.5 shadow-xs transition-colors focus-within:border-ring">
         {pending.length > 0 ? (
-          <ul className="mb-2 flex flex-wrap gap-2" aria-label="Attachments to send">
+          <ul className="mb-2 flex flex-wrap gap-2" aria-label={t('chat.attachmentsToSend')}>
             {pending.map((item) => (
               <li
                 key={item.id}
@@ -229,7 +231,7 @@ export function ChatComposer({
                 <button
                   type="button"
                   onClick={() => removePending(item.id)}
-                  aria-label={`Remove ${item.fileName}`}
+                  aria-label={t('chat.removeAttachment', { name: item.fileName })}
                   className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <X className="size-3.5" aria-hidden />
@@ -258,7 +260,7 @@ export function ChatComposer({
                 size="icon-sm"
                 variant="ghost"
                 disabled={disabled || !canAttachMore}
-                aria-label="Attach a file"
+                aria-label={t('chat.attachFile')}
                 className="mb-0.5 rounded-full text-muted-foreground"
               >
                 <Paperclip />
@@ -267,7 +269,7 @@ export function ChatComposer({
             <DropdownMenuContent align="start" side="top">
               <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>
                 <Upload aria-hidden />
-                Upload from device
+                {t('chat.uploadFromDevice')}
               </DropdownMenuItem>
               {business ? (
                 <>
@@ -275,12 +277,12 @@ export function ChatComposer({
                   <DropdownMenuLabel>
                     <span className="flex items-center gap-1.5">
                       <FolderOpen className="size-3.5" aria-hidden />
-                      From your Assets
+                      {t('chat.fromYourAssets')}
                     </span>
                   </DropdownMenuLabel>
                   {attachableAssets.length === 0 ? (
                     <p className="px-2 pb-1.5 text-xs text-muted-foreground">
-                      No usable assets yet.
+                      {t('chat.noUsableAssets')}
                     </p>
                   ) : (
                     attachableAssets.slice(0, 8).map((asset) => (
@@ -300,7 +302,7 @@ export function ChatComposer({
           </DropdownMenu>
 
           <label htmlFor="chat-composer" className="sr-only">
-            Message EVA
+            {t('chat.messageEva')}
           </label>
           <Textarea
             id="chat-composer"
@@ -309,7 +311,7 @@ export function ChatComposer({
             rows={1}
             value={value}
             autoFocus={autoFocus}
-            placeholder={placeholder}
+            placeholder={placeholder ?? t('chat.composerPlaceholder')}
             onChange={(event) => setValue(event.target.value)}
             onKeyDown={handleKeyDown}
             className="max-h-[200px] py-1.5 text-[15px] leading-[1.6]"
@@ -318,7 +320,7 @@ export function ChatComposer({
             type="submit"
             size="icon-sm"
             disabled={!canSend}
-            aria-label="Send message"
+            aria-label={t('chat.sendMessage')}
             className="mb-0.5 rounded-full"
           >
             <ArrowUp />
@@ -331,7 +333,7 @@ export function ChatComposer({
         </p>
       ) : null}
       <p className="mt-2 text-center text-xs text-muted-foreground">
-        EVA can make mistakes. Review important details before publishing.
+        {t('chat.disclaimer')}
       </p>
     </form>
   )

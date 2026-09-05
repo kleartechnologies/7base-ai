@@ -8,6 +8,8 @@
  * a round trip.
  */
 
+import { t } from '@/i18n/store'
+
 const MAX_URL_LENGTH = 2048
 
 export interface UrlCheck {
@@ -18,7 +20,9 @@ export interface UrlCheck {
   message: string | null
 }
 
-const INVALID = 'That doesn’t look like a valid website URL.'
+// Resolved through the i18n store at check time — a module-level string
+// constant would freeze whichever language was active when this file loaded.
+const INVALID = () => t('onboarding.invalidUrl')
 
 /**
  * Accepts what people actually type — `warungpakdin.com`, with or without a
@@ -26,9 +30,9 @@ const INVALID = 'That doesn’t look like a valid website URL.'
  */
 export function checkWebsiteUrl(raw: string): UrlCheck {
   const trimmed = raw.trim()
-  if (!trimmed) return { ok: false, url: '', message: INVALID }
-  if (trimmed.length > MAX_URL_LENGTH) return { ok: false, url: '', message: INVALID }
-  if (/\s/.test(trimmed)) return { ok: false, url: '', message: INVALID }
+  if (!trimmed) return { ok: false, url: '', message: INVALID() }
+  if (trimmed.length > MAX_URL_LENGTH) return { ok: false, url: '', message: INVALID() }
+  if (/\s/.test(trimmed)) return { ok: false, url: '', message: INVALID() }
 
   const typedWeb = /^https?:\/\//i.test(trimmed)
 
@@ -36,12 +40,12 @@ export function checkWebsiteUrl(raw: string): UrlCheck {
   // `file:`, `javascript:` — and must not be quietly rewritten into a website.
   // A colon followed by digits is a port, not a scheme.
   if (!typedWeb && /^[a-z][a-z0-9+.-]*:(?!\d)/i.test(trimmed)) {
-    return { ok: false, url: '', message: INVALID }
+    return { ok: false, url: '', message: INVALID() }
   }
 
   // Likewise an email address pasted into the wrong field: guessing at the
   // domain behind it would analyse a site the owner never named.
-  if (!typedWeb && trimmed.includes('@')) return { ok: false, url: '', message: INVALID }
+  if (!typedWeb && trimmed.includes('@')) return { ok: false, url: '', message: INVALID() }
 
   // A bare domain is the common case, so assume https rather than reject it.
   const candidate = typedWeb ? trimmed : `https://${trimmed}`
@@ -50,17 +54,17 @@ export function checkWebsiteUrl(raw: string): UrlCheck {
   try {
     parsed = new URL(candidate)
   } catch {
-    return { ok: false, url: '', message: INVALID }
+    return { ok: false, url: '', message: INVALID() }
   }
 
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    return { ok: false, url: '', message: INVALID }
+    return { ok: false, url: '', message: INVALID() }
   }
 
   const hostname = parsed.hostname.toLowerCase()
   // A public site always has a dot and a letter-only ending.
   if (!/^[a-z0-9.-]+$/.test(hostname) || !/\.[a-z]{2,}$/.test(hostname)) {
-    return { ok: false, url: '', message: INVALID }
+    return { ok: false, url: '', message: INVALID() }
   }
 
   parsed.hash = ''
@@ -88,8 +92,7 @@ export interface DiscoveryCheck extends UrlCheck {
   kind: DiscoverySourceKind
 }
 
-const NOT_A_PROFILE =
-  'That looks like a link to a post or video, not a page. Paste the link to your page or profile instead.'
+const NOT_A_PROFILE = () => t('onboarding.notAProfile')
 
 const FACEBOOK_NON_PAGE = new Set([
   'watch',
@@ -144,7 +147,7 @@ export function checkDiscoveryUrl(raw: string): DiscoveryCheck {
   try {
     parsed = new URL(base.url)
   } catch {
-    return { ok: false, url: '', message: INVALID, kind: 'website' }
+    return { ok: false, url: '', message: INVALID(), kind: 'website' }
   }
 
   const host = parsed.hostname.toLowerCase().replace(/^(www|m|web|mbasic)\./, '')
@@ -214,7 +217,7 @@ function instagramCheck(parsed: URL): DiscoveryCheck {
 }
 
 function refuse(): DiscoveryCheck {
-  return { ok: false, url: '', message: NOT_A_PROFILE, kind: 'website' }
+  return { ok: false, url: '', message: NOT_A_PROFILE(), kind: 'website' }
 }
 
 /** "facebook.com/warungpakdin" — for headings; scheme and www are noise. */

@@ -5,6 +5,7 @@ import { ROUTES } from '@/app/routes/paths'
 import { downloadCreativePoster } from '@/features/creative/poster'
 import { firstUsableColor, readableTextOn } from '@/features/creative/posterSpec'
 import { useAuth } from '@/hooks/useAuth'
+import { useI18n } from '@/hooks/useI18n'
 import { observeCreatives } from '@/services/creatives/creative.service'
 import { getAssetUrl } from '@/services/storage/storage.service'
 import { Button } from '@/components/ui/button'
@@ -19,6 +20,7 @@ import type { Creative } from '@/types'
  * the structured fields — the same layout the export draws.
  */
 export default function CreativePage() {
+  const { t } = useI18n()
   const { user } = useAuth()
   const [creatives, setCreatives] = useState<Creative[] | null>(null)
   const [loadError, setLoadError] = useState(false)
@@ -41,24 +43,24 @@ export default function CreativePage() {
       <header>
         <h1 className="flex items-center gap-2.5 text-[22px] font-semibold tracking-[-0.01em] text-foreground">
           <ImageIcon className="size-5 text-muted-foreground" aria-hidden />
-          Creative
+          {t('creative.pageTitle')}
         </h1>
         <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          Posters and captions EVA has made from your campaigns — structured and editable,
-          never flattened.
+          {t('creative.pageIntro')}
         </p>
       </header>
 
       {loadError ? (
         <p role="alert" className="mt-10 text-[14px] leading-relaxed text-destructive">
-          Your creatives could not be loaded. Please check your connection and refresh.
+          {t('creative.listLoadFailed')}
         </p>
       ) : creatives === null ? (
-        <p className="mt-10 text-[14px] text-muted-foreground">Loading…</p>
+        <p className="mt-10 text-[14px] text-muted-foreground">{t('common.loadingEllipsis')}</p>
       ) : creatives.length === 0 ? (
         <p className="mt-10 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          Nothing here yet. Open a campaign and choose “Create Marketing Materials” — the
-          poster and captions EVA makes will be collected here.
+          {/* The quoted button name comes from the same dictionary as the
+              button itself, so the two can never drift apart. */}
+          {t('creative.listEmpty', { createMaterials: t('campaign.createMaterials') })}
         </p>
       ) : (
         <ul className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -74,6 +76,7 @@ export default function CreativePage() {
 }
 
 function CreativeCard({ creative }: { creative: Creative }) {
+  const { t, language } = useI18n()
   // Keyed by storage path so a changed image stops matching instead of
   // needing a state reset inside the effect.
   const [resolved, setResolved] = useState<{ path: string; url: string } | null>(null)
@@ -147,7 +150,7 @@ function CreativeCard({ creative }: { creative: Creative }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div
-        className={`relative w-full overflow-hidden bg-[#20242b] ${
+        className={`relative w-full overflow-hidden bg-poster-surface ${
           creative.format === 'portrait_post' ? 'aspect-[4/5]' : 'aspect-square'
         }`}
       >
@@ -202,34 +205,41 @@ function CreativeCard({ creative }: { creative: Creative }) {
           </h2>
           {creative.content.image?.source === 'generated' ? (
             <span className="ml-auto shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-              AI-generated image
+              {t('creative.aiGeneratedImage')}
             </span>
           ) : creative.content.image?.source === 'upload' ? (
             <span className="ml-auto shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-              Your photo
+              {t('creative.yourPhoto')}
             </span>
           ) : null}
         </div>
         <p className="mt-0.5 text-[12px] text-muted-foreground">
-          {creative.format === 'portrait_post' ? 'Portrait post' : 'Square post'} · Updated{' '}
-          {new Date(creative.updatedAt).toLocaleDateString()}
+          {creative.format === 'portrait_post'
+            ? t('creative.formatPortrait')
+            : t('creative.formatSquare')}{' '}
+          ·{' '}
+          {t('creative.updatedOn', {
+            date: new Date(creative.updatedAt).toLocaleDateString(
+              language === 'ms' ? 'ms-MY' : 'en-MY',
+            ),
+          })}
         </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => void handleDownload()} disabled={downloading}>
             <Download className="size-3.5" aria-hidden />
-            {downloading ? 'Preparing…' : 'Download Poster'}
+            {downloading ? t('creative.preparingDownload') : t('creative.downloadPoster')}
           </Button>
           {creative.conversationId ? (
             <Button size="sm" variant="outline" asChild>
-              <Link to={ROUTES.conversation(creative.conversationId)}>Edit in chat</Link>
+              <Link to={ROUTES.conversation(creative.conversationId)}>
+                {t('creative.editInChat')}
+              </Link>
             </Button>
           ) : null}
         </div>
         {downloadError ? (
-          <p className="mt-2 text-[12px] text-destructive">
-            The poster could not be downloaded. Please try again.
-          </p>
+          <p className="mt-2 text-[12px] text-destructive">{t('creative.downloadFailed')}</p>
         ) : null}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
+import { t } from '@/i18n/store'
 
 interface Props {
   children: ReactNode
@@ -32,13 +33,13 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className="flex min-h-svh flex-col items-center justify-center gap-5 px-6 text-center">
         <div className="space-y-2">
           <h1 className="text-[22px] font-semibold tracking-[-0.015em] text-foreground">
-            Something went wrong
+            {t('app.errorTitle')}
           </h1>
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-            MARKA hit an unexpected problem. Reloading usually fixes it.
+            {t('app.errorBody')}
           </p>
         </div>
-        <Button onClick={() => window.location.reload()}>Reload MARKA</Button>
+        <Button onClick={() => window.location.reload()}>{t('app.errorReload')}</Button>
       </div>
     )
   }

@@ -62,5 +62,24 @@ export async function setOnboardingStep(userId: string, step: OnboardingStep): P
   })
 }
 
+/**
+ * Persists appearance/language choices on the profile so they follow the
+ * account across sign-ins and devices. Dot-path updates touch only the fields
+ * given — setting the language never clobbers the appearance, and vice versa.
+ */
+export async function updateUserPreferences(
+  userId: string,
+  preferences: { appearance?: string; language?: string },
+): Promise<void> {
+  const update: Record<string, unknown> = { updatedAt: Date.now() }
+  if (preferences.appearance !== undefined) {
+    update['preferences.appearance'] = preferences.appearance
+  }
+  if (preferences.language !== undefined) {
+    update['preferences.language'] = preferences.language
+  }
+  await updateDoc(userDoc(userId), update)
+}
+
 /** `serverTimestamp` is re-exported so callers need not import Firestore. */
 export { serverTimestamp }

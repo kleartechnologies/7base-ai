@@ -1,4 +1,5 @@
 import { Globe, Upload, type LucideIcon } from 'lucide-react'
+import { useI18n } from '@/hooks/useI18n'
 
 /**
  * How MARKA should learn about the business.
@@ -9,18 +10,19 @@ import { Globe, Upload, type LucideIcon } from 'lucide-react'
  * disabled and labelled, never dressed up as a working button.
  */
 export function MethodChoice({ onChooseWebsite }: { onChooseWebsite: () => void }) {
+  const { t } = useI18n()
   return (
     <div className="space-y-3">
       <Method
         icon={Globe}
-        title="From my website or social media"
-        description="Give EVA your website, public Facebook Page, or Instagram profile and she works out the rest."
+        title={t('onboarding.methodWebsiteTitle')}
+        description={t('onboarding.methodWebsiteDescription')}
         onClick={onChooseWebsite}
       />
       <Method
         icon={Upload}
-        title="Upload my menu or brochure"
-        description="Reading uploaded documents is coming soon."
+        title={t('onboarding.methodUploadTitle')}
+        description={t('onboarding.methodUploadDescription')}
         disabled
       />
     </div>
@@ -40,6 +42,7 @@ function Method({
   onClick?: () => void
   disabled?: boolean
 }) {
+  const { t } = useI18n()
   return (
     <button
       type="button"
@@ -53,7 +56,7 @@ function Method({
           <span className="text-[15px] font-medium text-foreground">{title}</span>
           {disabled ? (
             <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              Soon
+              {t('onboarding.soon')}
             </span>
           ) : null}
         </span>

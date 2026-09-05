@@ -5,6 +5,8 @@ import type {
   OperationsProfile,
   Product,
 } from '@/types'
+import { t } from '@/i18n/store'
+import type { MessageKey } from '@/i18n/translate'
 import type { BusinessFacts } from './brain'
 
 /**
@@ -43,64 +45,91 @@ export interface CompletionQuestion {
   placeholder: string | null
 }
 
-export const ORDERING_CHOICES = [
-  'Dine-in',
-  'Takeaway',
-  'Delivery',
-  'WhatsApp orders',
-] as const
+const ORDERING_CHOICE_KEYS: readonly MessageKey[] = [
+  'business.choiceDineIn',
+  'business.choiceTakeaway',
+  'business.choiceDelivery',
+  'business.choiceWhatsappOrders',
+]
+
+/** The ordering options, in the active UI language. */
+export const ORDERING_CHOICES = (): readonly string[] =>
+  ORDERING_CHOICE_KEYS.map((key) => t(key))
 
 /**
  * Everything EVA knows how to ask, in the order that matters for marketing:
  * what sells, when you're open, how people buy, why you, who buys. A missing
  * description is asked only when there is room left — for most businesses the
  * best-sellers answer already says what they offer.
+ *
+ * Stored as message keys and resolved when the questions are requested, so the
+ * wording follows the UI language the owner has picked at that moment.
  */
-const QUESTIONS: readonly CompletionQuestion[] = [
+interface QuestionSpec {
+  id: CompletionQuestionId
+  promptKey: MessageKey
+  helperKey: MessageKey | null
+  kind: 'text' | 'multiline' | 'choices'
+  choiceKeys?: readonly MessageKey[]
+  placeholderKey: MessageKey | null
+}
+
+const QUESTIONS: readonly QuestionSpec[] = [
   {
     id: 'best_sellers',
-    prompt: 'What are you best known for?',
-    helper: 'Your best sellers or signature items — a few is plenty, one per line.',
+    promptKey: 'business.qBestSellers',
+    helperKey: 'business.qBestSellersHelper',
     kind: 'multiline',
-    placeholder: 'Nasi Arab lamb mandi\nChicken kabsah\nArab tea',
+    placeholderKey: 'business.qBestSellersPlaceholder',
   },
   {
     id: 'opening_hours',
-    prompt: 'When are you open?',
-    helper: null,
+    promptKey: 'business.qOpeningHours',
+    helperKey: null,
     kind: 'text',
-    placeholder: 'Tue–Sun, 11am–10pm. Closed Mondays.',
+    placeholderKey: 'business.qOpeningHoursPlaceholder',
   },
   {
     id: 'ordering_methods',
-    prompt: 'How do customers usually buy from you?',
-    helper: 'Pick everything that applies.',
+    promptKey: 'business.qOrdering',
+    helperKey: 'business.qOrderingHelper',
     kind: 'choices',
-    choices: ORDERING_CHOICES,
-    placeholder: null,
+    choiceKeys: ORDERING_CHOICE_KEYS,
+    placeholderKey: null,
   },
   {
     id: 'differentiator',
-    prompt: 'What makes you different from other places like yours?',
-    helper: 'The thing regulars would mention first.',
+    promptKey: 'business.qDifferentiator',
+    helperKey: 'business.qDifferentiatorHelper',
     kind: 'multiline',
-    placeholder: 'The only place in town doing charcoal-fired mandi.',
+    placeholderKey: 'business.qDifferentiatorPlaceholder',
   },
   {
     id: 'customers',
-    prompt: 'Who usually buys from you?',
-    helper: null,
+    promptKey: 'business.qCustomers',
+    helperKey: null,
     kind: 'text',
-    placeholder: 'Families on weekends, office workers at lunch.',
+    placeholderKey: 'business.qCustomersPlaceholder',
   },
   {
     id: 'description',
-    prompt: 'What does your business offer, in a sentence or two?',
-    helper: null,
+    promptKey: 'business.qDescription',
+    helperKey: null,
     kind: 'multiline',
-    placeholder: 'Home-style Yemeni rice dishes, cooked over charcoal.',
+    placeholderKey: 'business.qDescriptionPlaceholder',
   },
 ]
+
+function resolveQuestion(spec: QuestionSpec): CompletionQuestion {
+  return {
+    id: spec.id,
+    prompt: t(spec.promptKey),
+    helper: spec.helperKey ? t(spec.helperKey) : null,
+    kind: spec.kind,
+    ...(spec.choiceKeys ? { choices: spec.choiceKeys.map((key) => t(key)) } : {}),
+    placeholder: spec.placeholderKey ? t(spec.placeholderKey) : null,
+  }
+}
 
 /** Keep the ask short. Skipping is always allowed; more can wait. */
 const MAX_QUESTIONS = 5
@@ -134,7 +163,9 @@ function isAnswered(business: Business, id: CompletionQuestionId): boolean {
  * Facebook Page, an Instagram profile, or the owner typing two lines.
  */
 export function missingQuestions(business: Business): CompletionQuestion[] {
-  return QUESTIONS.filter((question) => !isAnswered(business, question.id)).slice(0, MAX_QUESTIONS)
+  return QUESTIONS.filter((question) => !isAnswered(business, question.id))
+    .slice(0, MAX_QUESTIONS)
+    .map(resolveQuestion)
 }
 
 /**
@@ -143,16 +174,14 @@ export function missingQuestions(business: Business): CompletionQuestion[] {
  */
 export function completionIntro(business: Business): string {
   const kind = latestDiscoverySource(business)
-  if (!kind) {
-    return 'EVA knows the basics. A few quick answers will make her recommendations much sharper — answer what you can, skip the rest.'
-  }
+  if (!kind) return t('business.completionIntroNoSource')
   const noun =
     kind === 'facebook'
-      ? 'Facebook Page'
+      ? t('onboarding.sourceNounFacebook')
       : kind === 'instagram'
-        ? 'Instagram profile'
-        : 'website'
-  return `Your ${noun} didn’t mention everything — that’s normal, not an error. Answer what you can; EVA will remember it.`
+        ? t('onboarding.sourceNounInstagram')
+        : t('onboarding.sourceNounWebsite')
+  return t('business.completionIntroSource', { source: noun })
 }
 
 /** The most recently analysed source, for source-aware wording. */

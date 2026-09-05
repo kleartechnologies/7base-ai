@@ -14,6 +14,20 @@ export interface UserProfile extends BaseEntity {
   activeBusinessId: EntityId | null
   onboarding: OnboardingState
   locale: string
+  /**
+   * Cross-device preferences. Absent on profiles created before Phase 7B and
+   * stored as raw strings — always read through the normalisers
+   * (`normaliseAppearance`, `normaliseLanguage`), never trusted as typed.
+   * localStorage keeps the fast, signed-out copy of the same values.
+   */
+  preferences?: UserPreferences | null
+}
+
+export interface UserPreferences {
+  /** 'light' | 'dark' | 'system' once normalised. */
+  appearance?: string
+  /** 'en' | 'ms' once normalised. EVA also reads this server-side. */
+  language?: string
 }
 
 export type OnboardingStep =

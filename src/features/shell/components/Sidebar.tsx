@@ -3,6 +3,7 @@ import { PenSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MarkaLogo } from '@/components/MarkaLogo'
 import { ROUTES } from '@/app/routes/paths'
+import { useI18n } from '@/hooks/useI18n'
 import type { Conversation } from '@/types'
 import { SETTINGS_NAV, WORKSPACE_NAV } from '../navigation'
 import { ChatHistoryList } from './ChatHistoryList'
@@ -34,6 +35,7 @@ export function Sidebar({
   onNavigate?: () => void
 }) {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const { conversations, loading, error, remove } = history
 
   function handleNewChat() {
@@ -54,11 +56,11 @@ export function Sidebar({
           onClick={handleNewChat}
         >
           <PenSquare className="text-muted-foreground" />
-          New chat
+          {t('shell.newChat')}
         </Button>
       </div>
 
-      <nav aria-label="Chat history" className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+      <nav aria-label={t('shell.chatHistory')} className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
         <ChatHistoryList
           conversations={conversations}
           loading={loading}
@@ -69,7 +71,7 @@ export function Sidebar({
       </nav>
 
       <div className="shrink-0 border-t border-sidebar-border px-3 py-3">
-        <nav aria-label="Workspace" className="space-y-px">
+        <nav aria-label={t('shell.workspace')} className="space-y-px">
           {WORKSPACE_NAV.map((item) => (
             <SidebarNavLink key={item.to} item={item} onNavigate={onNavigate} />
           ))}

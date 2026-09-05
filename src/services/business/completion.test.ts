@@ -333,8 +333,8 @@ describe('source-aware framing', () => {
 
 describe('choices stay in step with the operations vocabulary', () => {
   it('offers the ordering mix the Brain already models', () => {
-    expect(ORDERING_CHOICES).toContain('Dine-in')
-    expect(ORDERING_CHOICES).toContain('Takeaway')
-    expect(ORDERING_CHOICES).toContain('Delivery')
+    expect(ORDERING_CHOICES()).toContain('Dine-in')
+    expect(ORDERING_CHOICES()).toContain('Takeaway')
+    expect(ORDERING_CHOICES()).toContain('Delivery')
   })
 })

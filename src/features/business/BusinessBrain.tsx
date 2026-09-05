@@ -6,6 +6,7 @@ import {
   saveBusinessFacts,
   saveProducts,
 } from '@/services/business/business.service'
+import { useI18n } from '@/hooks/useI18n'
 import { toUserMessage } from '@/lib/firebase/errors'
 import { AudienceSection } from './components/AudienceSection'
 import { BrandSection } from './components/BrandSection'
@@ -27,6 +28,7 @@ export function BusinessBrain({
   business: Business
   onSaved?: () => void | Promise<void>
 }) {
+  const { t } = useI18n()
   const [error, setError] = useState<string | null>(null)
 
   async function save(action: () => Promise<void>) {
@@ -35,7 +37,7 @@ export function BusinessBrain({
       await action()
       await onSaved?.()
     } catch (caught) {
-      setError(toUserMessage(caught, 'Could not save your changes. Please try again.'))
+      setError(toUserMessage(caught, t('business.saveChangesFailed')))
       throw caught
     }
   }

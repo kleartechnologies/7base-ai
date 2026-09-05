@@ -1,13 +1,15 @@
 import { LayoutGrid } from 'lucide-react'
+import { useI18n } from '@/hooks/useI18n'
 import { PlaceholderPage } from './PlaceholderPage'
 
 export default function OverviewPage() {
+  const { t } = useI18n()
   return (
     <PlaceholderPage
-      title="Overview"
-      description="A calm summary of what EVA is working on for your business."
+      title={t('overview.title')}
+      description={t('overview.description')}
       icon={LayoutGrid}
-      hint="Once you run your first campaign, a short summary of what is live and what is coming up will appear here."
+      hint={t('overview.hint')}
     />
   )
 }

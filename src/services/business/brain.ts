@@ -10,6 +10,7 @@ import {
   type ProvenanceField,
   type SourceKind,
 } from '@/types'
+import { t } from '@/i18n/store'
 
 /**
  * Business Brain shaping, kept free of Firebase so it can be reasoned about
@@ -310,22 +311,24 @@ export interface SourceMark {
 
 export function describeSource(source: SourceMark | null | undefined): string | null {
   if (!source) return null
-  if (source.confirmed || source.source === 'user') return 'Confirmed by you'
+  // Resolved through the i18n store at render time, so the wording follows the
+  // active UI language without this module depending on React.
+  if (source.confirmed || source.source === 'user') return t('brain.confirmedByYou')
   switch (source.source) {
     case 'website':
-      return 'From your website'
+      return t('brain.fromWebsite')
     case 'facebook':
-      return 'From your Facebook Page'
+      return t('brain.fromFacebook')
     case 'instagram':
-      return 'From your Instagram profile'
+      return t('brain.fromInstagram')
     case 'google_business':
-      return 'From your Google Business Profile'
+      return t('brain.fromGoogleBusiness')
     case 'inferred':
-      return 'EVA’s inference'
+      return t('brain.evaInference')
     case 'document':
-      return 'From a document you uploaded'
+      return t('brain.fromDocument')
     default:
-      return 'From a connected source'
+      return t('brain.fromConnectedSource')
   }
 }
 

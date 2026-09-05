@@ -1,13 +1,15 @@
 import { CalendarDays } from 'lucide-react'
+import { useI18n } from '@/hooks/useI18n'
 import { PlaceholderPage } from './PlaceholderPage'
 
 export default function CalendarPage() {
+  const { t } = useI18n()
   return (
     <PlaceholderPage
-      title="Calendar"
-      description="When each piece of your marketing goes out."
+      title={t('calendar.title')}
+      description={t('calendar.description')}
       icon={CalendarDays}
-      hint="Scheduled posts from your campaigns will show up on this calendar."
+      hint={t('calendar.hint')}
     />
   )
 }

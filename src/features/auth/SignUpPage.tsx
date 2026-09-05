@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useI18n } from '@/hooks/useI18n'
 import { toUserMessage } from '@/lib/firebase/errors'
 import { signInWithGoogle, signUpWithEmail } from '@/services/auth/auth.service'
 import { AuthLayout } from './components/AuthLayout'
@@ -15,6 +16,7 @@ const MIN_PASSWORD_LENGTH = 6
 
 export default function SignUpPage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,7 +30,7 @@ export default function SignUpPage() {
       await action()
       navigate(DEFAULT_AUTHENTICATED_ROUTE, { replace: true })
     } catch (caught) {
-      setError(toUserMessage(caught, 'Could not create your account. Please try again.'))
+      setError(toUserMessage(caught, t('auth.signUpFailed')))
     } finally {
       setBusy(false)
     }
@@ -37,7 +39,7 @@ export default function SignUpPage() {
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Please choose a password with at least ${MIN_PASSWORD_LENGTH} characters.`)
+      setError(t('auth.passwordTooShort', { min: MIN_PASSWORD_LENGTH }))
       return
     }
     void run(() => signUpWithEmail(email.trim(), password, name))
@@ -45,27 +47,27 @@ export default function SignUpPage() {
 
   return (
     <AuthLayout
-      title="Create your account"
-      subtitle="Set up MARKA in under a minute."
+      title={t('auth.createYourAccount')}
+      subtitle={t('auth.signUpSubtitle')}
       footer={
         <>
-          Already have an account?{' '}
+          {t('auth.alreadyHaveAccount')}{' '}
           <Link to={ROUTES.signIn} className="font-medium text-foreground hover:underline">
-            Sign in
+            {t('auth.signIn')}
           </Link>
         </>
       }
     >
       <div className="space-y-5">
         <GoogleButton
-          label="Continue with Google"
+          label={t('auth.continueWithGoogle')}
           disabled={busy}
           onClick={() => void run(signInWithGoogle)}
         />
 
         <div className="flex items-center gap-3">
           <span className="h-px flex-1 bg-border" />
-          <span className="text-xs text-muted-foreground">or</span>
+          <span className="text-xs text-muted-foreground">{t('common.or')}</span>
           <span className="h-px flex-1 bg-border" />
         </div>
 
@@ -73,18 +75,18 @@ export default function SignUpPage() {
           <FormError message={error} />
 
           <div className="space-y-2">
-            <Label htmlFor="name">Your name</Label>
+            <Label htmlFor="name">{t('auth.yourName')}</Label>
             <Input
               id="name"
               autoComplete="name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Aisyah"
+              placeholder={t('auth.namePlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <Input
               id="email"
               type="email"
@@ -92,12 +94,12 @@ export default function SignUpPage() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@restaurant.com"
+              placeholder={t('auth.emailPlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t('auth.password')}</Label>
             <Input
               id="password"
               type="password"
@@ -106,13 +108,13 @@ export default function SignUpPage() {
               minLength={MIN_PASSWORD_LENGTH}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="At least 6 characters"
+              placeholder={t('auth.passwordPlaceholderNew')}
             />
           </div>
 
           <Button type="submit" className="h-10 w-full" disabled={busy}>
             {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
-            Create account
+            {t('auth.createAccount')}
           </Button>
         </form>
       </div>

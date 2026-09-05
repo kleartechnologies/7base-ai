@@ -14,11 +14,11 @@ describe('library route wiring', () => {
   })
 
   it('has a Library entry in the workspace nav, after Assets', () => {
-    const labels = WORKSPACE_NAV.map((item) => item.label)
-    const library = WORKSPACE_NAV.find((item) => item.label === 'Library')
+    const labelKeys = WORKSPACE_NAV.map((item) => item.labelKey)
+    const library = WORKSPACE_NAV.find((item) => item.labelKey === 'nav.library')
     expect(library?.to).toBe(ROUTES.library)
     // Assets V1 slotted in between Creative and Library by design.
-    expect(labels.indexOf('Library')).toBe(labels.indexOf('Assets') + 1)
+    expect(labelKeys.indexOf('nav.library')).toBe(labelKeys.indexOf('nav.assets') + 1)
   })
 })
 

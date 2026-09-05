@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import { useI18n } from '@/hooks/useI18n'
 
 interface PlaceholderPageProps {
   title: string
@@ -14,6 +15,7 @@ interface PlaceholderPageProps {
  * rather than faking charts and cards.
  */
 export function PlaceholderPage({ title, description, icon: Icon, hint }: PlaceholderPageProps) {
+  const { t } = useI18n()
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl px-8 py-12">
@@ -24,7 +26,7 @@ export function PlaceholderPage({ title, description, icon: Icon, hint }: Placeh
 
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-16 text-center">
           <Icon className="size-6 text-muted-foreground/60" aria-hidden />
-          <p className="mt-4 text-sm font-medium text-foreground">Nothing here yet</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t('app.nothingHereYet')}</p>
           {hint ? (
             <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
               {hint}

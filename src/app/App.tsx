@@ -1,6 +1,8 @@
 import { RouterProvider } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from './providers/AuthProvider'
+import { LocaleProvider } from './providers/LocaleProvider'
+import { ThemeProvider } from './providers/ThemeProvider'
 import { ErrorBoundary } from './ErrorBoundary'
 import { ConfigurationNotice } from './ConfigurationNotice'
 import { getMissingEnvKeys } from '@/lib/env'
@@ -17,9 +19,13 @@ export function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <TooltipProvider delayDuration={300}>
-          <RouterProvider router={router} />
-        </TooltipProvider>
+        <ThemeProvider>
+          <LocaleProvider>
+            <TooltipProvider delayDuration={300}>
+              <RouterProvider router={router} />
+            </TooltipProvider>
+          </LocaleProvider>
+        </ThemeProvider>
       </AuthProvider>
     </ErrorBoundary>
   )

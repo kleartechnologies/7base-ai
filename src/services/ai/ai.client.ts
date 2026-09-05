@@ -1,5 +1,7 @@
 import { httpsCallable, type HttpsCallableResult } from 'firebase/functions'
 import { FirebaseError } from 'firebase/app'
+import { t } from '@/i18n/store'
+import type { MessageKey } from '@/i18n/translate'
 import { getFirebaseFunctions } from '@/lib/firebase/app'
 import type {
   AiError,
@@ -60,15 +62,21 @@ const ERROR_CODE_MAP: Record<string, AiErrorCode> = {
   'functions/internal': 'unknown',
 }
 
-const FALLBACK_MESSAGES: Record<AiErrorCode, string> = {
-  unauthenticated: 'Your session expired. Please sign in again.',
-  permission_denied: 'You do not have access to this conversation.',
-  not_configured: 'EVA’s AI backend is not configured yet.',
-  rate_limited: 'EVA is handling a lot of requests right now. Please try again shortly.',
-  timeout: 'EVA took too long to respond. Please try again.',
-  unavailable: 'EVA could not be reached. Please check your connection and try again.',
-  invalid_request: 'That request could not be understood.',
-  unknown: 'EVA ran into a problem. Please try again.',
+/**
+ * Dictionary keys, resolved through the i18n store at the moment the error is
+ * built, so fallback sentences come out in the active UI language. Messages
+ * the backend authored itself still pass through untranslated — changing the
+ * callable error protocol is beyond the client's remit.
+ */
+const FALLBACK_MESSAGE_KEYS: Record<AiErrorCode, MessageKey> = {
+  unauthenticated: 'aiError.unauthenticated',
+  permission_denied: 'aiError.permissionDenied',
+  not_configured: 'aiError.notConfigured',
+  rate_limited: 'aiError.rateLimited',
+  timeout: 'aiError.timeout',
+  unavailable: 'aiError.unavailable',
+  invalid_request: 'aiError.invalidRequest',
+  unknown: 'aiError.unknown',
 }
 
 function toAiError(error: unknown): AiError {
@@ -77,10 +85,10 @@ function toAiError(error: unknown): AiError {
     // Prefer the backend's own message when it wrote one for the user.
     const message = error.message && !error.message.startsWith('INTERNAL')
       ? error.message
-      : FALLBACK_MESSAGES[code]
+      : t(FALLBACK_MESSAGE_KEYS[code])
     return { code, message }
   }
-  return { code: 'unknown', message: FALLBACK_MESSAGES.unknown }
+  return { code: 'unknown', message: t(FALLBACK_MESSAGE_KEYS.unknown) }
 }
 
 /** Callable default is 70s; website analysis legitimately runs longer. */

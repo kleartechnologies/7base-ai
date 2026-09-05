@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useI18n } from '@/hooks/useI18n'
 import { checkDiscoveryUrl } from '../url'
 
 /**
@@ -27,6 +28,7 @@ export function WebsiteStep({
   onBack: () => void
   onNoOnlinePresence: () => void
 }) {
+  const { t } = useI18n()
   const [value, setValue] = useState(initialUrl)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,14 +46,14 @@ export function WebsiteStep({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
-        <Label htmlFor="website-url">Your website or social page</Label>
+        <Label htmlFor="website-url">{t('onboarding.websiteLabel')}</Label>
         <Input
           id="website-url"
           autoFocus
           inputMode="url"
           autoComplete="url"
           spellCheck={false}
-          placeholder="warungpakdin.com or facebook.com/warungpakdin"
+          placeholder={t('onboarding.websitePlaceholder')}
           value={value}
           aria-invalid={error ? true : undefined}
           aria-describedby="website-url-help"
@@ -61,8 +63,7 @@ export function WebsiteStep({
           }}
         />
         <p id="website-url-help" className="text-[13px] leading-relaxed text-muted-foreground">
-          Paste your website, Facebook Page, or Instagram profile. EVA reads only what is publicly
-          visible on that page.
+          {t('onboarding.websiteHelp')}
         </p>
         {error ? (
           <p role="alert" className="text-[13px] text-destructive">
@@ -73,10 +74,10 @@ export function WebsiteStep({
 
       <div className="flex items-center gap-2">
         <Button type="submit" size="lg" disabled={busy || value.trim().length === 0}>
-          Let EVA take a look
+          {t('onboarding.letEvaLook')}
         </Button>
         <Button type="button" variant="ghost" size="lg" onClick={onBack} disabled={busy}>
-          Back
+          {t('common.back')}
         </Button>
       </div>
 
@@ -86,7 +87,7 @@ export function WebsiteStep({
         disabled={busy}
         className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:underline disabled:opacity-55"
       >
-        Don’t have one? That’s okay — tell EVA about your business instead.
+        {t('onboarding.noOnlinePresence')}
       </button>
     </form>
   )

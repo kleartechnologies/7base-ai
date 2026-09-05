@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { t } from '@/i18n/store'
 import { observeAuth, signOutUser, type AuthUser } from '@/services/auth/auth.service'
 import { getBusiness, getPrimaryBusiness } from '@/services/business/business.service'
 import { getUserProfile } from '@/services/business/user.service'
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // so instead of silently pretending the business does not exist.
       if (activeUidRef.current === uid) {
         setBusiness(null)
-        setError('Could not load your business. Please check your connection and refresh.')
+        setError(t('app.businessLoadFailed'))
       }
     }
   }, [])
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void loadBusiness(nextProfile, nextUser.uid)
       },
       (nextError) => {
-        setError(nextError instanceof Error ? nextError.message : 'Authentication failed.')
+        setError(nextError instanceof Error ? nextError.message : t('app.authFailed'))
       },
     )
     return unsubscribe

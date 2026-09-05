@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ROUTES } from '@/app/routes/paths'
 import { useAuth } from '@/hooks/useAuth'
+import { useI18n } from '@/hooks/useI18n'
 
 function initialsFrom(name: string | null, email: string | null): string {
   const source = name?.trim() || email?.trim() || ''
@@ -24,9 +25,10 @@ function initialsFrom(name: string | null, email: string | null): string {
 
 export function UserMenu() {
   const { user, business, signOut } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
 
-  const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'Account'
+  const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || t('shell.account')
 
   return (
     <DropdownMenu>
@@ -40,7 +42,7 @@ export function UserMenu() {
             {displayName}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
-            {business?.name ?? 'No business yet'}
+            {business?.name ?? t('shell.noBusinessYet')}
           </span>
         </span>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -51,12 +53,12 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate(ROUTES.settings)}>
           <Settings />
-          Settings
+          {t('nav.settings')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={() => void signOut()}>
           <LogOut />
-          Sign out
+          {t('shell.signOut')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

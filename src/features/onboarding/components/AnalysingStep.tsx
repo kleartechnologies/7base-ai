@@ -1,4 +1,6 @@
 import { Check, Loader2 } from 'lucide-react'
+import { useI18n } from '@/hooks/useI18n'
+import type { MessageKey } from '@/i18n/translate'
 import type { DiscoveryStage } from '@/types'
 
 /**
@@ -8,15 +10,16 @@ import type { DiscoveryStage } from '@/types'
  * it reaches it. If a stage is slow, the screen honestly sits on it rather
  * than inventing a percentage.
  */
-const STAGES: { id: DiscoveryStage; label: string }[] = [
-  { id: 'fetching', label: 'Opening your link' },
-  { id: 'reading_pages', label: 'Reading your pages' },
-  { id: 'understanding', label: 'Working out what you offer' },
-  { id: 'building_brain', label: 'Building your Business Brain' },
-  { id: 'saving', label: 'Saving what EVA learned' },
+const STAGES: { id: DiscoveryStage; labelKey: MessageKey }[] = [
+  { id: 'fetching', labelKey: 'onboarding.stageFetching' },
+  { id: 'reading_pages', labelKey: 'onboarding.stageReadingPages' },
+  { id: 'understanding', labelKey: 'onboarding.stageUnderstanding' },
+  { id: 'building_brain', labelKey: 'onboarding.stageBuildingBrain' },
+  { id: 'saving', labelKey: 'onboarding.stageSaving' },
 ]
 
 export function AnalysingStep({ stage }: { stage: DiscoveryStage | null }) {
+  const { t } = useI18n()
   // Before the first stage is written, the first step is the one in progress.
   const currentIndex = Math.max(
     0,
@@ -44,7 +47,7 @@ export function AnalysingStep({ stage }: { stage: DiscoveryStage | null }) {
                 <span className="size-1.5 rounded-full bg-current" aria-hidden />
               )}
             </span>
-            {item.label}
+            {t(item.labelKey)}
           </li>
         )
       })}

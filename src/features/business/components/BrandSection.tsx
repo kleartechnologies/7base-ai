@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/useI18n'
 import type { Business, BrandProfile, MarketingProfile } from '@/types'
 import { ChipGroup, EditActions, Field, SectionCard } from './SectionCard'
 import { fromLines, toLines, trimmedOrNull } from './fields'
@@ -29,6 +30,7 @@ export function BrandSection({
   startOpen?: boolean
   onSave: (brand: BrandProfile, marketing: MarketingProfile) => Promise<void>
 }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(startOpen)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState(() => toForm(business))
@@ -57,36 +59,36 @@ export function BrandSection({
 
   return (
     <SectionCard
-      title="Your brand"
-      hint="How EVA will sound when it writes as you."
+      title={t('business.brandTitle')}
+      hint={t('business.brandHint')}
       editing={editing}
       onEdit={open}
     >
       {editing ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="brand-voice">Brand voice</Label>
+            <Label htmlFor="brand-voice">{t('business.brandVoice')}</Label>
             <Input
               id="brand-voice"
               value={form.voice}
-              placeholder="Warm and family-friendly"
+              placeholder={t('business.brandVoicePlaceholder')}
               onChange={(event) => setForm({ ...form, voice: event.target.value })}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="brand-positioning">Positioning</Label>
+            <Label htmlFor="brand-positioning">{t('business.positioning')}</Label>
             <Textarea
               id="brand-positioning"
               rows={2}
               value={form.positioning}
-              placeholder="The neighbourhood spot for a proper weekday lunch"
+              placeholder={t('business.positioningPlaceholder')}
               onChange={(event) => setForm({ ...form, positioning: event.target.value })}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="brand-traits">Personality — one per line</Label>
+            <Label htmlFor="brand-traits">{t('business.personalityPerLine')}</Label>
             <Textarea
               id="brand-traits"
               rows={3}
@@ -96,7 +98,7 @@ export function BrandSection({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="brand-differentiators">What sets you apart — one per line</Label>
+            <Label htmlFor="brand-differentiators">{t('business.differentiatorsPerLine')}</Label>
             <Textarea
               id="brand-differentiators"
               rows={3}
@@ -110,27 +112,27 @@ export function BrandSection({
       ) : (
         <div className="space-y-4">
           <dl className="divide-y divide-border">
-            <Field label="Voice" value={brand?.voice} provenance={business.brand} />
-            <Field label="Positioning" value={marketing?.positioning} provenance={business.marketing} />
+            <Field label={t('business.labelVoice')} value={brand?.voice} provenance={business.brand} />
+            <Field label={t('business.positioning')} value={marketing?.positioning} provenance={business.marketing} />
             <Field
-              label="Value proposition"
+              label={t('business.labelValueProposition')}
               value={marketing?.valueProposition}
               provenance={business.marketing}
             />
           </dl>
           <ChipGroup
-            label="Personality"
+            label={t('business.chipPersonality')}
             items={brand?.personalityTraits ?? []}
             provenance={business.brand}
           />
           <ChipGroup
-            label="What sets you apart"
+            label={t('business.chipSetsApart')}
             items={marketing?.differentiators ?? []}
             provenance={business.marketing}
           />
           {marketing?.promotions.length ? (
             <ChipGroup
-              label="Running now"
+              label={t('business.chipRunningNow')}
               items={marketing.promotions}
               provenance={business.marketing}
             />

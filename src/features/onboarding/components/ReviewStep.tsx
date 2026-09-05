@@ -1,6 +1,8 @@
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BusinessBrain } from '@/features/business/BusinessBrain'
+import { useI18n } from '@/hooks/useI18n'
+import type { MessageKey } from '@/i18n/translate'
 import { latestDiscoverySource, missingQuestions } from '@/services/business/completion'
 import type { Business } from '@/types'
 
@@ -25,6 +27,7 @@ export function ReviewStep({
   onConfirm: () => void
   onReanalyse: () => void
 }) {
+  const { t } = useI18n()
   // Whether "Looks good" leads into EVA's questions, so the missing-info box
   // can promise only what will actually happen next.
   const willAsk = missingQuestions(business).length > 0
@@ -45,10 +48,10 @@ export function ReviewStep({
       {business.discovery.unknowns.length > 0 ? (
         <div className="rounded-xl border border-dashed border-border px-5 py-4">
           <p className="text-[13px] font-medium text-foreground">
-            A few things are still missing
+            {t('onboarding.missingTitle')}
           </p>
           <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-            {sourceNoun(business)} didn’t say everything — that’s normal, not an error.
+            {t('onboarding.missingBody', { source: t(sourceNounKey(business)) })}
           </p>
           <ul className="mt-2 space-y-1 text-[13px] leading-relaxed text-muted-foreground">
             {business.discovery.unknowns.map((item) => (
@@ -56,9 +59,7 @@ export function ReviewStep({
             ))}
           </ul>
           <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            {willAsk
-              ? 'After this, EVA will ask you a few quick questions and remember your answers. You can also fill anything in above — nothing is blocked.'
-              : 'You can fill these in above, or tell EVA anytime from the Business tab — nothing is blocked.'}
+            {willAsk ? t('onboarding.missingWillAsk') : t('onboarding.missingFillIn')}
           </p>
         </div>
       ) : null}
@@ -72,10 +73,10 @@ export function ReviewStep({
       <div className="flex flex-wrap items-center gap-2 pt-2">
         <Button size="lg" disabled={busy} onClick={onConfirm}>
           {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
-          Looks good — continue
+          {t('onboarding.looksGood')}
         </Button>
         <Button size="lg" variant="ghost" disabled={busy} onClick={onReanalyse}>
-          Try a different link
+          {t('onboarding.tryDifferentLink')}
         </Button>
       </div>
     </div>
@@ -84,22 +85,23 @@ export function ReviewStep({
 
 /** Where this understanding came from, said separately from what it says. */
 function SourceNote({ business }: { business: Business }) {
+  const { t } = useI18n()
   const kind = latestDiscoverySource(business)
   if (!kind) return null
   const label =
     kind === 'facebook'
-      ? 'From your Facebook Page'
+      ? t('onboarding.sourceFacebook')
       : kind === 'instagram'
-        ? 'From your Instagram profile'
-        : 'From your website'
+        ? t('onboarding.sourceInstagram')
+        : t('onboarding.sourceWebsite')
   return <p className="mt-2 text-[12px] text-muted-foreground">{label}</p>
 }
 
 /** "Your Facebook Page" / "Your website" / "Your page", for running copy. */
-function sourceNoun(business: Business): string {
+function sourceNounKey(business: Business): MessageKey {
   const kind = latestDiscoverySource(business)
-  if (kind === 'facebook') return 'Your Facebook Page'
-  if (kind === 'instagram') return 'Your Instagram profile'
-  if (kind === 'website') return 'Your website'
-  return 'Your page'
+  if (kind === 'facebook') return 'onboarding.sourceNounFacebook'
+  if (kind === 'instagram') return 'onboarding.sourceNounInstagram'
+  if (kind === 'website') return 'onboarding.sourceNounWebsite'
+  return 'onboarding.sourceNounPage'
 }

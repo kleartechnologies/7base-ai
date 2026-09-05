@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { t } from '@/i18n/store'
 import { toUserMessage } from '@/lib/firebase/errors'
 import { observeMessages, sendMessage } from '@/services/chat/chat.service'
 import type { AiError } from '@/services/ai/ai.types'
@@ -28,8 +29,8 @@ export interface UseConversationResult extends Omit<ThreadState, 'conversationId
   send: (text: string, attachments?: AttachmentDraft[]) => Promise<void>
 }
 
-/** Shown when a reply broke after some of it was already on screen (§ honesty). */
-const INTERRUPTED_MESSAGE = 'EVA’s response was interrupted. Please try again.'
+// Error strings are resolved through the i18n store at the moment they are
+// shown, so they follow the active UI language without this hook re-rendering.
 
 function emptyThread(conversationId: string | null): ThreadState {
   return {
@@ -103,7 +104,7 @@ export function useConversation(
           loading: false,
           awaitingReply: false,
           streamingText: null,
-          error: 'Could not load this conversation.',
+          error: t('chat.loadConversationFailed'),
         }))
       },
     )
@@ -171,7 +172,7 @@ export function useConversation(
           // pretending the visible fragment was EVA's whole answer would be a
           // lie. The fragment is dropped, never stored; retry is a fresh send.
           const message = streamedAny
-            ? INTERRUPTED_MESSAGE
+            ? t('chat.interrupted')
             : describeReplyError(outcome.replyError)
           setState((current) =>
             current.conversationId === settledId || current.conversationId === conversationId
@@ -196,7 +197,7 @@ export function useConversation(
                 loading: Boolean(conversationId) && current.loading,
                 awaitingReply: false,
                 streamingText: null,
-                error: toUserMessage(caught, 'Your message could not be sent. Please try again.'),
+                error: toUserMessage(caught, t('chat.sendFailed')),
               }
             : current,
         )
@@ -217,7 +218,7 @@ export function useConversation(
 
 function describeReplyError(error: AiError): string {
   if (error.code === 'not_configured') {
-    return 'EVA’s AI backend is not connected yet. Your message was saved — deploy the Cloud Functions to get a reply.'
+    return t('chat.backendNotConnected')
   }
   return error.message
 }

@@ -1,43 +1,51 @@
 import { FirebaseError } from 'firebase/app'
+import { t } from '@/i18n/store'
+import type { MessageKey } from '@/i18n/translate'
 
 /**
  * Firebase error codes are precise but unreadable. Restaurant owners should
  * never see `auth/invalid-credential`, and raw codes can also leak whether an
  * account exists, so unknown codes fall back to a generic message.
+ *
+ * The maps hold dictionary keys, not sentences, and resolve through the i18n
+ * store's `t` at the moment the error is shown — so the sentence comes out in
+ * whichever language is active then.
  */
-const AUTH_MESSAGES: Record<string, string> = {
-  'auth/invalid-email': 'That email address does not look right.',
-  'auth/user-disabled': 'This account has been disabled. Please contact support.',
-  'auth/user-not-found': 'Incorrect email or password.',
-  'auth/wrong-password': 'Incorrect email or password.',
-  'auth/invalid-credential': 'Incorrect email or password.',
-  'auth/email-already-in-use': 'An account already exists with that email.',
-  'auth/weak-password': 'Please choose a password with at least 6 characters.',
-  'auth/popup-closed-by-user': 'Sign-in was cancelled.',
-  'auth/cancelled-popup-request': 'Sign-in was cancelled.',
-  'auth/popup-blocked': 'Your browser blocked the sign-in window. Please allow popups and retry.',
-  'auth/network-request-failed': 'Network problem. Please check your connection and try again.',
-  'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
-  'auth/operation-not-allowed': 'This sign-in method is not enabled for this project.',
+const AUTH_MESSAGE_KEYS: Record<string, MessageKey> = {
+  'auth/invalid-email': 'firebaseError.invalidEmail',
+  'auth/user-disabled': 'firebaseError.userDisabled',
+  'auth/user-not-found': 'firebaseError.wrongCredentials',
+  'auth/wrong-password': 'firebaseError.wrongCredentials',
+  'auth/invalid-credential': 'firebaseError.wrongCredentials',
+  'auth/email-already-in-use': 'firebaseError.emailInUse',
+  'auth/weak-password': 'firebaseError.weakPassword',
+  'auth/popup-closed-by-user': 'firebaseError.popupClosed',
+  'auth/cancelled-popup-request': 'firebaseError.popupClosed',
+  'auth/popup-blocked': 'firebaseError.popupBlocked',
+  'auth/network-request-failed': 'firebaseError.network',
+  'auth/too-many-requests': 'firebaseError.tooManyRequests',
+  'auth/operation-not-allowed': 'firebaseError.notEnabled',
 }
 
-const GENERIC_MESSAGES: Record<string, string> = {
-  'permission-denied': 'You do not have access to that.',
-  unauthenticated: 'Please sign in again.',
-  unavailable: 'EVA could not reach the server. Please try again.',
-  'deadline-exceeded': 'That took too long. Please try again.',
-  'resource-exhausted': 'You have reached a usage limit. Please try again later.',
-  'failed-precondition': 'EVA is not set up to do that yet.',
+const GENERIC_MESSAGE_KEYS: Record<string, MessageKey> = {
+  'permission-denied': 'firebaseError.permissionDenied',
+  unauthenticated: 'firebaseError.signInAgain',
+  unavailable: 'firebaseError.unreachable',
+  'deadline-exceeded': 'firebaseError.tookTooLong',
+  'resource-exhausted': 'firebaseError.usageLimit',
+  'failed-precondition': 'firebaseError.notSetUp',
 }
 
-export function toUserMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
+export function toUserMessage(error: unknown, fallback?: string): string {
   if (error instanceof FirebaseError) {
-    return AUTH_MESSAGES[error.code] ?? GENERIC_MESSAGES[error.code] ?? fallback
+    const key = AUTH_MESSAGE_KEYS[error.code] ?? GENERIC_MESSAGE_KEYS[error.code]
+    if (key) return t(key)
+    return fallback ?? t('firebaseError.fallback')
   }
   if (error instanceof Error && error.message) {
     return error.message
   }
-  return fallback
+  return fallback ?? t('firebaseError.fallback')
 }
 
 export function isFirebaseErrorWithCode(error: unknown, code: string): boolean {

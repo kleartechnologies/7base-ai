@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/useI18n'
+import type { MessageKey } from '@/i18n/translate'
 import { generateCreativeMaterials } from '@/services/ai/ai.client'
 import {
   getCampaign,
@@ -15,19 +17,28 @@ import {
 } from '@/services/campaigns/campaign.service'
 import type { Campaign, CampaignChannel, CampaignStatus } from '@/types'
 
-const CHANNELS: { key: CampaignChannel; label: string }[] = [
-  { key: 'facebook', label: 'Facebook' },
-  { key: 'instagram', label: 'Instagram' },
-  { key: 'whatsapp', label: 'WhatsApp' },
-  { key: 'tiktok', label: 'TikTok' },
-  { key: 'in_store', label: 'In-store' },
-  { key: 'website', label: 'Website' },
+// Proper nouns read the same in every language; only in-store and website
+// are real words that translate.
+const CHANNEL_PROPER_NOUNS: Partial<Record<CampaignChannel, string>> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  whatsapp: 'WhatsApp',
+  tiktok: 'TikTok',
+}
+
+const CHANNEL_KEYS: CampaignChannel[] = [
+  'facebook',
+  'instagram',
+  'whatsapp',
+  'tiktok',
+  'in_store',
+  'website',
 ]
 
-const STATUSES: { key: CampaignStatus; label: string }[] = [
-  { key: 'draft', label: 'Draft' },
-  { key: 'ready', label: 'Ready' },
-  { key: 'archived', label: 'Archived' },
+const STATUSES: { key: CampaignStatus; labelKey: MessageKey }[] = [
+  { key: 'draft', labelKey: 'campaign.statusDraft' },
+  { key: 'ready', labelKey: 'campaign.statusReady' },
+  { key: 'archived', labelKey: 'campaign.statusArchived' },
 ]
 
 interface FormState {
@@ -69,6 +80,7 @@ function toForm(campaign: Campaign): FormState {
  * silently take it back.
  */
 export default function CampaignDetailPage() {
+  const { t } = useI18n()
   const { campaignId } = useParams<{ campaignId: string }>()
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [missing, setMissing] = useState(false)
@@ -101,11 +113,9 @@ export default function CampaignDetailPage() {
   if (missing) {
     return (
       <div className="mx-auto w-full max-w-2xl px-8 py-12">
-        <p className="text-[14px] text-muted-foreground">
-          This campaign doesn’t exist or isn’t yours.
-        </p>
+        <p className="text-[14px] text-muted-foreground">{t('campaign.notFound')}</p>
         <Button className="mt-4" size="sm" variant="outline" asChild>
-          <Link to={ROUTES.campaigns}>Back to campaigns</Link>
+          <Link to={ROUTES.campaigns}>{t('campaign.backToCampaigns')}</Link>
         </Button>
       </div>
     )
@@ -114,7 +124,7 @@ export default function CampaignDetailPage() {
   if (!campaign || !form) {
     return (
       <div className="mx-auto w-full max-w-2xl px-8 py-12">
-        <p className="text-[14px] text-muted-foreground">Loading…</p>
+        <p className="text-[14px] text-muted-foreground">{t('common.loadingEllipsis')}</p>
       </div>
     )
   }
@@ -170,7 +180,7 @@ export default function CampaignDetailPage() {
       }
       setSaved(true)
     } catch {
-      setError('Could not save the campaign. Please try again.')
+      setError(t('campaign.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -184,7 +194,7 @@ export default function CampaignDetailPage() {
     } catch {
       // The buttons reflect `campaign.status`, so a failed write leaves them
       // truthful — but the click must not vanish without a word.
-      setError('Could not update the campaign status. Please try again.')
+      setError(t('campaign.statusUpdateFailed'))
     }
   }
 
@@ -206,13 +216,13 @@ export default function CampaignDetailPage() {
         className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" aria-hidden />
-        Campaigns
+        {t('campaign.pageTitle')}
       </Link>
 
       <header className="mt-4 flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            Campaign
+            {t('campaign.title')}
           </p>
           <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.01em] text-foreground">
             {campaign.name}
@@ -226,17 +236,17 @@ export default function CampaignDetailPage() {
               variant={campaign.status === status.key ? 'secondary' : 'ghost'}
               onClick={() => void handleStatus(status.key)}
             >
-              {status.label}
+              {t(status.labelKey)}
             </Button>
           ))}
         </div>
       </header>
 
       <div className="mt-8 space-y-5">
-        <Field label="Name">
+        <Field label={t('campaign.fieldName')}>
           <Input value={form.name} onChange={(e) => set({ name: e.target.value })} />
         </Field>
-        <Field label="Objective">
+        <Field label={t('campaign.objective')}>
           <Textarea
             rows={2}
             value={form.objective}
@@ -244,12 +254,12 @@ export default function CampaignDetailPage() {
           />
         </Field>
         <Field
-          label="Target audience"
+          label={t('campaign.fieldTargetAudience')}
           tag={
             campaign.targetAudience
               ? campaign.targetAudience.basis === 'known'
-                ? 'Known'
-                : 'Hypothesis'
+                ? t('campaign.tagKnown')
+                : t('campaign.tagHypothesis')
               : undefined
           }
         >
@@ -260,62 +270,68 @@ export default function CampaignDetailPage() {
           />
         </Field>
         <Field
-          label="Offer"
+          label={t('campaign.offer')}
           tag={
             campaign.offer
               ? campaign.offer.basis === 'existing'
-                ? 'Existing'
-                : 'Recommendation'
+                ? t('campaign.tagExisting')
+                : t('campaign.tagRecommendation')
               : undefined
           }
         >
           <Textarea rows={2} value={form.offer} onChange={(e) => set({ offer: e.target.value })} />
         </Field>
-        <Field label="Positioning">
+        <Field label={t('campaign.fieldPositioning')}>
           <Textarea
             rows={2}
             value={form.positioning}
             onChange={(e) => set({ positioning: e.target.value })}
           />
         </Field>
-        <Field label="Key message">
+        <Field label={t('campaign.fieldKeyMessage')}>
           <Textarea
             rows={2}
             value={form.keyMessage}
             onChange={(e) => set({ keyMessage: e.target.value })}
           />
         </Field>
-        <Field label="Call to action">
+        <Field label={t('campaign.callToAction')}>
           <Input
             value={form.callToAction}
             onChange={(e) => set({ callToAction: e.target.value })}
           />
         </Field>
-        <Field label="Channels">
+        <Field label={t('campaign.channels')}>
           <div className="flex flex-wrap gap-1.5">
-            {CHANNELS.map((channel) => {
-              const active = form.channels.includes(channel.key)
+            {CHANNEL_KEYS.map((channel) => {
+              const active = form.channels.includes(channel)
+              const label =
+                channel === 'in_store'
+                  ? t('campaign.channelInStore')
+                  : channel === 'website'
+                    ? t('campaign.channelWebsite')
+                    : (CHANNEL_PROPER_NOUNS[channel] ?? channel)
               return (
                 <Button
-                  key={channel.key}
+                  key={channel}
                   type="button"
                   size="sm"
                   variant={active ? 'secondary' : 'outline'}
                   onClick={() =>
                     set({
                       channels: active
-                        ? form.channels.filter((c) => c !== channel.key)
-                        : [...form.channels, channel.key],
+                        ? form.channels.filter((c) => c !== channel)
+                        : [...form.channels, channel],
                     })
                   }
                 >
-                  {channel.label}
+                  {label}
                 </Button>
               )
             })}
           </div>
         </Field>
-        <Field label="Duration (days)">
+        <Field label={t('campaign.fieldDuration')}>
           <Input
             inputMode="numeric"
             className="max-w-[120px]"
@@ -323,25 +339,27 @@ export default function CampaignDetailPage() {
             onChange={(e) => set({ durationDays: e.target.value })}
           />
         </Field>
-        <Field label="Notes">
+        <Field label={t('campaign.fieldNotes')}>
           <Textarea rows={3} value={form.notes} onChange={(e) => set({ notes: e.target.value })} />
         </Field>
       </div>
 
       {campaign.assumptions.length > 0 ? (
-        <ListSection title="Assumptions this campaign relies on" items={campaign.assumptions} />
+        <ListSection title={t('campaign.assumptionsTitle')} items={campaign.assumptions} />
       ) : null}
       {campaign.unknowns.length > 0 ? (
-        <ListSection title="Still unknown — confirm before launch" items={campaign.unknowns} />
+        <ListSection title={t('campaign.unknownsTitle')} items={campaign.unknowns} />
       ) : null}
 
       <div className="mt-8 flex flex-wrap items-center gap-2 border-t border-border pt-5">
         <Button size="sm" onClick={() => void handleSave()} disabled={saving}>
-          {saving ? 'Saving…' : saved ? 'Saved' : 'Save changes'}
+          {saving ? t('common.saving') : saved ? t('campaign.saved') : t('campaign.saveChanges')}
         </Button>
         {campaign.conversationId ? (
           <Button size="sm" variant="outline" asChild>
-            <Link to={ROUTES.conversation(campaign.conversationId)}>Continue in chat</Link>
+            <Link to={ROUTES.conversation(campaign.conversationId)}>
+              {t('campaign.continueInChat')}
+            </Link>
           </Button>
         ) : null}
         <Button
@@ -350,23 +368,23 @@ export default function CampaignDetailPage() {
           onClick={() => void handleCreateMaterials()}
           disabled={creating}
         >
-          {creating ? 'Creating your marketing materials…' : 'Create Marketing Materials'}
+          {creating ? t('campaign.creatingMaterials') : t('campaign.createMaterials')}
         </Button>
       </div>
       {creating ? (
         <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-          EVA is writing your copy and preparing the poster — this can take a minute or two.
+          {t('campaign.materialsPreparing')}
         </p>
       ) : null}
       {materialsStarted ? (
         <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-          Your marketing materials are ready — they’re waiting in the conversation.{' '}
+          {t('campaign.materialsReady')}{' '}
           {campaign.conversationId ? (
             <Link
               to={ROUTES.conversation(campaign.conversationId)}
               className="font-medium text-foreground underline underline-offset-2"
             >
-              Open the chat to see them.
+              {t('campaign.openChatToSee')}
             </Link>
           ) : null}
         </p>

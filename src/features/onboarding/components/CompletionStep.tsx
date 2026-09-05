@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CompletionQuestions } from '@/features/business/components/CompletionQuestions'
+import { useI18n } from '@/hooks/useI18n'
 import { observeBusiness } from '@/services/business/business.service'
 import type { Business } from '@/types'
 
@@ -24,6 +25,7 @@ export function CompletionStep({
   businessId: string
   onDone: () => void
 }) {
+  const { t } = useI18n()
   const [live, setLive] = useState<Business | null>(null)
   const [finished, setFinished] = useState(false)
 
@@ -41,7 +43,7 @@ export function CompletionStep({
         ) : (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" aria-hidden />
-            One moment…
+            {t('onboarding.oneMoment')}
           </div>
         )}
       </div>
@@ -49,7 +51,7 @@ export function CompletionStep({
       {/* Always rendered, even while loading: this screen must never be able
           to trap anyone. Onboarding is already complete behind it. */}
       <Button size="lg" variant={finished ? 'default' : 'ghost'} onClick={onDone}>
-        {finished ? 'Continue' : 'Continue for now'}
+        {finished ? t('common.continue') : t('onboarding.continueForNow')}
       </Button>
     </div>
   )

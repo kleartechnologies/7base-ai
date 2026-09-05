@@ -3,6 +3,7 @@ import { logger } from 'firebase-functions'
 import { DEFAULT_PLAN, type SubscriptionPlan } from '../config/models'
 import { permissionDenied, unauthenticated } from './errors'
 import { COLLECTIONS, db } from './firebase'
+import { DEFAULT_USER_LANGUAGE, normaliseUserLanguage, type UserLanguage } from './language'
 import { assertOwnership } from './ownership'
 import { normalisePlan, readDevPlanOverride } from './plan'
 
@@ -65,6 +66,27 @@ export async function resolvePlanForUser(uid: string): Promise<SubscriptionPlan>
       reason: error instanceof Error ? error.message : 'unknown',
     })
     return DEFAULT_PLAN
+  }
+}
+
+/**
+ * The user's saved app language, read server-side from their own profile
+ * (`users/{uid}.preferences.language`) — the same value Settings writes for
+ * the UI, reused as a deterministic signal for EVA's default reply language.
+ * It is a preference, not an entitlement: any failure or unknown value
+ * resolves to English, and nothing about models, plans or quotas depends on
+ * it.
+ */
+export async function resolveLanguageForUser(uid: string): Promise<UserLanguage> {
+  try {
+    const snapshot = await db.collection(COLLECTIONS.users).doc(uid).get()
+    return normaliseUserLanguage(snapshot.exists ? snapshot.data() : null)
+  } catch (error) {
+    logger.warn('language.lookup_failed', {
+      uid,
+      reason: error instanceof Error ? error.message : 'unknown',
+    })
+    return DEFAULT_USER_LANGUAGE
   }
 }
 

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/useI18n'
 import type { Business } from '@/types'
 import type { BusinessFacts } from '@/services/business/brain'
 import { EditActions, Field, SectionCard } from './SectionCard'
@@ -27,6 +28,7 @@ export function BusinessSection({
   startOpen?: boolean
   onSave: (facts: BusinessFacts) => Promise<void>
 }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(startOpen)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState(() => toForm(business))
@@ -55,26 +57,26 @@ export function BusinessSection({
 
   return (
     <SectionCard
-      title="Your business"
-      hint="The basics EVA will use in everything it writes for you."
+      title={t('business.sectionBusinessTitle')}
+      hint={t('business.sectionBusinessHint')}
       editing={editing}
       onEdit={open}
     >
       {editing ? (
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Text label="Business name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
-            <Text label="What kind of business" value={form.businessType} placeholder="Restaurant" onChange={(v) => setForm({ ...form, businessType: v })} />
-            <Text label="Cuisine or niche" value={form.subIndustry} placeholder="Nasi kandar" onChange={(v) => setForm({ ...form, subIndustry: v })} />
-            <Text label="City" value={form.city} onChange={(v) => setForm({ ...form, city: v })} />
-            <Text label="State" value={form.state} onChange={(v) => setForm({ ...form, state: v })} />
-            <Text label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
-            <Text label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
-            <Text label="Opening hours" value={form.openingHours} placeholder="Daily 11am – 10pm" onChange={(v) => setForm({ ...form, openingHours: v })} />
+            <Text id="brain-name" label={t('business.fieldBusinessName')} value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+            <Text id="brain-kind" label={t('business.fieldKind')} value={form.businessType} placeholder={t('business.fieldKindPlaceholder')} onChange={(v) => setForm({ ...form, businessType: v })} />
+            <Text id="brain-cuisine" label={t('business.fieldCuisine')} value={form.subIndustry} placeholder={t('business.fieldCuisinePlaceholder')} onChange={(v) => setForm({ ...form, subIndustry: v })} />
+            <Text id="brain-city" label={t('business.fieldCity')} value={form.city} onChange={(v) => setForm({ ...form, city: v })} />
+            <Text id="brain-state" label={t('business.fieldState')} value={form.state} onChange={(v) => setForm({ ...form, state: v })} />
+            <Text id="brain-phone" label={t('business.fieldPhone')} value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
+            <Text id="brain-email" label={t('business.fieldEmail')} value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
+            <Text id="brain-hours" label={t('business.fieldOpeningHours')} value={form.openingHours} placeholder={t('business.fieldOpeningHoursPlaceholder')} onChange={(v) => setForm({ ...form, openingHours: v })} />
           </div>
 
           <div className="mt-4 space-y-2">
-            <Label htmlFor="brain-description">What the business does</Label>
+            <Label htmlFor="brain-description">{t('business.fieldWhatItDoes')}</Label>
             <Textarea
               id="brain-description"
               rows={3}
@@ -87,9 +89,9 @@ export function BusinessSection({
         </form>
       ) : (
         <dl className="divide-y divide-border">
-          <Field label="Name" value={business.name} provenance={provenance.name} />
+          <Field label={t('business.labelName')} value={business.name} provenance={provenance.name} />
           <Field
-            label="Type"
+            label={t('business.labelType')}
             value={business.identity.businessType ?? business.identity.category}
             provenance={
               business.identity.businessType
@@ -98,27 +100,27 @@ export function BusinessSection({
             }
           />
           <Field
-            label="Cuisine or niche"
+            label={t('business.fieldCuisine')}
             value={business.identity.subIndustry}
             provenance={provenance['identity.subIndustry']}
           />
           <Field
-            label="What you do"
+            label={t('business.labelWhatYouDo')}
             value={business.identity.description}
             provenance={provenance['identity.description']}
           />
           <Field
-            label="Location"
+            label={t('business.labelLocation')}
             value={location || null}
             provenance={provenance['location.city'] ?? provenance['location.state']}
           />
           <Field
-            label="Opening hours"
+            label={t('business.fieldOpeningHours')}
             value={business.location.openingHours}
             provenance={provenance['location.openingHours']}
           />
-          <Field label="Phone" value={business.contact.phone} provenance={provenance['contact.phone']} />
-          <Field label="Website" value={business.contact.website} />
+          <Field label={t('business.fieldPhone')} value={business.contact.phone} provenance={provenance['contact.phone']} />
+          <Field label={t('business.labelWebsite')} value={business.contact.website} />
         </dl>
       )}
     </SectionCard>
@@ -126,17 +128,19 @@ export function BusinessSection({
 }
 
 function Text({
+  id,
   label,
   value,
   placeholder,
   onChange,
 }: {
+  /** Stable, language-independent input id — labels change with the UI language. */
+  id: string
   label: string
   value: string
   placeholder?: string
   onChange: (value: string) => void
 }) {
-  const id = `brain-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>

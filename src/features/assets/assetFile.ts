@@ -1,3 +1,4 @@
+import { t } from '@/i18n/store'
 import { ASSET_TYPES, type AssetType } from '@/types/asset'
 
 /**
@@ -36,20 +37,19 @@ export interface FileLike {
 }
 
 export function validateAssetFile(file: FileLike): AssetFileCheck {
+  // Reasons resolve through the i18n store at call time, so they follow the
+  // owner's current UI language.
   if (file.type === 'image/svg+xml') {
-    return { ok: false, reason: 'SVG files are not supported. Please use JPEG, PNG or WebP.' }
+    return { ok: false, reason: t('asset.invalidSvg') }
   }
   if (!(ACCEPTED_ASSET_MIME_TYPES as readonly string[]).includes(file.type)) {
-    return {
-      ok: false,
-      reason: 'This file type is not supported. Please upload a JPEG, PNG, WebP or PDF.',
-    }
+    return { ok: false, reason: t('asset.invalidType') }
   }
   if (file.size >= MAX_ASSET_BYTES) {
-    return { ok: false, reason: 'This file is too large. The maximum size is 20 MB.' }
+    return { ok: false, reason: t('asset.tooLarge') }
   }
   if (file.size <= 0) {
-    return { ok: false, reason: 'This file is empty.' }
+    return { ok: false, reason: t('asset.emptyFile') }
   }
   return { ok: true, reason: null }
 }
@@ -61,7 +61,7 @@ export function isAssetType(value: string): value is AssetType {
 /** A starting display name: the file name without its extension. */
 export function defaultAssetName(fileName: string): string {
   const base = fileName.replace(/\.[^.]+$/, '').trim()
-  return base || 'Untitled asset'
+  return base || t('asset.untitled')
 }
 
 /** A starting type from the MIME type; the owner refines it afterwards. */

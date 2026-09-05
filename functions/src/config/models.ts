@@ -152,7 +152,7 @@ export function getModelConfig(tier: ModelTier): ModelConfig {
  * Pro's defaults are the tier defaults above — Pro *is* the behaviour MARKA
  * shipped with (flagship reasoning, mid-tier chat). Basic runs everything on
  * GPT-5.6 Luna ($0.20/$1.20 per 1M — ~20x cheaper than Sol on both sides),
- * which is what makes an RM19.90/month plan able to include real campaign
+ * which is what makes a low-priced monthly plan able to include real campaign
  * generation at all. The image tier is deliberately absent: both plans share
  * one image model, priced and configured once.
  */

@@ -16,7 +16,7 @@ describe('composer wiring', () => {
   const composer = read('./components/ChatComposer.tsx')
 
   it('has the attach button and the hidden validated file input', () => {
-    expect(composer).toContain('aria-label="Attach a file"')
+    expect(composer).toContain("aria-label={t('chat.attachFile')}")
     expect(composer).toContain('ATTACHMENT_FILE_ACCEPT')
     expect(composer).toContain('validateAttachmentFile')
   })
@@ -27,7 +27,7 @@ describe('composer wiring', () => {
 
   it('lets a pending attachment be removed before send', () => {
     expect(composer).toContain('removePending')
-    expect(composer).toContain('aria-label={`Remove ${item.fileName}`}')
+    expect(composer).toContain("aria-label={t('chat.removeAttachment', { name: item.fileName })}")
   })
 
   it('offers Choose-from-Assets, filtered to what rules would accept', () => {

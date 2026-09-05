@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MarkaLogo } from '@/components/MarkaLogo'
 import { useConversations } from '@/features/chat/useConversations'
+import { useI18n } from '@/hooks/useI18n'
 import { Sidebar } from './components/Sidebar'
 
 /**
@@ -14,6 +15,7 @@ import { Sidebar } from './components/Sidebar'
  */
 export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const { t } = useI18n()
 
   // One conversation listener for the whole shell. The fixed rail and the
   // mobile drawer can both be mounted at once, so the hook must not live
@@ -34,7 +36,7 @@ export function AppShell() {
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t('shell.closeMenu')}
             className="absolute inset-0 bg-foreground/20"
             onClick={() => setDrawerOpen(false)}
           />
@@ -43,7 +45,7 @@ export function AppShell() {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Close menu"
+              aria-label={t('shell.closeMenu')}
               className="absolute -right-11 top-3 text-background"
               onClick={() => setDrawerOpen(false)}
             >
@@ -58,7 +60,7 @@ export function AppShell() {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Open menu"
+            aria-label={t('shell.openMenu')}
             onClick={() => setDrawerOpen(true)}
           >
             <Menu />

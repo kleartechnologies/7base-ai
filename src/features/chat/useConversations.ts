@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { t } from '@/i18n/store'
 import { ROUTES } from '@/app/routes/paths'
 import { deleteConversation, observeConversations } from '@/services/chat/chat.service'
 import type { Conversation } from '@/types'
@@ -52,7 +53,7 @@ export function useConversations() {
           uid,
           conversations: [],
           loading: false,
-          error: 'Could not load your conversations.',
+          error: t('chat.loadConversationsFailed'),
         })
       },
     )
@@ -70,7 +71,7 @@ export function useConversations() {
       } catch {
         setState((previous) => ({
           ...previous,
-          error: 'Could not delete the conversation. Please try again.',
+          error: t('chat.deleteConversationFailed'),
         }))
         return
       }
