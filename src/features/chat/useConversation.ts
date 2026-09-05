@@ -60,7 +60,11 @@ function emptyThread(conversationId: string | null): ThreadState {
  * never triggers a cascading re-render.
  *
  * `conversationId` is null for a thread that does not exist yet; the first
- * send creates it and reports the new id through `onConversationCreated`.
+ * send creates it and reports the new id through `onConversationCreated` the
+ * moment the user's message is stored — *before* the reply is awaited — so
+ * the subscription attaches, the message renders and the URL is real for the
+ * whole generation. A refresh mid-reply lands on /chat/:id and finds the
+ * thread; the reply still arrives through the subscription when it is done.
  */
 export function useConversation(
   conversationId: string | null,
@@ -129,42 +133,59 @@ export function useConversation(
         }
       })
 
-      // EVA's text, streamed ahead of the stored message. Deltas arrive while
-      // the state is still tagged with the id this send started from (a new
-      // thread is re-tagged only after the reply completes), so the closure id
-      // is the right guard. Flushes are coalesced so a fast stream does not
-      // render per token.
+      // The id the in-flight state is tagged with. It starts as the route's
+      // id; a brand-new thread is re-tagged to the created conversation's id
+      // the moment the user message is stored (below), so every guard here
+      // must track that move rather than trusting the closure's original id.
+      let threadId = conversationId
+
+      // EVA's text, streamed ahead of the stored message. Flushes are
+      // coalesced so a fast stream does not render per token.
       let streamedAny = false
       const buffer = createStreamBuffer((fullText) => {
         streamedAny = true
         // The awaitingReply guard closes a race: once the stored reply has
         // arrived (or failed), a trailing flush must not resurrect the mirror.
         setState((current) =>
-          current.conversationId === conversationId && current.awaitingReply
+          current.conversationId === threadId && current.awaitingReply
             ? { ...current, streamingText: fullText }
             : current,
         )
       })
+
+      const adoptCreatedConversation = (createdId: string) => {
+        threadId = createdId
+        // Re-tag the pending state (thinking indicator, cleared error) with
+        // the real id *before* navigation swaps the route param, otherwise
+        // the render-time check above would discard it as belonging to
+        // another thread and the reply's outcome would be lost.
+        setState((current) =>
+          current.conversationId === null ? { ...current, conversationId: createdId } : current,
+        )
+        onConversationCreated(createdId)
+      }
 
       try {
         const outcome = await sendMessage(
           uid,
           { conversationId, businessId, text, attachments },
           (delta) => buffer.push(delta),
+          (storedId) => {
+            // The user's message is durably in Firestore; the reply has not
+            // been requested yet. Adopting the created id *now* attaches the
+            // subscription and renders the stored message immediately — the
+            // user is never staring at "thinking…" with their own words
+            // invisible, and a refresh mid-reply keeps the thread.
+            if (!conversationId) adoptCreatedConversation(storedId)
+          },
         )
         buffer.finish()
         const settledId = outcome.conversationId
 
-        if (!conversationId) {
-          // The first send just created the conversation. Re-tag the pending
-          // state (thinking indicator, cleared error) with the real id *before*
-          // navigation swaps the route param, otherwise the render-time check
-          // above would discard it as belonging to another thread and the
-          // outcome below would be lost.
-          setState((current) =>
-            current.conversationId === null ? { ...current, conversationId: settledId } : current,
-          )
-          onConversationCreated(settledId)
+        if (!conversationId && threadId !== settledId) {
+          // Fallback for a send that resolved without reporting the stored
+          // message first — not a path the service takes today.
+          adoptCreatedConversation(settledId)
         }
 
         if (outcome.replyError) {
@@ -188,13 +209,14 @@ export function useConversation(
         }
       } catch (caught) {
         buffer.finish()
-        // The send itself failed, so no navigation happened; the state is
-        // still tagged with the id this send started from.
+        // The send itself failed. `threadId` is whichever id the thread had
+        // at that point — still the route's id when the write itself failed,
+        // the created id if the failure came after the message was stored.
         setState((current) =>
-          current.conversationId === conversationId
+          current.conversationId === threadId
             ? {
                 ...current,
-                loading: Boolean(conversationId) && current.loading,
+                loading: Boolean(threadId) && current.loading,
                 awaitingReply: false,
                 streamingText: null,
                 error: toUserMessage(caught, t('chat.sendFailed')),

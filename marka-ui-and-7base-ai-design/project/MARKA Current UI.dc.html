@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;height:100%}
+  body{background:#fbfbfa;color:#171716;font-family:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;font-feature-settings:'cv02','cv03','cv04','cv11';text-rendering:optimizeLegibility}
+  *{scrollbar-width:thin;scrollbar-color:#e7e6e2 transparent;box-sizing:border-box}
+  a{color:#171716;text-decoration:none}
+  a:hover{color:#171716}
+  button,input,textarea,select{font-family:inherit}
+  @keyframes pulse{50%{opacity:.5}}
+</style>
+</helmet>
+<div style="display:flex;height:100vh;overflow:hidden;background:#fbfbfa">
+  <aside style="width:264px;flex-shrink:0;border-right:1px solid #e7e6e2;background:#f6f5f3;display:flex;flex-direction:column;min-height:0">
+    <div style="display:flex;height:56px;flex-shrink:0;align-items:center;padding:0 16px">
+      <span style="user-select:none;font-size:15px;font-weight:600;letter-spacing:-0.02em;color:#171716">MARKA</span>
+    </div>
+    <div style="padding:0 12px 8px">
+      <button onClick="{{ goChat }}" style="display:flex;width:100%;height:36px;align-items:center;justify-content:flex-start;gap:10px;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:0 16px;font-size:14px;font-weight:400;color:#171716;cursor:pointer" style-hover="background:#efeeea">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6f6f68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        New chat
+      </button>
+    </div>
+    <nav aria-label="Chat history" style="min-height:0;flex:1;overflow-y:auto;padding:8px 12px">
+      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px">
+        <li><a href="#" onClick="{{ goChat }}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:8px;padding:7px 32px 7px 10px;font-size:14px;background:{{ histBg }};color:{{ histC }};font-weight:{{ histFw }}">Slow weekday sales</a></li>
+        <li><a href="#" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:8px;padding:7px 32px 7px 10px;font-size:14px;color:#6f6f68" style-hover="background:rgba(236,234,230,0.6);color:#171716">Raya open house promo</a></li>
+        <li><a href="#" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:8px;padding:7px 32px 7px 10px;font-size:14px;color:#6f6f68" style-hover="background:rgba(236,234,230,0.6);color:#171716">Caption for menu photo</a></li>
+      </ul>
+    </nav>
+    <div style="flex-shrink:0;border-top:1px solid #e7e6e2;padding:12px">
+      <nav aria-label="Workspace" style="display:flex;flex-direction:column;gap:1px">
+        <a href="#" onClick="{{ goOverview }}" style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px;font-size:14px;background:{{ nav.overview.bg }};color:{{ nav.overview.c }};font-weight:{{ nav.overview.fw }}" style-hover="background:rgba(236,234,230,0.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg><span>Overview</span></a>
+        <a href="#" onClick="{{ goCampaigns }}" style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px;font-size:14px;background:{{ nav.campaigns.bg }};color:{{ nav.campaigns.c }};font-weight:{{ nav.campaigns.fw }}" style-hover="background:rgba(236,234,230,0.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg><span>Campaigns</span></a>
+        <a href="#" onClick="{{ goCreative }}" style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px;font-size:14px;background:{{ nav.creative.bg }};color:{{ nav.creative.c }};font-weight:{{ nav.creative.fw }}" style-hover="background:rgba(236,234,230,0.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg><span>Creative</span></a>
+        <a href="#" onClick="{{ goAssets }}" style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px;font-size:14px;background:{{ nav.assets.bg }};color:{{ nav.assets.c }};font-weight:{{ nav.assets.fw }}" style-hover="background:rgba(236,234,230,0.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"></path></svg><span>Assets</span></a>
+        <a href="#" onClick="{{ goLibrary }}" style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px;font-size:14px;background:{{ nav.library.bg }};color:{{ nav.library.c }};font-weight:{{ nav.library.fw }}" style-hover="background:rgba(236,234,230,0.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="18" x="3" y="3" rx="1"></rect><path d="M7 3v18"></path><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"></path></svg><span>Library</span></a>
+        <a href="#" onClick="{{ goCalendar }}" style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px;font-size:14px;background:{{ nav.calendar.bg }};color:{{ nav.calendar.c }};font-weight:{{ nav.calendar.fw }}" style-hover="background:rgba(236,234,230,0.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path><path d="M16 18h.01"></path></svg><span>Calendar</span></a>
+        <a href="#" onClick="{{ goResults }}" style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px;font-size:14px;background:{{ nav.results.bg }};color:{{ nav.results.c }};font-weight:{{ nav.results.fw }}" style-hover="background:rgba(236,234,230,0.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg><span>Results</span></a>
+        <a href="#" onClick="{{ goBusiness }}" style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px;font-size:14px;background:{{ nav.business.bg }};color:{{ nav.business.c }};font-weight:{{ nav.business.fw }}" style-hover="background:rgba(236,234,230,0.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"></path><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"></path><path d="M2 7h20"></path><path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"></path></svg><span>Business</span></a>
+        <a href="#" onClick="{{ goSettings }}" style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px;font-size:14px;background:{{ nav.settings.bg }};color:{{ nav.settings.c }};font-weight:{{ nav.settings.fw }}" style-hover="background:rgba(236,234,230,0.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg><span>Settings</span></a>
+      </nav>
+    </div>
+    <div style="flex-shrink:0;border-top:1px solid #e7e6e2;padding:8px">
+      <button style="display:flex;width:100%;align-items:center;gap:10px;border:none;background:transparent;border-radius:8px;padding:8px;text-align:left;cursor:pointer" style-hover="background:rgba(236,234,230,0.6)">
+        <span style="display:flex;width:32px;height:32px;flex-shrink:0;align-items:center;justify-content:center;border-radius:999px;background:#f2f1ee;font-size:12px;font-weight:500;color:#171716">AA</span>
+        <span style="min-width:0;flex:1">
+          <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;color:#171716">Amirul Aidi</span>
+          <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#6f6f68">Warung Pak Din</span>
+        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6f6f68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main style="min-width:0;flex:1;display:flex;flex-direction:column;min-height:0">
+
+    <sc-if value="{{ isChatEmpty }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Chat — empty" style="display:flex;min-height:0;flex:1;flex-direction:column;justify-content:center;padding:0 24px 24px">
+        <div style="margin:0 auto;width:100%;max-width:672px;text-align:center">
+          <h1 style="margin:0;font-size:32px;font-weight:600;letter-spacing:-0.02em;color:#171716;text-wrap:balance">Hello, Amirul</h1>
+          <p style="margin:12px 0 0;font-size:15px;line-height:1.625;color:#6f6f68">What would you like to achieve for your business?</p>
+          <div style="margin-top:36px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px">
+            <button style="border:1px solid #e7e6e2;background:#fff;border-radius:999px;padding:8px 14px;font-size:13px;color:#6f6f68;white-space:nowrap;cursor:pointer" style-hover="border-color:rgba(168,166,157,0.5);color:#171716">My weekday sales are slow. What should I do?</button>
+            <button style="border:1px solid #e7e6e2;background:#fff;border-radius:999px;padding:8px 14px;font-size:13px;color:#6f6f68;white-space:nowrap;cursor:pointer" style-hover="border-color:rgba(168,166,157,0.5);color:#171716">Help me promote my new menu item.</button>
+            <button style="border:1px solid #e7e6e2;background:#fff;border-radius:999px;padding:8px 14px;font-size:13px;color:#6f6f68;white-space:nowrap;cursor:pointer" style-hover="border-color:rgba(168,166,157,0.5);color:#171716">What should I post this week?</button>
+          </div>
+        </div>
+        <div style="margin:40px auto 0;width:100%;max-width:768px">
+          <div style="border:1px solid #e2e1dc;background:#fff;border-radius:16px;padding:10px 14px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+            <div style="display:flex;align-items:flex-end;gap:8px">
+              <button aria-label="Attach a file" style="margin-bottom:2px;display:flex;width:32px;height:32px;flex-shrink:0;align-items:center;justify-content:center;border:none;background:transparent;border-radius:999px;color:#6f6f68;cursor:pointer" style-hover="background:#efeeea"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></button>
+              <textarea rows="1" placeholder="Tell EVA what you want to achieve…" style="flex:1;resize:none;border:none;outline:none;background:transparent;padding:6px 0;font-size:15px;line-height:1.6;color:#171716;max-height:200px"></textarea>
+              <button aria-label="Send message" style="margin-bottom:2px;display:flex;width:32px;height:32px;flex-shrink:0;align-items:center;justify-content:center;border:none;background:#171716;border-radius:999px;color:#fafaf9;cursor:pointer;opacity:0.5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+            </div>
+          </div>
+          <p style="margin:8px 0 0;text-align:center;font-size:12px;color:#6f6f68">EVA can make mistakes. Review important details before publishing.</p>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isChatConvo }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Chat — conversation" style="display:flex;min-height:0;flex:1;flex-direction:column">
+        <div style="min-height:0;flex:1;overflow-y:auto">
+          <div style="margin:0 auto;width:100%;max-width:768px;display:flex;flex-direction:column;gap:28px;padding:32px 24px">
+            <div style="display:flex;width:100%;justify-content:flex-end">
+              <div style="max-width:75%;border-radius:16px;background:#f2f1ee;padding:10px 16px;font-size:15px;line-height:1.6">My weekday sales are slow. What should I do?</div>
+            </div>
+            <div style="display:flex;width:100%;justify-content:flex-start">
+              <div style="width:100%;min-width:0;display:flex;flex-direction:column;gap:12px">
+                <p style="margin:0;white-space:pre-wrap;font-size:15px;line-height:1.65;color:#171716">Looking at what I know about Warung Pak Din, weekday lunch is your biggest untapped window. Nearby offices bring steady lunchtime footfall you're not capturing yet, and your RM12.90 nasi lemak set is priced right for them. Here's what I recommend:</p>
+                <div style="overflow:hidden;border-radius:12px;border:1px solid #e7e6e2;background:#fff">
+                  <div style="border-bottom:1px solid #e7e6e2;padding:12px 20px">
+                    <p style="margin:0;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path></svg>EVA’s recommendation</p>
+                    <h3 style="margin:4px 0 0;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:#171716">Weekday Lunch Set Promotion</h3>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:16px;padding:16px 20px">
+                    <div><p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Goal</p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">Increase Monday–Thursday lunch sales</p></div>
+                    <div><p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Diagnosis</p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">Weekday lunch covers are well below weekend levels, while offices within walking distance generate lunchtime demand every working day.</p></div>
+                    <div><p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Why</p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">A time-limited set lunch gives office workers a clear reason to choose you — and it uses dishes you already serve, so there is nothing new to prepare.</p></div>
+                    <div><p style="margin:0;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Audience<span style="border:1px solid #e7e6e2;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:400;text-transform:none;letter-spacing:normal;color:#6f6f68">Hypothesis</span></p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">Office workers within 1km looking for a fast, affordable proper lunch</p></div>
+                    <div><p style="margin:0;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Offer<span style="border:1px solid #e7e6e2;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:400;text-transform:none;letter-spacing:normal;color:#6f6f68">Recommendation</span></p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">RM12.90 weekday set: nasi lemak ayam + teh tarik, 11.30am–2pm</p></div>
+                    <div><p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Confidence</p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">Medium</p></div>
+                  </div>
+                  <div style="border-top:1px solid #e7e6e2;padding:14px 20px">
+                    <button style="display:inline-flex;align-items:center;gap:8px;height:32px;border:none;border-radius:8px;background:#171716;color:#fafaf9;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:rgba(23,23,22,0.9)">Build this campaign</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;width:100%;justify-content:flex-end">
+              <div style="max-width:75%;border-radius:16px;background:#f2f1ee;padding:10px 16px;font-size:15px;line-height:1.6">Yes, build it.</div>
+            </div>
+            <div style="display:flex;width:100%;justify-content:flex-start">
+              <div style="width:100%;min-width:0;display:flex;flex-direction:column;gap:12px">
+                <p style="margin:0;white-space:pre-wrap;font-size:15px;line-height:1.65;color:#171716">Done — here’s the campaign. Have a look and change anything; when you’re ready, I can create the poster and captions.</p>
+                <div style="overflow:hidden;border-radius:12px;border:1px solid #e7e6e2;background:#fff">
+                  <div style="border-bottom:1px solid #e7e6e2;padding:12px 20px">
+                    <p style="margin:0;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>Campaign<span style="margin-left:auto;border:1px solid #e7e6e2;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:400;text-transform:none;letter-spacing:normal;color:#6f6f68">Draft</span></p>
+                    <h3 style="margin:4px 0 0;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:#171716">Weekday Lunch Set</h3>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:16px;padding:16px 20px">
+                    <div><p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Objective</p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">Lift Monday–Thursday lunch covers by promoting the RM12.90 set to nearby office workers.</p></div>
+                    <div><p style="margin:0;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Audience<span style="border:1px solid #e7e6e2;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:400;text-transform:none;letter-spacing:normal;color:#6f6f68">Hypothesis</span></p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">Office workers within 1km looking for a fast, affordable proper lunch</p></div>
+                    <div><p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Message</p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">Proper lunch, RM12.90, ready in minutes.</p></div>
+                    <div><p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Call to action</p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">Order on WhatsApp before 11am</p></div>
+                    <div><p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Channels</p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">Facebook · Instagram · WhatsApp</p></div>
+                    <div><p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Duration</p><p style="margin:4px 0 0;font-size:14px;line-height:1.625;color:#171716">14 days</p></div>
+                  </div>
+                  <div style="border-top:1px solid #e7e6e2;padding:14px 20px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                    <button onClick="{{ goDetail }}" style="display:inline-flex;align-items:center;height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Edit</button>
+                    <button style="display:inline-flex;align-items:center;height:32px;border:none;border-radius:8px;background:#171716;color:#fafaf9;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:rgba(23,23,22,0.9)">Create Marketing Materials</button>
+                  </div>
+                </div>
+                <div style="overflow:hidden;border-radius:12px;border:1px solid #e7e6e2;background:#fff">
+                  <div style="border-bottom:1px solid #e7e6e2;padding:12px 20px">
+                    <p style="margin:0;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 22H4a2 2 0 0 1-2-2V6"></path><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"></path><circle cx="12" cy="8" r="2"></circle><rect width="16" height="16" x="6" y="2" rx="2"></rect></svg>Marketing materials<span style="margin-left:auto;border:1px solid #e7e6e2;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:400;text-transform:none;letter-spacing:normal;color:#6f6f68">AI-generated image</span></p>
+                    <h3 style="margin:4px 0 0;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:#171716">Weekday Lunch Set — Poster</h3>
+                  </div>
+                  <div style="padding:16px 20px 0">
+                    <div style="position:relative;width:100%;max-width:384px;aspect-ratio:1/1;overflow:hidden;border-radius:10px;background:#20242b">
+                      <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:60%;background:linear-gradient(to top,rgba(0,0,0,0.8),rgba(0,0,0,0.4),transparent)"></div>
+                      <span style="position:absolute;left:16px;top:16px;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;background:#C2410C;color:#fff">RM12.90 SET</span>
+                      <div style="position:absolute;left:0;right:0;bottom:0;padding:16px">
+                        <p style="margin:0;font-size:22px;font-weight:700;line-height:1.15;color:#fff">Set Lunch, Sorted.</p>
+                        <p style="margin:4px 0 0;font-size:13px;line-height:1.375;color:rgba(255,255,255,0.9)">Nasi lemak ayam + teh tarik, weekdays 11.30am–2pm.</p>
+                        <span style="margin-top:10px;display:inline-block;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;background:#C2410C;color:#fff">Order on WhatsApp</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:16px;padding:16px 20px">
+                    <div><p style="margin:0;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Facebook caption<button style="margin-left:auto;border:1px solid #e7e6e2;background:transparent;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:400;text-transform:none;letter-spacing:normal;color:#6f6f68;cursor:pointer" style-hover="background:#f4f4f2;color:#171716">Copy</button></p><p style="margin:4px 0 0;white-space:pre-wrap;font-size:14px;line-height:1.625;color:#171716">Weekday lunch, settled. Nasi lemak ayam + teh tarik for RM12.90, Monday–Thursday 11.30am–2pm. Order on WhatsApp before 11am and it’s ready when you arrive. 📍 Warung Pak Din, Banting</p></div>
+                    <div><p style="margin:0;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Instagram caption<button style="margin-left:auto;border:1px solid #e7e6e2;background:transparent;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:400;text-transform:none;letter-spacing:normal;color:#6f6f68;cursor:pointer" style-hover="background:#f4f4f2;color:#171716">Copy</button></p><p style="margin:4px 0 0;white-space:pre-wrap;font-size:14px;line-height:1.625;color:#171716">Proper lunch without the wait 🍛 RM12.90 gets you nasi lemak ayam + teh tarik, weekdays 11.30–2. #BantingFood #NasiLemak #LunchSet</p></div>
+                    <div><p style="margin:0;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">WhatsApp message<button style="margin-left:auto;border:1px solid #e7e6e2;background:transparent;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:400;text-transform:none;letter-spacing:normal;color:#6f6f68;cursor:pointer" style-hover="background:#f4f4f2;color:#171716">Copy</button></p><p style="margin:4px 0 0;white-space:pre-wrap;font-size:14px;line-height:1.625;color:#171716">Lunch sorted 👍 Weekday set: nasi lemak ayam + teh tarik, RM12.90 (11.30am–2pm). Reply SET to order for pickup.</p></div>
+                  </div>
+                  <div style="border-top:1px solid #e7e6e2;padding:14px 20px">
+                    <button style="display:inline-flex;align-items:center;gap:8px;height:32px;border:none;border-radius:8px;background:#171716;color:#fafaf9;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:rgba(23,23,22,0.9)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>Download Poster</button>
+                    <p style="margin:8px 0 0;font-size:13px;line-height:1.625;color:#6f6f68">Tell me what to change — the headline, the captions, or the image.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex-shrink:0;padding:0 24px 20px">
+          <div style="margin:0 auto;width:100%;max-width:768px">
+            <div style="border:1px solid #e2e1dc;background:#fff;border-radius:16px;padding:10px 14px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+              <div style="display:flex;align-items:flex-end;gap:8px">
+                <button aria-label="Attach a file" style="margin-bottom:2px;display:flex;width:32px;height:32px;flex-shrink:0;align-items:center;justify-content:center;border:none;background:transparent;border-radius:999px;color:#6f6f68;cursor:pointer" style-hover="background:#efeeea"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></button>
+                <textarea rows="1" placeholder="Tell EVA what you want to achieve…" style="flex:1;resize:none;border:none;outline:none;background:transparent;padding:6px 0;font-size:15px;line-height:1.6;color:#171716;max-height:200px"></textarea>
+                <button aria-label="Send message" style="margin-bottom:2px;display:flex;width:32px;height:32px;flex-shrink:0;align-items:center;justify-content:center;border:none;background:#171716;border-radius:999px;color:#fafaf9;cursor:pointer;opacity:0.5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+              </div>
+            </div>
+            <p style="margin:8px 0 0;text-align:center;font-size:12px;color:#6f6f68">EVA can make mistakes. Review important details before publishing.</p>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Overview" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:768px;padding:48px 32px">
+          <header style="margin-bottom:40px">
+            <h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-0.015em;color:#171716">Overview</h1>
+            <p style="margin:8px 0 0;font-size:15px;line-height:1.625;color:#6f6f68">A calm summary of what EVA is working on for your business.</p>
+          </header>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #e7e6e2;border-radius:12px;padding:64px 24px;text-align:center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(111,111,104,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+            <p style="margin:16px 0 0;font-size:14px;font-weight:500;color:#171716">Nothing here yet</p>
+            <p style="margin:6px 0 0;max-width:384px;font-size:13px;line-height:1.625;color:#6f6f68">Once you run your first campaign, a short summary of what is live and what is coming up will appear here.</p>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCampaigns }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Campaigns" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:768px;padding:48px 32px">
+          <header>
+            <h1 style="margin:0;display:flex;align-items:center;gap:10px;font-size:22px;font-weight:600;letter-spacing:-0.01em;color:#171716"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6f6f68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>Campaigns</h1>
+            <p style="margin:6px 0 0;max-width:576px;font-size:14px;line-height:1.625;color:#6f6f68">Every campaign EVA builds with you, kept as structured strategy rather than loose text.</p>
+          </header>
+          <ul style="list-style:none;margin:32px 0 0;padding:0;display:flex;flex-direction:column;gap:12px">
+            <li>
+              <a href="#" onClick="{{ goDetail }}" style="display:block;border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:16px 20px" style-hover="border-color:rgba(23,23,22,0.2)">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <h2 style="margin:0;font-size:15px;font-weight:600;letter-spacing:-0.01em;color:#171716">Weekday Lunch Set</h2>
+                  <span style="margin-left:auto;border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">Draft</span>
+                </div>
+                <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">Lift Monday–Thursday lunch covers by promoting the RM12.90 set to nearby office workers.</p>
+                <p style="margin:8px 0 0;font-size:12px;color:#6f6f68">14 days · Updated 3/9/2026</p>
+              </a>
+            </li>
+            <li>
+              <a href="#" style="display:block;border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:16px 20px" style-hover="border-color:rgba(23,23,22,0.2)">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <h2 style="margin:0;font-size:15px;font-weight:600;letter-spacing:-0.01em;color:#171716">Raya Open House Special</h2>
+                  <span style="margin-left:auto;border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">Ready</span>
+                </div>
+                <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">Fill the two quiet weekends after Raya with a family open-house set and pre-orders on WhatsApp.</p>
+                <p style="margin:8px 0 0;font-size:12px;color:#6f6f68">21 days · Updated 28/8/2026</p>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCampaignDetail }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Campaign detail" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:672px;padding:48px 32px">
+          <a href="#" onClick="{{ goCampaigns }}" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#6f6f68" style-hover="color:#171716"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>Campaigns</a>
+          <header style="margin-top:16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+            <div>
+              <p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Campaign</p>
+              <h1 style="margin:4px 0 0;font-size:22px;font-weight:600;letter-spacing:-0.01em;color:#171716">Weekday Lunch Set</h1>
+            </div>
+            <div style="display:flex;gap:6px;padding-top:4px">
+              <button style="height:32px;border:none;border-radius:8px;background:#f2f1ee;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer">Draft</button>
+              <button style="height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Ready</button>
+              <button style="height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Archived</button>
+            </div>
+          </header>
+          <div style="margin-top:32px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:12px;color:#6f6f68">Name</label><input value="Weekday Lunch Set" style="height:40px;width:100%;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color:#171716;box-shadow:0 1px 2px rgba(0,0,0,0.05)"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:12px;color:#6f6f68">Objective</label><textarea rows="2" style="width:100%;resize:none;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color:#171716;box-shadow:0 1px 2px rgba(0,0,0,0.05)">Lift Monday–Thursday lunch covers by promoting the RM12.90 set to nearby office workers.</textarea></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#6f6f68">Target audience<span style="border:1px solid #e7e6e2;border-radius:999px;padding:1px 6px;font-size:10px;color:#6f6f68">Hypothesis</span></label><textarea rows="2" style="width:100%;resize:none;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color:#171716;box-shadow:0 1px 2px rgba(0,0,0,0.05)">Office workers within 1km looking for a fast, affordable proper lunch</textarea></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#6f6f68">Offer<span style="border:1px solid #e7e6e2;border-radius:999px;padding:1px 6px;font-size:10px;color:#6f6f68">Recommendation</span></label><textarea rows="2" style="width:100%;resize:none;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color:#171716;box-shadow:0 1px 2px rgba(0,0,0,0.05)">RM12.90 weekday set: nasi lemak ayam + teh tarik, 11.30am–2pm</textarea></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:12px;color:#6f6f68">Key message</label><textarea rows="2" style="width:100%;resize:none;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color:#171716;box-shadow:0 1px 2px rgba(0,0,0,0.05)">Proper lunch, RM12.90, ready in minutes.</textarea></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:12px;color:#6f6f68">Call to action</label><input value="Order on WhatsApp before 11am" style="height:40px;width:100%;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color:#171716;box-shadow:0 1px 2px rgba(0,0,0,0.05)"></div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:12px;color:#6f6f68">Channels</label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <button style="height:32px;border:none;border-radius:8px;background:#f2f1ee;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer">Facebook</button>
+                <button style="height:32px;border:none;border-radius:8px;background:#f2f1ee;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer">Instagram</button>
+                <button style="height:32px;border:none;border-radius:8px;background:#f2f1ee;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer">WhatsApp</button>
+                <button style="height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">TikTok</button>
+                <button style="height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">In-store</button>
+                <button style="height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Website</button>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:12px;color:#6f6f68">Duration (days)</label><input value="14" style="height:40px;max-width:120px;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color:#171716;box-shadow:0 1px 2px rgba(0,0,0,0.05)"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:12px;color:#6f6f68">Notes</label><textarea rows="3" style="width:100%;resize:none;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color:#171716;box-shadow:0 1px 2px rgba(0,0,0,0.05)"></textarea></div>
+          </div>
+          <div style="margin-top:32px">
+            <p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#6f6f68">Assumptions this campaign relies on</p>
+            <ul style="list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px">
+              <li style="font-size:13px;line-height:1.625;color:#6f6f68">Nearby offices are the main source of weekday lunch demand</li>
+              <li style="font-size:13px;line-height:1.625;color:#6f6f68">RM12.90 is competitive against nearby lunch options</li>
+            </ul>
+          </div>
+          <div style="margin-top:32px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-top:1px solid #e7e6e2;padding-top:20px">
+            <button style="display:inline-flex;align-items:center;height:32px;border:none;border-radius:8px;background:#171716;color:#fafaf9;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:rgba(23,23,22,0.9)">Save changes</button>
+            <button onClick="{{ goChatConvo }}" style="display:inline-flex;align-items:center;height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Continue in chat</button>
+            <button style="display:inline-flex;align-items:center;height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Create Marketing Materials</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCreative }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Creative" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:768px;padding:48px 32px">
+          <header>
+            <h1 style="margin:0;display:flex;align-items:center;gap:10px;font-size:22px;font-weight:600;letter-spacing:-0.01em;color:#171716"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6f6f68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>Creative</h1>
+            <p style="margin:6px 0 0;max-width:576px;font-size:14px;line-height:1.625;color:#6f6f68">Posters and captions EVA has made from your campaigns — structured and editable, never flattened.</p>
+          </header>
+          <ul style="list-style:none;margin:32px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+            <li>
+              <div style="overflow:hidden;border-radius:12px;border:1px solid #e7e6e2;background:#fff">
+                <div style="position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;background:#20242b">
+                  <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:60%;background:linear-gradient(to top,rgba(0,0,0,0.8),rgba(0,0,0,0.4),transparent)"></div>
+                  <span style="position:absolute;left:12px;top:12px;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:600;background:#C2410C;color:#fff">RM12.90 SET</span>
+                  <div style="position:absolute;left:0;right:0;bottom:0;padding:14px">
+                    <p style="margin:0;font-size:17px;font-weight:700;line-height:1.15;color:#fff">Set Lunch, Sorted.</p>
+                    <span style="margin-top:8px;display:inline-block;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:600;background:#C2410C;color:#fff">Order on WhatsApp</span>
+                  </div>
+                </div>
+                <div style="padding:12px 16px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <h2 style="margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#171716">Weekday Lunch Set — Poster</h2>
+                    <span style="margin-left:auto;flex-shrink:0;border:1px solid #e7e6e2;border-radius:999px;padding:1px 6px;font-size:10px;color:#6f6f68">AI-generated image</span>
+                  </div>
+                  <p style="margin:2px 0 0;font-size:12px;color:#6f6f68">Square post · Updated 3/9/2026</p>
+                  <div style="margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                    <button style="display:inline-flex;align-items:center;gap:8px;height:32px;border:none;border-radius:8px;background:#171716;color:#fafaf9;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:rgba(23,23,22,0.9)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>Download Poster</button>
+                    <button onClick="{{ goChatConvo }}" style="display:inline-flex;align-items:center;height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Edit in chat</button>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div style="overflow:hidden;border-radius:12px;border:1px solid #e7e6e2;background:#fff">
+                <div style="position:relative;width:100%;aspect-ratio:4/5;overflow:hidden;background:#20242b">
+                  <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:60%;background:linear-gradient(to top,rgba(0,0,0,0.8),rgba(0,0,0,0.4),transparent)"></div>
+                  <div style="position:absolute;left:0;right:0;bottom:0;padding:14px">
+                    <p style="margin:0;font-size:17px;font-weight:700;line-height:1.15;color:#fff">Raya Open House, Sambung.</p>
+                    <span style="margin-top:8px;display:inline-block;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:600;background:#C2410C;color:#fff">Pre-order now</span>
+                  </div>
+                </div>
+                <div style="padding:12px 16px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <h2 style="margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#171716">Raya Open House — Poster</h2>
+                    <span style="margin-left:auto;flex-shrink:0;border:1px solid #e7e6e2;border-radius:999px;padding:1px 6px;font-size:10px;color:#6f6f68">Your photo</span>
+                  </div>
+                  <p style="margin:2px 0 0;font-size:12px;color:#6f6f68">Portrait post · Updated 28/8/2026</p>
+                  <div style="margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                    <button style="display:inline-flex;align-items:center;gap:8px;height:32px;border:none;border-radius:8px;background:#171716;color:#fafaf9;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:rgba(23,23,22,0.9)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>Download Poster</button>
+                    <button onClick="{{ goChatConvo }}" style="display:inline-flex;align-items:center;height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Edit in chat</button>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isAssets }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Assets" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:896px;padding:48px 32px">
+          <header>
+            <h1 style="margin:0;display:flex;align-items:center;gap:10px;font-size:22px;font-weight:600;letter-spacing:-0.01em;color:#171716"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6f6f68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"></path></svg>Assets</h1>
+            <p style="margin:6px 0 0;max-width:576px;font-size:14px;line-height:1.625;color:#6f6f68">Store the photos, menus, logos and other business materials EVA can use in your marketing.</p>
+          </header>
+          <div style="margin-top:24px;display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+            <button style="display:inline-flex;align-items:center;gap:8px;height:36px;border:none;border-radius:8px;background:#171716;color:#fafaf9;padding:0 16px;font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:rgba(23,23,22,0.9)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg>Upload Asset</button>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+              <button style="border:1px solid rgba(23,23,22,0.3);background:#f2f1ee;border-radius:999px;padding:4px 12px;font-size:12px;color:#171716;white-space:nowrap;cursor:pointer">Active</button>
+              <button style="border:1px solid #e7e6e2;background:transparent;border-radius:999px;padding:4px 12px;font-size:12px;color:#6f6f68;white-space:nowrap;cursor:pointer" style-hover="color:#171716">Archived</button>
+              <button style="border:1px solid #e7e6e2;background:transparent;border-radius:999px;padding:4px 12px;font-size:12px;color:#6f6f68;white-space:nowrap;cursor:pointer" style-hover="color:#171716">All</button>
+            </div>
+          </div>
+          <ul style="list-style:none;margin:32px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+            <li>
+              <div style="overflow:hidden;border-radius:12px;border:1px solid #e7e6e2;background:#fff">
+                <div style="aspect-ratio:4/3;width:100%;overflow:hidden;background:repeating-linear-gradient(45deg,rgba(244,244,242,0.4),rgba(244,244,242,0.4) 8px,#efeeea 8px,#efeeea 16px);display:flex;align-items:center;justify-content:center"><span style="font-family:ui-monospace,monospace;font-size:11px;color:#6f6f68">dish photo</span></div>
+                <div style="padding:12px 16px">
+                  <h2 style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#171716">Nasi lemak ayam</h2>
+                  <div style="margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+                    <span style="border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">Product</span>
+                    <span style="border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">signature</span>
+                    <span style="border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">lunch</span>
+                  </div>
+                  <div style="margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                    <button style="height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Edit</button>
+                    <button style="height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Archive</button>
+                    <button style="height:32px;border:none;border-radius:8px;background:transparent;color:#b3261e;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Delete</button>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div style="overflow:hidden;border-radius:12px;border:1px solid #e7e6e2;background:#fff">
+                <div style="display:flex;aspect-ratio:4/3;width:100%;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(244,244,242,0.4)">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(111,111,104,0.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>
+                  <span style="font-size:11px;font-weight:500;color:#6f6f68">PDF · 1.2 MB</span>
+                </div>
+                <div style="padding:12px 16px">
+                  <h2 style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#171716">Menu 2026</h2>
+                  <div style="margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+                    <span style="border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">Menu</span>
+                  </div>
+                  <div style="margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                    <button style="height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Edit</button>
+                    <button style="height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Open</button>
+                    <button style="height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Archive</button>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div style="overflow:hidden;border-radius:12px;border:1px solid #e7e6e2;background:#fff">
+                <div style="aspect-ratio:4/3;width:100%;overflow:hidden;background:repeating-linear-gradient(45deg,rgba(244,244,242,0.4),rgba(244,244,242,0.4) 8px,#efeeea 8px,#efeeea 16px);display:flex;align-items:center;justify-content:center"><span style="font-family:ui-monospace,monospace;font-size:11px;color:#6f6f68">logo</span></div>
+                <div style="padding:12px 16px">
+                  <h2 style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#171716">Warung Pak Din logo</h2>
+                  <div style="margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+                    <span style="border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">Logo</span>
+                  </div>
+                  <div style="margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                    <button style="height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Edit</button>
+                    <button style="height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Archive</button>
+                    <button style="height:32px;border:none;border-radius:8px;background:transparent;color:#b3261e;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Delete</button>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isLibrary }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Library" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:768px;padding:48px 32px">
+          <header>
+            <h1 style="margin:0;display:flex;align-items:center;gap:10px;font-size:22px;font-weight:600;letter-spacing:-0.01em;color:#171716"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6f6f68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="18" x="3" y="3" rx="1"></rect><path d="M7 3v18"></path><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"></path></svg>Library</h1>
+            <p style="margin:6px 0 0;max-width:576px;font-size:14px;line-height:1.625;color:#6f6f68">Everything EVA has created for your business, in one place — newest first.</p>
+          </header>
+          <div style="margin-top:24px;display:flex;flex-wrap:wrap;gap:6px" role="tablist">
+            <button style="border:1px solid #171716;background:#171716;color:#fbfbfa;border-radius:999px;padding:4px 12px;font-size:13px;white-space:nowrap;cursor:pointer">All</button>
+            <button style="border:1px solid #e7e6e2;background:transparent;color:#6f6f68;border-radius:999px;padding:4px 12px;font-size:13px;white-space:nowrap;cursor:pointer" style-hover="border-color:rgba(23,23,22,0.3);color:#171716">Creatives</button>
+            <button style="border:1px solid #e7e6e2;background:transparent;color:#6f6f68;border-radius:999px;padding:4px 12px;font-size:13px;white-space:nowrap;cursor:pointer" style-hover="border-color:rgba(23,23,22,0.3);color:#171716">Copywriting</button>
+            <button style="border:1px solid #e7e6e2;background:transparent;color:#6f6f68;border-radius:999px;padding:4px 12px;font-size:13px;white-space:nowrap;cursor:pointer" style-hover="border-color:rgba(23,23,22,0.3);color:#171716">Campaigns</button>
+            <button style="border:1px solid #e7e6e2;background:transparent;color:#6f6f68;border-radius:999px;padding:4px 12px;font-size:13px;white-space:nowrap;cursor:pointer" style-hover="border-color:rgba(23,23,22,0.3);color:#171716">Recommendations</button>
+          </div>
+          <ul style="list-style:none;margin:32px 0 0;padding:0;display:flex;flex-direction:column;gap:12px">
+            <li>
+              <a href="#" style="display:flex;gap:16px;border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:16px 20px" style-hover="border-color:rgba(23,23,22,0.2)">
+                <div style="width:64px;height:64px;flex-shrink:0;overflow:hidden;border-radius:10px;background:#20242b"></div>
+                <div style="min-width:0;flex:1">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="flex-shrink:0;border-radius:999px;background:#f4f4f2;padding:2px 8px;font-size:11px;font-weight:500;color:#6f6f68">Poster</span>
+                    <h2 style="margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#171716">Weekday Lunch Set — Poster</h2>
+                    <span style="margin-left:auto;flex-shrink:0;border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">Ready</span>
+                  </div>
+                  <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">Set Lunch, Sorted.</p>
+                  <p style="margin:8px 0 0;font-size:12px;color:#6f6f68">Weekday Lunch Set · Updated 3/9/2026</p>
+                </div>
+              </a>
+            </li>
+            <li>
+              <div style="border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:16px 20px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="flex-shrink:0;border-radius:999px;background:#f4f4f2;padding:2px 8px;font-size:11px;font-weight:500;color:#6f6f68">Facebook caption</span>
+                  <h2 style="margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#171716">Weekday Lunch Set — Poster</h2>
+                </div>
+                <p style="margin:8px 0 0;font-size:13px;line-height:1.625;color:rgba(23,23,22,0.9);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;white-space:pre-line">Weekday lunch, settled. Nasi lemak ayam + teh tarik for RM12.90, Monday–Thursday 11.30am–2pm. Order on WhatsApp before 11am and it’s ready when you arrive.</p>
+                <div style="margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                  <button style="display:inline-flex;align-items:center;gap:8px;height:32px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>Copy text</button>
+                  <button onClick="{{ goChatConvo }}" style="height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Edit in chat</button>
+                  <span style="margin-left:auto;font-size:12px;color:#6f6f68">Weekday Lunch Set · 3/9/2026</span>
+                </div>
+              </div>
+            </li>
+            <li>
+              <a href="#" onClick="{{ goDetail }}" style="display:flex;gap:16px;border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:16px 20px" style-hover="border-color:rgba(23,23,22,0.2)">
+                <div style="min-width:0;flex:1">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="flex-shrink:0;border-radius:999px;background:#f4f4f2;padding:2px 8px;font-size:11px;font-weight:500;color:#6f6f68">Campaign</span>
+                    <h2 style="margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#171716">Weekday Lunch Set</h2>
+                    <span style="margin-left:auto;flex-shrink:0;border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">Draft</span>
+                  </div>
+                  <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">Lift Monday–Thursday lunch covers by promoting the RM12.90 set to nearby office workers.</p>
+                  <p style="margin:8px 0 0;font-size:12px;color:#6f6f68">Updated 3/9/2026</p>
+                </div>
+              </a>
+            </li>
+            <li>
+              <a href="#" style="display:flex;gap:16px;border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:16px 20px" style-hover="border-color:rgba(23,23,22,0.2)">
+                <div style="min-width:0;flex:1">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="flex-shrink:0;border-radius:999px;background:#f4f4f2;padding:2px 8px;font-size:11px;font-weight:500;color:#6f6f68">Idea</span>
+                    <h2 style="margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#171716">Increase Monday–Thursday lunch sales</h2>
+                    <span style="margin-left:auto;flex-shrink:0;border:1px solid #e7e6e2;border-radius:999px;padding:2px 8px;font-size:11px;color:#6f6f68">Campaign built</span>
+                  </div>
+                  <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">A time-limited weekday lunch set aimed at nearby office workers, using dishes you already serve.</p>
+                  <p style="margin:8px 0 0;font-size:12px;color:#6f6f68">Updated 3/9/2026</p>
+                </div>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCalendar }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Calendar" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:768px;padding:48px 32px">
+          <header style="margin-bottom:40px">
+            <h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-0.015em;color:#171716">Calendar</h1>
+            <p style="margin:8px 0 0;font-size:15px;line-height:1.625;color:#6f6f68">When each piece of your marketing goes out.</p>
+          </header>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #e7e6e2;border-radius:12px;padding:64px 24px;text-align:center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(111,111,104,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg>
+            <p style="margin:16px 0 0;font-size:14px;font-weight:500;color:#171716">Nothing here yet</p>
+            <p style="margin:6px 0 0;max-width:384px;font-size:13px;line-height:1.625;color:#6f6f68">Scheduled posts from your campaigns will show up on this calendar.</p>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isResults }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Results" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:768px;padding:48px 32px">
+          <header style="margin-bottom:40px">
+            <h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-0.015em;color:#171716">Results</h1>
+            <p style="margin:8px 0 0;font-size:15px;line-height:1.625;color:#6f6f68">How your marketing performed, and what EVA learned from it.</p>
+          </header>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #e7e6e2;border-radius:12px;padding:64px 24px;text-align:center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(111,111,104,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+            <p style="margin:16px 0 0;font-size:14px;font-weight:500;color:#171716">Nothing here yet</p>
+            <p style="margin:6px 0 0;max-width:384px;font-size:13px;line-height:1.625;color:#6f6f68">After a campaign runs, its results will appear here and feed into EVA’s future recommendations.</p>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isBusiness }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Business" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:672px;padding:48px 32px">
+          <header style="margin-bottom:32px">
+            <h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-0.015em;color:#171716">Warung Pak Din</h1>
+            <p style="margin:8px 0 0;font-size:15px;line-height:1.625;color:#6f6f68">What EVA knows about your business. Everything here is editable — your version always wins.</p>
+            <div style="margin-top:20px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:13px;color:#6f6f68">
+              <span style="display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>warungpakdin.com</span>
+              <span>Last read 2 Sep 2026</span>
+              <button style="display:inline-flex;align-items:center;gap:8px;height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg>Re-read my website</button>
+            </div>
+          </header>
+          <section style="margin-bottom:16px;border-radius:12px;border:1px dashed #e7e6e2;background:#fff;padding:20px 24px">
+            <h2 style="margin:0;font-size:15px;font-weight:600;color:#171716">Help EVA finish your profile</h2>
+            <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68">Your website didn’t mention everything — that’s normal, not an error. Answer what you can; EVA will remember it.</p>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:16px">
+              <p style="margin:0;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;color:rgba(111,111,104,0.7)">1 of 2</p>
+              <div>
+                <p style="margin:0;font-size:15px;font-weight:500;color:#171716">When are you open?</p>
+              </div>
+              <input placeholder="Tue–Sun, 11am–10pm. Closed Mondays." style="height:40px;width:100%;border:1px solid #e2e1dc;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color:#171716;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+              <div style="display:flex;align-items:center;gap:8px">
+                <button style="height:32px;border:none;border-radius:8px;background:#171716;color:#fafaf9;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer;opacity:0.5">Save answer</button>
+                <button style="height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea">Skip</button>
+              </div>
+            </div>
+          </section>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <section style="border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:20px 24px">
+              <header style="margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+                <div>
+                  <h2 style="margin:0;font-size:15px;font-weight:600;color:#171716">Your business</h2>
+                  <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68">The basics EVA will use in everything it writes for you.</p>
+                </div>
+                <button style="display:inline-flex;flex-shrink:0;align-items:center;gap:8px;height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>Edit</button>
+              </header>
+              <dl style="margin:0">
+                <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><dt style="color:#6f6f68">Name</dt><dd style="margin:0;color:#171716"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:2px"><span>Warung Pak Din</span><span style="display:inline-flex;flex-shrink:0;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Confirmed by you</span></span></dd></div>
+                <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><dt style="color:#6f6f68">Type</dt><dd style="margin:0;color:#171716"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:2px"><span>Restaurant</span><span style="display:inline-flex;flex-shrink:0;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>From your website</span></span></dd></div>
+                <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><dt style="color:#6f6f68">Cuisine or niche</dt><dd style="margin:0;color:#171716"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:2px"><span>Malay home cooking</span><span style="display:inline-flex;flex-shrink:0;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>From your website</span></span></dd></div>
+                <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><dt style="color:#6f6f68">What you do</dt><dd style="margin:0;color:#171716"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:2px"><span>Home-style Malay food — nasi lemak, rendang, set lunches for offices nearby.</span><span style="display:inline-flex;flex-shrink:0;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>From your website</span></span></dd></div>
+                <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><dt style="color:#6f6f68">Location</dt><dd style="margin:0;color:#171716"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:2px"><span>Banting, Selangor</span><span style="display:inline-flex;flex-shrink:0;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>From your website</span></span></dd></div>
+                <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><dt style="color:#6f6f68">Opening hours</dt><dd style="margin:0;color:rgba(111,111,104,0.6)">Not known yet</dd></div>
+                <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><dt style="color:#6f6f68">Phone</dt><dd style="margin:0;color:#171716"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:2px"><span>+60 12-345 6789</span><span style="display:inline-flex;flex-shrink:0;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>From your website</span></span></dd></div>
+                <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px"><dt style="color:#6f6f68">Website</dt><dd style="margin:0;color:#171716">warungpakdin.com</dd></div>
+              </dl>
+            </section>
+            <section style="border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:20px 24px">
+              <header style="margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+                <div>
+                  <h2 style="margin:0;font-size:15px;font-weight:600;color:#171716">What you offer</h2>
+                  <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68">EVA found 4 items. Fix anything that looks wrong.</p>
+                </div>
+                <button style="display:inline-flex;flex-shrink:0;align-items:center;gap:8px;height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>Edit</button>
+              </header>
+              <ul style="list-style:none;margin:0;padding:0">
+                <li style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:8px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px"><span style="color:#171716">Nasi lemak ayam</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>From your website</span></span><span style="flex-shrink:0;color:#6f6f68">RM 12.90</span></li>
+                <li style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:8px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px"><span style="color:#171716">Rendang daging set</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>From your website</span></span><span style="flex-shrink:0;color:#6f6f68">RM 16.90</span></li>
+                <li style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:8px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px"><span style="color:#171716">Mee goreng mamak</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>From your website</span></span><span style="flex-shrink:0;color:#6f6f68">RM 9.50</span></li>
+                <li style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:8px 0;font-size:14px"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px"><span style="color:#171716">Teh tarik</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Confirmed by you</span></span><span style="flex-shrink:0;color:#6f6f68">RM 3.20</span></li>
+              </ul>
+            </section>
+            <section style="border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:20px 24px">
+              <header style="margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+                <div>
+                  <h2 style="margin:0;font-size:15px;font-weight:600;color:#171716">Your brand</h2>
+                  <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68">How EVA will sound when it writes as you.</p>
+                </div>
+                <button style="display:inline-flex;flex-shrink:0;align-items:center;gap:8px;height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>Edit</button>
+              </header>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <dl style="margin:0">
+                  <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><dt style="color:#6f6f68">Voice</dt><dd style="margin:0;color:#171716"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:2px"><span>Warm and family-friendly</span><span style="display:inline-flex;flex-shrink:0;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path></svg>EVA’s inference</span></span></dd></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px;border-bottom:1px solid #e7e6e2"><dt style="color:#6f6f68">Positioning</dt><dd style="margin:0;color:#171716"><span style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:2px"><span>The neighbourhood spot for a proper weekday lunch</span><span style="display:inline-flex;flex-shrink:0;align-items:center;gap:4px;font-size:11px;color:rgba(111,111,104,0.7)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path></svg>EVA’s inference</span></span></dd></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,144px) 1fr;gap:16px;padding:6px 0;font-size:14px"><dt style="color:#6f6f68">Value proposition</dt><dd style="margin:0;color:rgba(111,111,104,0.6)">Not known yet</dd></div>
+                </dl>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <p style="margin:0;font-size:13px;color:#6f6f68">Personality</p>
+                  <ul style="list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px">
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Friendly</li>
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Homely</li>
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Generous</li>
+                  </ul>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <p style="margin:0;font-size:13px;color:#6f6f68">What sets you apart</p>
+                  <ul style="list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px">
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Family recipes</li>
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Halal certified</li>
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Generous portions</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+            <section style="border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:20px 24px">
+              <header style="margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+                <div>
+                  <h2 style="margin:0;font-size:15px;font-weight:600;color:#171716">Who EVA thinks your customers are</h2>
+                  <p style="margin:4px 0 0;font-size:13px;line-height:1.625;color:#6f6f68">EVA’s best reading so far — pages rarely say this outright. Correct it and EVA will keep your version.</p>
+                </div>
+                <div style="display:flex;flex-shrink:0;align-items:center;gap:8px">
+                  <span style="display:inline-flex;align-items:center;gap:6px;border:1px solid #e7e6e2;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:500;color:#6f6f68"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path></svg>EVA’s inference</span>
+                  <button style="display:inline-flex;align-items:center;gap:8px;height:32px;border:none;border-radius:8px;background:transparent;color:#171716;padding:0 12px;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>Edit</button>
+                </div>
+              </header>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <p style="margin:0;font-size:14px;color:#171716">Local families and office workers nearby who want affordable, home-style Malay food.</p>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <p style="margin:0;font-size:13px;color:#6f6f68">Customer types</p>
+                  <ul style="list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px">
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Office workers nearby</li>
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Families</li>
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Regulars</li>
+                  </ul>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <p style="margin:0;font-size:13px;color:#6f6f68">What they come for</p>
+                  <ul style="list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px">
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Quick affordable lunch</li>
+                    <li style="border-radius:999px;background:#f2f1ee;padding:4px 10px;font-size:13px;color:#171716">Comfort food</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Settings" style="height:100%;overflow-y:auto">
+        <div style="margin:0 auto;width:100%;max-width:768px;padding:48px 32px">
+          <header style="margin-bottom:40px">
+            <h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-0.015em;color:#171716">Settings</h1>
+            <p style="margin:8px 0 0;font-size:15px;line-height:1.625;color:#6f6f68">Your account and plan.</p>
+          </header>
+          <section style="display:flex;flex-direction:column;gap:16px">
+            <h2 style="margin:0;font-size:14px;font-weight:500;color:#171716">Account</h2>
+            <dl style="margin:0;border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:16px 20px;font-size:14px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px"><dt style="color:#6f6f68">Name</dt><dd style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#171716">Amirul Aidi</dd></div>
+              <div style="height:1px;background:#e7e6e2"></div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px"><dt style="color:#6f6f68">Email</dt><dd style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#171716">amirul@warungpakdin.com</dd></div>
+            </dl>
+          </section>
+          <section style="margin-top:40px;display:flex;flex-direction:column;gap:16px">
+            <h2 style="margin:0;font-size:14px;font-weight:500;color:#171716">Plan</h2>
+            <div style="border-radius:12px;border:1px solid #e7e6e2;background:#fff;padding:16px 20px">
+              <p style="margin:0;font-size:14px;font-weight:500;color:#171716">Basic</p>
+              <p style="margin:6px 0 0;font-size:13px;line-height:1.625;color:#6f6f68">Fair-use limits on AI usage apply. Paid plans are not available yet.</p>
+            </div>
+          </section>
+          <section style="margin-top:40px">
+            <button style="display:inline-flex;align-items:center;gap:8px;height:36px;border:1px solid #e2e1dc;border-radius:8px;background:transparent;color:#171716;padding:0 16px;font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer" style-hover="background:#efeeea"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Sign out</button>
+          </section>
+        </div>
+      </div>
+    </sc-if>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;chatState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;conversation&quot;,&quot;options&quot;:[&quot;conversation&quot;,&quot;empty&quot;],&quot;tsType&quot;:&quot;'conversation' | 'empty'&quot;}}">
+class Component extends DCLogic {
+  state = { screen: 'chat' }
+  go(key) { this.setState({ screen: key }) }
+  renderVals() {
+    const s = this.state.screen
+    const chatState = this.props.chatState ?? 'conversation'
+    const keys = ['overview', 'campaigns', 'creative', 'assets', 'library', 'calendar', 'results', 'business', 'settings']
+    const nav = {}
+    for (const k of keys) {
+      const active = s === k || (k === 'campaigns' && s === 'campaignDetail')
+      nav[k] = {
+        bg: active ? '#eceae6' : 'transparent',
+        c: active ? '#171716' : '#6f6f68',
+        fw: active ? '500' : '400',
+      }
+    }
+    const isChat = s === 'chat' || s === 'chatConvo'
+    return {
+      nav,
+      histBg: isChat ? '#eceae6' : 'transparent',
+      histC: isChat ? '#171716' : '#6f6f68',
+      histFw: isChat ? '500' : '400',
+      isChatEmpty: isChat && chatState === 'empty',
+      isChatConvo: isChat && chatState === 'conversation',
+      isOverview: s === 'overview',
+      isCampaigns: s === 'campaigns',
+      isCampaignDetail: s === 'campaignDetail',
+      isCreative: s === 'creative',
+      isAssets: s === 'assets',
+      isLibrary: s === 'library',
+      isCalendar: s === 'calendar',
+      isResults: s === 'results',
+      isBusiness: s === 'business',
+      isSettings: s === 'settings',
+      goChat: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('chat') },
+      goChatConvo: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('chat') },
+      goOverview: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('overview') },
+      goCampaigns: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('campaigns') },
+      goDetail: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('campaignDetail') },
+      goCreative: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('creative') },
+      goAssets: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('assets') },
+      goLibrary: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('library') },
+      goCalendar: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('calendar') },
+      goResults: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('results') },
+      goBusiness: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('business') },
+      goSettings: (e) => { if (e && e.preventDefault) e.preventDefault(); this.go('settings') },
+    }
+  }
+}
+</script>
+</body>
+</html>

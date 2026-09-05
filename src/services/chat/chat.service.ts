@@ -165,11 +165,18 @@ export interface SendMessageOutcome {
  * each piece of EVA's text is forwarded as it is generated — the finished
  * assistant message still lands through the `observeMessages` subscription,
  * written once, server-side, exactly as on the non-streamed path.
+ *
+ * `onUserMessageStored` fires the moment the user's message is durably in
+ * Firestore — before the reply is requested, which can take tens of seconds.
+ * It carries the conversation id (freshly created on a first send), so the
+ * UI can attach its subscription and render the stored message immediately
+ * instead of waiting out the whole generation.
  */
 export async function sendMessage(
   ownerId: string,
   input: SendMessageInput,
   onAssistantDelta?: (text: string) => void,
+  onUserMessageStored?: (conversationId: string) => void,
 ): Promise<SendMessageOutcome> {
   const text = input.text.trim()
   const drafts = input.attachments ?? []
@@ -242,6 +249,10 @@ export async function sendMessage(
     messageCount: increment(1),
     updatedAt: now,
   })
+
+  // From here the thread exists whatever happens to the reply below. Report
+  // it now: whoever is waiting can show the message and survive a refresh.
+  onUserMessageStored?.(conversationId)
 
   const replyRequest = {
     conversationId,

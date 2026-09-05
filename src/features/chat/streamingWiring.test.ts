@@ -87,7 +87,9 @@ describe('useConversation streaming state', () => {
   })
 
   it('a trailing flush cannot resurrect the mirror after completion', () => {
-    expect(hook).toContain('current.conversationId === conversationId && current.awaitingReply')
+    // `threadId` tracks the created id on a first send, so the guard holds
+    // across the early navigation as well.
+    expect(hook).toContain('current.conversationId === threadId && current.awaitingReply')
   })
 
   it('a reply that broke after partial text says so — and drops the fragment', () => {
