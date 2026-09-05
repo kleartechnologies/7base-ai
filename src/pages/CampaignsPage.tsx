@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Megaphone } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
+import { EvaSpark } from '@/components/EvaMark'
+import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { useI18n } from '@/hooks/useI18n'
 import type { MessageKey } from '@/i18n/translate'
@@ -40,14 +42,22 @@ export default function CampaignsPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-8 py-12">
-      <header>
-        <h1 className="flex items-center gap-2.5 text-[22px] font-semibold tracking-[-0.01em] text-foreground">
-          <Megaphone className="size-5 text-muted-foreground" aria-hidden />
-          {t('campaign.pageTitle')}
-        </h1>
-        <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          {t('campaign.pageIntro')}
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2.5 text-[22px] font-semibold tracking-[-0.01em] text-foreground">
+            <Megaphone className="size-5 text-muted-foreground" aria-hidden />
+            {t('campaign.pageTitle')}
+          </h1>
+          <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
+            {t('campaign.pageIntro')}
+          </p>
+        </div>
+        <Button asChild className="max-sm:w-full">
+          <Link to={ROUTES.chat}>
+            <EvaSpark className="size-4 text-eva-on-dark" aria-hidden />
+            {t('campaign.newWithEva')}
+          </Link>
+        </Button>
       </header>
 
       {loadError ? (

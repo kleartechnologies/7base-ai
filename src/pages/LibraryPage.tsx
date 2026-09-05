@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Copy, Check, LibraryBig } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
+import { EvaSpark } from '@/components/EvaMark'
 import { copyTextToClipboard } from '@/features/creative/poster'
 import {
   COPY_CHANNEL_LABEL_KEYS,
@@ -197,9 +198,18 @@ function LibraryCard({
       {item.type === 'creative' ? <CreativeThumb item={item} /> : null}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {t(TYPE_KEYS[item.type])}
-          </span>
+          {item.type === 'recommendation' ? (
+            // EVA-authored ideas carry her accent so they stand apart from
+            // the owner's own material.
+            <span className="flex shrink-0 items-center gap-1 rounded-full border border-eva-badge-border bg-eva-badge px-2 py-0.5 text-[11px] font-medium text-eva-badge-foreground">
+              <EvaSpark className="size-3" aria-hidden />
+              {t(TYPE_KEYS[item.type])}
+            </span>
+          ) : (
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {t(TYPE_KEYS[item.type])}
+            </span>
+          )}
           <h2 className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
             {item.title}
           </h2>

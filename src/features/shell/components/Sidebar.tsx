@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PenSquare } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { MarkaLogo } from '@/components/MarkaLogo'
+import { EvaSpark } from '@/components/EvaMark'
+import { UpgradeModal } from '@/features/billing/UpgradeModal'
 import { ROUTES } from '@/app/routes/paths'
 import { useI18n } from '@/hooks/useI18n'
 import type { Conversation } from '@/types'
-import { SETTINGS_NAV, WORKSPACE_NAV } from '../navigation'
+import { SETTINGS_NAV, TOP_NAV, WORKSPACE_NAV } from '../navigation'
 import { ChatHistoryList } from './ChatHistoryList'
 import { SidebarNavLink } from './SidebarNavLink'
 import { UserMenu } from './UserMenu'
@@ -18,10 +20,9 @@ export interface SidebarConversations {
 }
 
 /**
- * The persistent left rail.
- *
- * Order encodes the product philosophy: new chat and history first, workspace
- * tabs second. The chat is the product; the tabs are where its output lands.
+ * The persistent left rail, in the approved order: New chat and Overview on
+ * top, the Workspace group, chat history below it, and a footer with the
+ * upgrade entry point, Settings and the account row.
  *
  * The conversation list is owned by the shell, not this component: the shell
  * can mount two Sidebars at once (fixed rail + mobile drawer), and each must
@@ -37,6 +38,7 @@ export function Sidebar({
   const navigate = useNavigate()
   const { t } = useI18n()
   const { conversations, loading, error, remove } = history
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   function handleNewChat() {
     navigate(ROUTES.chat)
@@ -49,18 +51,34 @@ export function Sidebar({
         <MarkaLogo />
       </div>
 
-      <div className="px-3 pb-2">
-        <Button
-          variant="outline"
-          className="h-9 w-full justify-start gap-2.5 bg-card font-normal text-foreground"
+      <nav aria-label={t('shell.workspace')} className="shrink-0 space-y-px px-3">
+        <button
+          type="button"
           onClick={handleNewChat}
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-left text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60"
         >
-          <PenSquare className="text-muted-foreground" />
-          {t('shell.newChat')}
-        </Button>
-      </div>
+          <PenSquare className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="truncate">{t('shell.newChat')}</span>
+        </button>
+        {TOP_NAV.map((item) => (
+          <SidebarNavLink key={item.to} item={item} onNavigate={onNavigate} />
+        ))}
 
-      <nav aria-label={t('shell.chatHistory')} className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+        <p className="px-2.5 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/70">
+          {t('shell.workspace')}
+        </p>
+        {WORKSPACE_NAV.map((item) => (
+          <SidebarNavLink key={item.to} item={item} onNavigate={onNavigate} />
+        ))}
+      </nav>
+
+      <nav
+        aria-label={t('shell.chatHistory')}
+        className="mt-2 min-h-0 flex-1 overflow-y-auto px-3 py-2"
+      >
+        <p className="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/70">
+          {t('shell.recentChats')}
+        </p>
         <ChatHistoryList
           conversations={conversations}
           loading={loading}
@@ -70,18 +88,23 @@ export function Sidebar({
         />
       </nav>
 
-      <div className="shrink-0 border-t border-sidebar-border px-3 py-3">
-        <nav aria-label={t('shell.workspace')} className="space-y-px">
-          {WORKSPACE_NAV.map((item) => (
-            <SidebarNavLink key={item.to} item={item} onNavigate={onNavigate} />
-          ))}
-          <SidebarNavLink item={SETTINGS_NAV} onNavigate={onNavigate} />
-        </nav>
+      <div className="shrink-0 border-t border-sidebar-border px-3 pt-2">
+        <button
+          type="button"
+          onClick={() => setUpgradeOpen(true)}
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-left text-[13.5px] text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+        >
+          <EvaSpark className="size-[15px] shrink-0 text-eva" />
+          <span className="truncate">{t('shell.upgradePlan')}</span>
+        </button>
+        <SidebarNavLink item={SETTINGS_NAV} onNavigate={onNavigate} />
       </div>
 
-      <div className="shrink-0 border-t border-sidebar-border p-2">
+      <div className="shrink-0 p-2">
         <UserMenu />
       </div>
+
+      {upgradeOpen ? <UpgradeModal onClose={() => setUpgradeOpen(false)} /> : null}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { FileText, FolderOpen, Upload } from 'lucide-react'
+import { EvaSpark } from '@/components/EvaMark'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -52,6 +53,17 @@ const FILTERS: { key: StatusFilter; labelKey: MessageKey }[] = [
   { key: 'all', labelKey: 'asset.filterAll' },
 ]
 
+type TypeFilter = 'all' | 'products' | 'menus' | 'logoBrand' | 'photos'
+
+/** The approved shelf groups; rarer types only surface under "All". */
+const TYPE_FILTERS: { key: TypeFilter; labelKey: MessageKey; types: readonly AssetType[] }[] = [
+  { key: 'all', labelKey: 'asset.filterAll', types: ASSET_TYPES },
+  { key: 'products', labelKey: 'asset.filterProducts', types: ['product'] },
+  { key: 'menus', labelKey: 'asset.filterMenus', types: ['menu'] },
+  { key: 'logoBrand', labelKey: 'asset.filterLogoBrand', types: ['logo', 'brand'] },
+  { key: 'photos', labelKey: 'asset.filterPhotos', types: ['photo'] },
+]
+
 const EMPTY_KEYS: Record<StatusFilter, MessageKey> = {
   active: 'asset.emptyActive',
   archived: 'asset.emptyArchived',
@@ -64,6 +76,7 @@ export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[] | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [filter, setFilter] = useState<StatusFilter>('active')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -104,8 +117,10 @@ export default function AssetsPage() {
     }
   }
 
-  const visible = (assets ?? []).filter((asset) =>
-    filter === 'all' ? true : asset.status === filter,
+  const allowedTypes = TYPE_FILTERS.find((entry) => entry.key === typeFilter)?.types ?? ASSET_TYPES
+  const visible = (assets ?? []).filter(
+    (asset) =>
+      (filter === 'all' ? true : asset.status === filter) && allowedTypes.includes(asset.type),
   )
 
   return (
@@ -154,6 +169,24 @@ export default function AssetsPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {TYPE_FILTERS.map(({ key, labelKey }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTypeFilter(key)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-[12px] transition-colors',
+              typeFilter === key
+                ? 'border-transparent bg-foreground text-background'
+                : 'border-border text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {t(labelKey)}
+          </button>
+        ))}
       </div>
 
       {!business ? (
@@ -326,6 +359,13 @@ function AssetCard({
             </span>
           ))}
         </div>
+
+        {asset.allowAiUse ? (
+          <p className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium text-eva-label">
+            <EvaSpark className="size-3" aria-hidden />
+            {t('asset.evaCanUse')}
+          </p>
+        ) : null}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {confirmingDelete ? (

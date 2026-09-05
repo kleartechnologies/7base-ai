@@ -1,13 +1,11 @@
 import {
-  CalendarDays,
   FolderOpen,
   Image,
   LayoutGrid,
   LibraryBig,
   Megaphone,
+  MessageSquare,
   Settings,
-  Store,
-  TrendingUp,
   type LucideIcon,
 } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
@@ -21,20 +19,24 @@ export interface NavItem {
 }
 
 /**
- * The workspace tabs, below the chat history divider.
+ * Sits directly under "New chat", above the Workspace group.
+ */
+export const TOP_NAV: NavItem[] = [
+  { labelKey: 'nav.overview', to: ROUTES.overview, icon: LayoutGrid },
+]
+
+/**
+ * The "Workspace" group — where the chat's output is kept.
  *
- * Chat is where thinking happens; these are where its output is kept. Settings
- * is separated so the working tabs read as one group.
+ * Calendar and Results left the navigation in the approved design (their
+ * routes still exist); Business Brain closes the group.
  */
 export const WORKSPACE_NAV: NavItem[] = [
-  { labelKey: 'nav.overview', to: ROUTES.overview, icon: LayoutGrid },
   { labelKey: 'nav.campaigns', to: ROUTES.campaigns, icon: Megaphone },
   { labelKey: 'nav.creative', to: ROUTES.creative, icon: Image },
   { labelKey: 'nav.assets', to: ROUTES.assets, icon: FolderOpen },
   { labelKey: 'nav.library', to: ROUTES.library, icon: LibraryBig },
-  { labelKey: 'nav.calendar', to: ROUTES.calendar, icon: CalendarDays },
-  { labelKey: 'nav.results', to: ROUTES.results, icon: TrendingUp },
-  { labelKey: 'nav.business', to: ROUTES.business, icon: Store },
+  { labelKey: 'nav.business', to: ROUTES.business, icon: MessageSquare },
 ]
 
 export const SETTINGS_NAV: NavItem = {

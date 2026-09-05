@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
-import { Menu, X } from 'lucide-react'
+import { Link, Outlet } from 'react-router-dom'
+import { Menu, PenSquare, X } from 'lucide-react'
+import { ROUTES } from '@/app/routes/paths'
 import { Button } from '@/components/ui/button'
 import { MarkaLogo } from '@/components/MarkaLogo'
 import { useConversations } from '@/features/chat/useConversations'
@@ -56,7 +57,7 @@ export function AppShell() {
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-3 lg:hidden">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-3 lg:hidden">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -66,6 +67,11 @@ export function AppShell() {
             <Menu />
           </Button>
           <MarkaLogo />
+          <Button variant="ghost" size="icon-sm" aria-label={t('shell.newChat')} asChild>
+            <Link to={ROUTES.chat}>
+              <PenSquare />
+            </Link>
+          </Button>
         </header>
 
         <main className="min-h-0 flex-1">

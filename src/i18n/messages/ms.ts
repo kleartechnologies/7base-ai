@@ -34,7 +34,7 @@ export const ms: Record<MessageKey, string> = {
   'nav.library': 'Pustaka',
   'nav.calendar': 'Kalendar',
   'nav.results': 'Hasil',
-  'nav.business': 'Perniagaan',
+  'nav.business': 'Business Brain',
   'nav.settings': 'Tetapan',
 
   'shell.newChat': 'Chat baru',
@@ -48,6 +48,8 @@ export const ms: Record<MessageKey, string> = {
   'shell.account': 'Akaun',
   'shell.noBusinessYet': 'Belum ada perniagaan',
   'shell.signOut': 'Log keluar',
+  'shell.recentChats': 'Terkini',
+  'shell.upgradePlan': 'Naik taraf pelan',
 
   /* --- app-level screens ------------------------------------------------- */
   'app.loading': 'Memuatkan 7BASE AI',
@@ -65,6 +67,29 @@ export const ms: Record<MessageKey, string> = {
   'overview.description': 'Ringkasan tenang tentang apa yang EVA sedang usahakan untuk perniagaan anda.',
   'overview.hint':
     'Selepas anda jalankan kempen pertama, ringkasan tentang apa yang sedang berjalan dan apa yang akan datang akan muncul di sini.',
+  'overview.subtitle': 'Apa yang EVA sedang usahakan untuk {name}.',
+  'overview.askEva': 'Tanya EVA',
+  'overview.activeCampaigns': 'Kempen aktif',
+  'overview.viewAll': 'Lihat semua',
+  'overview.noCampaigns':
+    'Belum ada kempen. Tanya EVA apa yang anda mahu capai — EVA akan jadikan cadangannya sebagai kempen.',
+  'overview.recentCreative': 'Kreatif terkini',
+  'overview.askNewVisual': 'Minta EVA reka visual baru',
+  'overview.evaSuggests': 'Cadangan EVA',
+  'overview.askAboutIt': 'Tanya EVA tentangnya',
+  'overview.suggestProfile':
+    'Beberapa jawapan ringkas untuk profil anda akan menjadikan cadangan EVA lebih tepat. Hanya ambil masa seminit.',
+  'overview.suggestFirstCampaign':
+    'Kempen pertama anda hanya satu perbualan sahaja lagi. Beritahu EVA apa yang anda mahu lebih — pelanggan, tempahan, atau perhatian.',
+  'overview.suggestDraftCampaign':
+    'Anda ada kempen yang masih dalam draf. Menyiapkannya bersama EVA ialah langkah seterusnya yang terpantas.',
+  'overview.suggestKeepGoing':
+    'Semuanya nampak teratur. Tanya EVA apa yang patut dipromosikan seterusnya — EVA kenal menu, pelanggan dan jenama anda.',
+  'overview.businessProfile': 'Profil perniagaan',
+  'overview.profileNote':
+    'EVA kenal perniagaan anda dengan baik. {count} jawapan ringkas akan menjadikannya lebih tepat.',
+  'overview.profileComplete': 'EVA kenal perniagaan anda dengan baik — profil sudah lengkap.',
+  'overview.finishProfile': 'Lengkapkan profil saya',
   'calendar.title': 'Kalendar',
   'calendar.description': 'Bila setiap bahagian pemasaran anda akan keluar.',
   'calendar.hint': 'Post berjadual daripada kempen anda akan muncul di kalendar ini.',
@@ -130,6 +155,7 @@ export const ms: Record<MessageKey, string> = {
   'settings.account': 'Akaun',
   'settings.name': 'Nama',
   'settings.email': 'E-mel',
+  'settings.business': 'Perniagaan',
   'settings.plan': 'Pelan',
   'settings.planNote': 'Had penggunaan berpatutan dikenakan untuk AI. Pelan berbayar belum tersedia.',
   'settings.appearance': 'Paparan',
@@ -148,11 +174,35 @@ export const ms: Record<MessageKey, string> = {
   'chat.suggestionSlowSales': 'Jualan hari bekerja saya perlahan. Apa yang patut saya buat?',
   'chat.suggestionNewItem': 'Bantu saya promosikan menu baru saya.',
   'chat.suggestionWhatToPost': 'Apa yang patut saya post minggu ini?',
-  'chat.composerPlaceholder': 'Beritahu EVA apa yang anda nak capai…',
+  'chat.composerPlaceholder': 'Tanya EVA apa sahaja…',
+  'chat.replyPlaceholder': 'Balas kepada EVA…',
   'chat.messageEva': 'Hantar mesej kepada EVA',
   'chat.sendMessage': 'Hantar mesej',
   'chat.disclaimer': 'EVA boleh membuat silap. Semak butiran penting sebelum menerbitkan.',
   'chat.thinking': 'EVA sedang berfikir',
+  'chat.thinkingEllipsis': 'EVA sedang berfikir…',
+  'chat.greetingMorning': 'Selamat pagi',
+  'chat.greetingMorningName': 'Selamat pagi, {name}',
+  'chat.greetingAfternoon': 'Selamat tengah hari',
+  'chat.greetingAfternoonName': 'Selamat tengah hari, {name}',
+  'chat.greetingEvening': 'Selamat petang',
+  'chat.greetingEveningName': 'Selamat petang, {name}',
+  'chat.emptyTitle': 'Bagaimana EVA boleh bantu perniagaan anda berkembang hari ini?',
+  'chat.emptySubtitle':
+    'Dapatkan idea, cipta kempen, reka visual, atau tanya apa sahaja tentang perniagaan anda.',
+  'chat.chipIdeas': 'Idea pemasaran',
+  'chat.chipCampaign': 'Cipta kempen',
+  'chat.chipVisual': 'Reka visual',
+  'chat.chipProfile': 'Perkemas profil perniagaan saya',
+  'chat.promptVisual': 'Rekakan visual promosi untuk perniagaan saya.',
+  'chat.promptProfile': 'Apa yang boleh menjadikan profil perniagaan saya lebih kukuh?',
+  'chat.exploreTitle': 'Teroka apa yang anda boleh buat',
+  'chat.exploreBusinessBody': 'Fahami perniagaan anda dan dapatkan nasihat yang khusus',
+  'chat.exploreCampaignsBody': 'Rancang dan cipta kempen pemasaran',
+  'chat.exploreCreativeBody': 'Jana visual yang menepati jenama daripada kempen anda',
+  'chat.exploreAssetsTitle': 'Aset & Pustaka',
+  'chat.exploreAssetsBody': 'Urus dan guna semula aset pemasaran anda',
+  'chat.evaKnowsFooter': 'EVA kenal {name} — menu, pelanggan dan jenama anda.',
   'chat.attachFile': 'Lampirkan fail',
   'chat.uploadFromDevice': 'Muat naik dari peranti',
   'chat.fromYourAssets': 'Dari Aset anda',
@@ -191,6 +241,11 @@ export const ms: Record<MessageKey, string> = {
   'asset.filterActive': 'Aktif',
   'asset.filterArchived': 'Diarkibkan',
   'asset.filterAll': 'Semua',
+  'asset.filterProducts': 'Produk',
+  'asset.filterMenus': 'Menu',
+  'asset.filterLogoBrand': 'Logo & jenama',
+  'asset.filterPhotos': 'Gambar',
+  'asset.evaCanUse': 'EVA boleh guna ini',
   'asset.needBusiness':
     'Sediakan perniagaan anda dahulu — aset disimpan di bawah perniagaan anda.',
   'asset.loadFailed': 'Aset anda tidak dapat dimuatkan. Sila muat semula halaman dan cuba lagi.',
@@ -306,7 +361,9 @@ export const ms: Record<MessageKey, string> = {
   'creative.formatPortrait': 'Post potret',
   'creative.formatSquare': 'Post segi empat',
   'creative.updatedOn': 'Dikemas kini {date}',
-  'creative.editInChat': 'Edit dalam chat',
+  'creative.editInChat': 'Edit dengan EVA',
+  'creative.needNewTitle': 'Perlukan sesuatu yang baru?',
+  'creative.needNewBody': 'Beritahu EVA apa yang anda promosikan dan EVA akan merekanya.',
 
   /* --- campaign & recommendation cards in chat ----------------------------- */
   'campaign.title': 'Kempen',
@@ -342,11 +399,13 @@ export const ms: Record<MessageKey, string> = {
   'campaign.building': 'Membina…',
   'campaign.campaignCreated': 'Kempen dicipta',
   'campaign.buildCampaign': 'Bina kempen ini',
+  'campaign.askSomethingElse': 'Tanya perkara lain',
 
   /* --- campaigns pages ------------------------------------------------------ */
   'campaign.pageTitle': 'Kempen',
   'campaign.pageIntro':
-    'Setiap kempen yang EVA bina bersama anda, disimpan sebagai strategi tersusun dan bukan sekadar teks.',
+    'Setiap kempen yang anda bina bersama EVA, disimpan sebagai strategi yang jelas.',
+  'campaign.newWithEva': 'Kempen baru bersama EVA',
   'campaign.listLoadFailed':
     'Kempen anda tidak dapat dimuatkan. Sila semak sambungan internet anda dan muat semula.',
   'campaign.listEmpty':
@@ -362,6 +421,8 @@ export const ms: Record<MessageKey, string> = {
   'campaign.fieldNotes': 'Nota',
   'campaign.assumptionsTitle': 'Andaian yang kempen ini bergantung padanya',
   'campaign.unknownsTitle': 'Belum pasti — sahkan sebelum melancarkan',
+  'campaign.worthConfirming': 'Wajar disahkan sebelum melancarkan',
+  'campaign.editDetails': 'Edit butiran',
   'campaign.saveChanges': 'Simpan perubahan',
   'campaign.saved': 'Disimpan',
   'campaign.saveFailed': 'Kempen tidak dapat disimpan. Sila cuba lagi.',
@@ -405,7 +466,7 @@ export const ms: Record<MessageKey, string> = {
     'Ini bukan salah anda, dan mencuba semula tidak akan membantu. Anda masih boleh sediakan EVA sendiri buat masa ini.',
   'onboarding.tryAnotherLink': 'Cuba pautan lain',
   'onboarding.continueManually': 'Teruskan secara manual',
-  'onboarding.reviewTitle': 'Ini yang EVA faham',
+  'onboarding.reviewTitle': 'Ini yang EVA pelajari',
   'onboarding.reviewSubtitle':
     'Semak sekejap. Betulkan apa-apa yang salah — EVA akan ingat versi anda.',
   'onboarding.missingTitle': 'Ada beberapa perkara yang masih belum lengkap',
@@ -443,6 +504,39 @@ export const ms: Record<MessageKey, string> = {
   'onboarding.invalidUrl': 'Itu nampak bukan URL laman web yang sah.',
   'onboarding.notAProfile':
     'Itu nampak seperti pautan ke post atau video, bukan halaman. Tampal pautan ke halaman atau profil anda.',
+  'onboarding.stepOf': 'Langkah {step} daripada {total}',
+
+  /* --- pelan & naik taraf --------------------------------------------------- */
+  'plan.modalTitle': 'Naik taraf pelan anda',
+  'plan.modalSubtitle': 'Pilih pelan yang sesuai untuk perniagaan anda.',
+  'plan.basicDescription': 'Untuk perniagaan kecil yang baru bermula dengan EVA.',
+  'plan.proDescription': 'Untuk perniagaan yang mahukan lebih daripada EVA.',
+  'plan.perMonth': '/sebulan',
+  'plan.launchPrice': 'Harga pelancaran',
+  'plan.launchPriceFirstMonths': 'Harga pelancaran untuk 3 bulan pertama anda',
+  'plan.thenPrice': 'Kemudian {price}/sebulan',
+  'plan.launchNote':
+    'Harga pelancaran untuk 3 bulan pertama anda — kemudian {price}/sebulan mulai 5 Disember 2026.',
+  'plan.benefitChat': 'Berbual dengan EVA tentang perniagaan anda',
+  'plan.benefitBrain': 'Business Brain dan profil',
+  'plan.benefitCampaigns': 'Kempen dan kreatif',
+  'plan.benefitImages': 'Penjanaan imej standard',
+  'plan.benefitEverythingBasic': 'Semua dalam Basic',
+  'plan.benefitMorePowerful': 'Bantuan EVA yang lebih berkuasa',
+  'plan.benefitAdvancedTools': 'Alat kempen dan kreatif yang lebih maju',
+  'plan.benefitMoreRoom': 'Lebih ruang untuk menggunakan EVA setiap bulan',
+  'plan.recommended': 'Disyorkan',
+  'plan.currentPlan': 'Pelan semasa',
+  'plan.yourCurrentPlan': 'Pelan semasa anda',
+  'plan.upgradeToPro': 'Naik taraf ke Pro',
+  'plan.comparePlans': 'Bandingkan pelan',
+  'plan.starting': 'Sebentar…',
+  'plan.modalFootnote':
+    'Batal bila-bila masa. Selepas 3 bulan pertama, pelan anda diteruskan pada harga bulanan biasa.',
+  'plan.upgradeErrorNotice':
+    'Naik taraf tidak dapat dimulakan. Anda belum dicaj — sila cuba lagi sebentar.',
+  'plan.settingsFootnote':
+    'Harga dalam Ringgit Malaysia (RM). Anda boleh batal bila-bila masa — pelan anda kekal aktif sehingga akhir bulan yang telah anda bayar.',
 
   // Perkataan provenans — dari mana sesuatu nilai Business Brain datang.
   'brain.confirmedByYou': 'Disahkan oleh anda',
@@ -455,7 +549,7 @@ export const ms: Record<MessageKey, string> = {
   'brain.fromConnectedSource': 'Dari sumber yang disambungkan',
 
   // Halaman dan bahagian Business Brain.
-  'business.notKnownYet': 'Belum diketahui',
+  'business.notKnownYet': 'Belum diketahui — beritahu EVA',
   'business.emptyTitle': 'EVA belum kenal perniagaan anda',
   'business.emptyBody':
     'Beri EVA satu pautan — laman web, Facebook Page, atau profil Instagram anda — dan dia akan uruskan yang selebihnya.',

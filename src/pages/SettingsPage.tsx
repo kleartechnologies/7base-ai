@@ -1,13 +1,16 @@
+import { useState } from 'react'
 import { Check, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { LaunchPriceBadge } from '@/features/billing/PlanCard'
+import { UpgradeModal } from '@/features/billing/UpgradeModal'
 import { useAuth } from '@/hooks/useAuth'
 import { useI18n } from '@/hooks/useI18n'
 import { useTheme } from '@/hooks/useTheme'
 import { LANGUAGE_LABELS, LANGUAGE_OPTIONS, type Language } from '@/i18n/language'
 import type { MessageKey } from '@/i18n/translate'
 import { APPEARANCE_OPTIONS, type AppearancePreference } from '@/lib/theme'
-import { getCurrentPlan, getPlanName } from '@/services/billing/billing.service'
+import { getCurrentPlan, getPlanName, PLAN_PRICING } from '@/services/billing/billing.service'
 
 const APPEARANCE_LABEL_KEYS: Record<AppearancePreference, MessageKey> = {
   light: 'settings.appearanceLight',
@@ -22,10 +25,12 @@ const APPEARANCE_ICONS: Record<AppearancePreference, typeof Sun> = {
 }
 
 export default function SettingsPage() {
-  const { user, signOut } = useAuth()
+  const { user, business, signOut } = useAuth()
   const { t, language, setLanguage } = useI18n()
   const { preference, setPreference } = useTheme()
   const plan = getCurrentPlan()
+  const pricing = PLAN_PRICING[plan]
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   return (
     <div className="h-full overflow-y-auto">
@@ -50,6 +55,11 @@ export default function SettingsPage() {
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-muted-foreground">{t('settings.email')}</dt>
               <dd className="truncate text-foreground">{user?.email ?? '—'}</dd>
+            </div>
+            <Separator />
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="text-muted-foreground">{t('settings.business')}</dt>
+              <dd className="truncate text-foreground">{business?.name ?? '—'}</dd>
             </div>
           </dl>
         </section>
@@ -128,9 +138,34 @@ export default function SettingsPage() {
         <section className="mt-10 space-y-4">
           <h2 className="text-sm font-medium text-foreground">{t('settings.plan')}</h2>
           <div className="rounded-xl border border-border bg-card px-5 py-4">
-            <p className="text-sm font-medium text-foreground">{getPlanName(plan)}</p>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <p className="text-sm font-medium text-foreground">{getPlanName(plan)}</p>
+              <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                {t('plan.currentPlan')}
+              </span>
+              <LaunchPriceBadge label={t('plan.launchPrice')} />
+            </div>
+            <p className="mt-2 text-[15px] font-semibold text-foreground">
+              {pricing.launchPrice}
+              <span className="text-[13px] font-normal text-muted-foreground">
+                {t('plan.perMonth')}
+              </span>
+            </p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-              {t('settings.planNote')}
+              {t('plan.launchNote', { price: pricing.normalPrice })}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {plan === 'basic' ? (
+                <Button size="sm" onClick={() => setUpgradeOpen(true)}>
+                  {t('plan.upgradeToPro')}
+                </Button>
+              ) : null}
+              <Button size="sm" variant="outline" onClick={() => setUpgradeOpen(true)}>
+                {t('plan.comparePlans')}
+              </Button>
+            </div>
+            <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+              {t('plan.settingsFootnote')}
             </p>
           </div>
         </section>
@@ -142,6 +177,7 @@ export default function SettingsPage() {
           </Button>
         </section>
       </div>
+      {upgradeOpen ? <UpgradeModal onClose={() => setUpgradeOpen(false)} /> : null}
     </div>
   )
 }

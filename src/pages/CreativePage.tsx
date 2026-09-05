@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Download, Image as ImageIcon } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
+import { EvaSpark } from '@/components/EvaMark'
 import { downloadCreativePoster } from '@/features/creative/poster'
 import { firstUsableColor, readableTextOn } from '@/features/creative/posterSpec'
 import { useAuth } from '@/hooks/useAuth'
@@ -63,12 +64,26 @@ export default function CreativePage() {
           {t('creative.listEmpty', { createMaterials: t('campaign.createMaterials') })}
         </p>
       ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {creatives.map((creative) => (
             <li key={creative.id}>
               <CreativeCard creative={creative} />
             </li>
           ))}
+          <li>
+            <Link
+              to={ROUTES.chat}
+              className="flex h-full min-h-40 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border p-6 text-center transition-colors hover:border-foreground/30"
+            >
+              <EvaSpark className="size-4 text-eva" aria-hidden />
+              <span className="text-[14px] font-medium text-foreground">
+                {t('creative.needNewTitle')}
+              </span>
+              <span className="text-[12.5px] leading-relaxed text-muted-foreground">
+                {t('creative.needNewBody')}
+              </span>
+            </Link>
+          </li>
         </ul>
       )}
     </div>

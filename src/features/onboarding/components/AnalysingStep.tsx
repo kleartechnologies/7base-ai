@@ -40,9 +40,9 @@ export function AnalysingStep({ stage }: { stage: DiscoveryStage | null }) {
           >
             <span className="flex size-5 shrink-0 items-center justify-center">
               {done ? (
-                <Check className="size-4" aria-hidden />
+                <Check className="size-4 text-eva" aria-hidden />
               ) : active ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
+                <Loader2 className="size-4 animate-spin text-eva" aria-hidden />
               ) : (
                 <span className="size-1.5 rounded-full bg-current" aria-hidden />
               )}

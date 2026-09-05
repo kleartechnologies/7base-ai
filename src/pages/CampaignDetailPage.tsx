@@ -85,6 +85,8 @@ export default function CampaignDetailPage() {
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [missing, setMissing] = useState(false)
   const [form, setForm] = useState<FormState | null>(null)
+  // The page opens as strategy to read; the form appears only on request.
+  const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -179,6 +181,7 @@ export default function CampaignDetailPage() {
         setForm(toForm(reloaded))
       }
       setSaved(true)
+      setEditing(false)
     } catch {
       setError(t('campaign.saveFailed'))
     } finally {
@@ -242,6 +245,61 @@ export default function CampaignDetailPage() {
         </div>
       </header>
 
+      {!editing ? (
+        <dl className="mt-8 space-y-4">
+          <ReadRow label={t('campaign.objective')} value={campaign.objective} />
+          <ReadRow
+            label={t('campaign.fieldTargetAudience')}
+            value={campaign.targetAudience?.description}
+            tag={
+              campaign.targetAudience
+                ? campaign.targetAudience.basis === 'known'
+                  ? t('campaign.tagKnown')
+                  : t('campaign.tagHypothesis')
+                : undefined
+            }
+          />
+          <ReadRow
+            label={t('campaign.offer')}
+            value={campaign.offer?.description}
+            tag={
+              campaign.offer
+                ? campaign.offer.basis === 'existing'
+                  ? t('campaign.tagExisting')
+                  : t('campaign.tagRecommendation')
+                : undefined
+            }
+          />
+          <ReadRow label={t('campaign.fieldPositioning')} value={campaign.positioning} />
+          <ReadRow label={t('campaign.fieldKeyMessage')} value={campaign.keyMessage} />
+          <ReadRow label={t('campaign.callToAction')} value={campaign.callToAction} />
+          <ReadRow
+            label={t('campaign.channels')}
+            value={
+              campaign.channels.length > 0
+                ? campaign.channels
+                    .map((channel) =>
+                      channel === 'in_store'
+                        ? t('campaign.channelInStore')
+                        : channel === 'website'
+                          ? t('campaign.channelWebsite')
+                          : (CHANNEL_PROPER_NOUNS[channel] ?? channel),
+                    )
+                    .join(' · ')
+                : null
+            }
+          />
+          <ReadRow
+            label={t('campaign.fieldDuration')}
+            value={
+              campaign.durationDays
+                ? t('campaign.durationDays', { days: campaign.durationDays })
+                : null
+            }
+          />
+          <ReadRow label={t('campaign.fieldNotes')} value={campaign.notes} />
+        </dl>
+      ) : (
       <div className="mt-8 space-y-5">
         <Field label={t('campaign.fieldName')}>
           <Input value={form.name} onChange={(e) => set({ name: e.target.value })} />
@@ -343,33 +401,66 @@ export default function CampaignDetailPage() {
           <Textarea rows={3} value={form.notes} onChange={(e) => set({ notes: e.target.value })} />
         </Field>
       </div>
+      )}
 
-      {campaign.assumptions.length > 0 ? (
-        <ListSection title={t('campaign.assumptionsTitle')} items={campaign.assumptions} />
-      ) : null}
-      {campaign.unknowns.length > 0 ? (
-        <ListSection title={t('campaign.unknownsTitle')} items={campaign.unknowns} />
+      {campaign.assumptions.length > 0 || campaign.unknowns.length > 0 ? (
+        <div className="mt-8 rounded-xl border border-dashed border-border px-5 py-4">
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            {t('campaign.worthConfirming')}
+          </p>
+          {campaign.assumptions.length > 0 ? (
+            <ListSection title={t('campaign.assumptionsTitle')} items={campaign.assumptions} />
+          ) : null}
+          {campaign.unknowns.length > 0 ? (
+            <ListSection title={t('campaign.unknownsTitle')} items={campaign.unknowns} />
+          ) : null}
+        </div>
       ) : null}
 
       <div className="mt-8 flex flex-wrap items-center gap-2 border-t border-border pt-5">
-        <Button size="sm" onClick={() => void handleSave()} disabled={saving}>
-          {saving ? t('common.saving') : saved ? t('campaign.saved') : t('campaign.saveChanges')}
-        </Button>
-        {campaign.conversationId ? (
-          <Button size="sm" variant="outline" asChild>
-            <Link to={ROUTES.conversation(campaign.conversationId)}>
-              {t('campaign.continueInChat')}
-            </Link>
-          </Button>
-        ) : null}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => void handleCreateMaterials()}
-          disabled={creating}
-        >
-          {creating ? t('campaign.creatingMaterials') : t('campaign.createMaterials')}
-        </Button>
+        {editing ? (
+          <>
+            <Button size="sm" onClick={() => void handleSave()} disabled={saving}>
+              {saving ? t('common.saving') : t('campaign.saveChanges')}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={saving}
+              onClick={() => {
+                setForm(toForm(campaign))
+                setEditing(false)
+                setError(null)
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              {t('campaign.editDetails')}
+            </Button>
+            {saved ? (
+              <span className="text-[13px] text-muted-foreground">{t('campaign.saved')}</span>
+            ) : null}
+            {campaign.conversationId ? (
+              <Button size="sm" variant="outline" asChild>
+                <Link to={ROUTES.conversation(campaign.conversationId)}>
+                  {t('campaign.continueInChat')}
+                </Link>
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleCreateMaterials()}
+              disabled={creating}
+            >
+              {creating ? t('campaign.creatingMaterials') : t('campaign.createMaterials')}
+            </Button>
+          </>
+        )}
       </div>
       {creating ? (
         <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
@@ -425,12 +516,27 @@ function Field({
   )
 }
 
+function ReadRow({ label, value, tag }: { label: string; value?: string | null; tag?: string }) {
+  if (!value) return null
+  return (
+    <div>
+      <dt className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+        {tag ? (
+          <span className="rounded-full border border-border px-1.5 py-px text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
+            {tag}
+          </span>
+        ) : null}
+      </dt>
+      <dd className="mt-1 text-[14px] leading-relaxed text-foreground">{value}</dd>
+    </div>
+  )
+}
+
 function ListSection({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="mt-8">
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-        {title}
-      </p>
+    <div className="mt-4">
+      <p className="text-[12px] font-medium text-foreground">{title}</p>
       <ul className="mt-2 space-y-1.5">
         {items.map((item) => (
           <li key={item} className="text-[13px] leading-relaxed text-muted-foreground">

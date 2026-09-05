@@ -38,12 +38,14 @@ export const en = {
   'nav.library': 'Library',
   'nav.calendar': 'Calendar',
   'nav.results': 'Results',
-  'nav.business': 'Business',
+  'nav.business': 'Business Brain',
   'nav.settings': 'Settings',
 
   'shell.newChat': 'New chat',
   'shell.chatHistory': 'Chat history',
   'shell.workspace': 'Workspace',
+  'shell.recentChats': 'Recent',
+  'shell.upgradePlan': 'Upgrade plan',
   'shell.openMenu': 'Open menu',
   'shell.closeMenu': 'Close menu',
   'shell.historyEmpty': 'Your conversations with EVA will appear here.',
@@ -68,6 +70,29 @@ export const en = {
   'overview.description': 'A calm summary of what EVA is working on for your business.',
   'overview.hint':
     'Once you run your first campaign, a short summary of what is live and what is coming up will appear here.',
+  'overview.subtitle': 'What EVA is working on for {name}.',
+  'overview.askEva': 'Ask EVA',
+  'overview.activeCampaigns': 'Active campaigns',
+  'overview.viewAll': 'View all',
+  'overview.noCampaigns':
+    'No campaigns yet. Ask EVA what you want to achieve — she turns her recommendation into a campaign.',
+  'overview.recentCreative': 'Recent creative',
+  'overview.askNewVisual': 'Ask EVA for a new visual',
+  'overview.evaSuggests': 'EVA suggests',
+  'overview.askAboutIt': 'Ask EVA about it',
+  'overview.suggestProfile':
+    'A few quick profile answers would make EVA’s recommendations sharper. It takes about a minute.',
+  'overview.suggestFirstCampaign':
+    'Your first campaign is one conversation away. Tell EVA what you’d like more of — customers, orders, or attention.',
+  'overview.suggestDraftCampaign':
+    'You have a campaign still in draft. Finishing it with EVA is the fastest next step.',
+  'overview.suggestKeepGoing':
+    'Things look in order. Ask EVA what’s worth promoting next — she knows your menu, customers and brand.',
+  'overview.businessProfile': 'Business profile',
+  'overview.profileNote':
+    'EVA knows your business well. {count} quick answers would make her sharper.',
+  'overview.profileComplete': 'EVA knows your business well — the profile is complete.',
+  'overview.finishProfile': 'Finish my profile',
   'calendar.title': 'Calendar',
   'calendar.description': 'When each piece of your marketing goes out.',
   'calendar.hint': 'Scheduled posts from your campaigns will show up on this calendar.',
@@ -133,6 +158,7 @@ export const en = {
   'settings.account': 'Account',
   'settings.name': 'Name',
   'settings.email': 'Email',
+  'settings.business': 'Business',
   'settings.plan': 'Plan',
   'settings.planNote': 'Fair-use limits on AI usage apply. Paid plans are not available yet.',
   'settings.appearance': 'Appearance',
@@ -151,11 +177,35 @@ export const en = {
   'chat.suggestionSlowSales': 'My weekday sales are slow. What should I do?',
   'chat.suggestionNewItem': 'Help me promote my new menu item.',
   'chat.suggestionWhatToPost': 'What should I post this week?',
-  'chat.composerPlaceholder': 'Tell EVA what you want to achieve…',
+  'chat.composerPlaceholder': 'Ask EVA anything…',
+  'chat.replyPlaceholder': 'Reply to EVA…',
   'chat.messageEva': 'Message EVA',
   'chat.sendMessage': 'Send message',
   'chat.disclaimer': 'EVA can make mistakes. Review important details before publishing.',
   'chat.thinking': 'EVA is thinking',
+  'chat.thinkingEllipsis': 'EVA is thinking…',
+  'chat.greetingMorning': 'Good morning',
+  'chat.greetingMorningName': 'Good morning, {name}',
+  'chat.greetingAfternoon': 'Good afternoon',
+  'chat.greetingAfternoonName': 'Good afternoon, {name}',
+  'chat.greetingEvening': 'Good evening',
+  'chat.greetingEveningName': 'Good evening, {name}',
+  'chat.emptyTitle': 'How can EVA help your business grow today?',
+  'chat.emptySubtitle':
+    'Get ideas, create campaigns, design visuals, or ask anything about your business.',
+  'chat.chipIdeas': 'Marketing ideas',
+  'chat.chipCampaign': 'Create a campaign',
+  'chat.chipVisual': 'Design a visual',
+  'chat.chipProfile': 'Improve my business profile',
+  'chat.promptVisual': 'Design a promotional visual for my business.',
+  'chat.promptProfile': 'What could make my business profile stronger?',
+  'chat.exploreTitle': 'Explore what you can do',
+  'chat.exploreBusinessBody': 'Understand your business and get tailored advice',
+  'chat.exploreCampaignsBody': 'Plan and create marketing campaigns',
+  'chat.exploreCreativeBody': 'Generate on-brand visuals from your campaigns',
+  'chat.exploreAssetsTitle': 'Assets & Library',
+  'chat.exploreAssetsBody': 'Manage and reuse your marketing assets',
+  'chat.evaKnowsFooter': 'EVA knows {name} — your menu, customers and brand.',
   'chat.attachFile': 'Attach a file',
   'chat.uploadFromDevice': 'Upload from device',
   'chat.fromYourAssets': 'From your Assets',
@@ -194,6 +244,11 @@ export const en = {
   'asset.filterActive': 'Active',
   'asset.filterArchived': 'Archived',
   'asset.filterAll': 'All',
+  'asset.filterProducts': 'Products',
+  'asset.filterMenus': 'Menus',
+  'asset.filterLogoBrand': 'Logo & brand',
+  'asset.filterPhotos': 'Photos',
+  'asset.evaCanUse': 'EVA can use this',
   'asset.needBusiness': 'Set up your business first — assets are stored against your business.',
   'asset.loadFailed': 'Your assets could not be loaded. Please refresh the page to try again.',
   'asset.emptyActive':
@@ -301,7 +356,9 @@ export const en = {
   'creative.formatPortrait': 'Portrait post',
   'creative.formatSquare': 'Square post',
   'creative.updatedOn': 'Updated {date}',
-  'creative.editInChat': 'Edit in chat',
+  'creative.editInChat': 'Edit with EVA',
+  'creative.needNewTitle': 'Need something new?',
+  'creative.needNewBody': 'Tell EVA what you’re promoting and she’ll design it.',
 
   /* --- campaign & recommendation cards in chat ----------------------------- */
   'campaign.title': 'Campaign',
@@ -337,11 +394,13 @@ export const en = {
   'campaign.building': 'Building…',
   'campaign.campaignCreated': 'Campaign created',
   'campaign.buildCampaign': 'Build this campaign',
+  'campaign.askSomethingElse': 'Ask something else',
 
   /* --- campaigns pages ------------------------------------------------------ */
   'campaign.pageTitle': 'Campaigns',
   'campaign.pageIntro':
-    'Every campaign EVA builds with you, kept as structured strategy rather than loose text.',
+    'Every campaign you and EVA build together, kept as clear strategy.',
+  'campaign.newWithEva': 'New campaign with EVA',
   'campaign.listLoadFailed':
     'Your campaigns could not be loaded. Please check your connection and refresh.',
   'campaign.listEmpty':
@@ -357,6 +416,8 @@ export const en = {
   'campaign.fieldNotes': 'Notes',
   'campaign.assumptionsTitle': 'Assumptions this campaign relies on',
   'campaign.unknownsTitle': 'Still unknown — confirm before launch',
+  'campaign.worthConfirming': 'Worth confirming before launch',
+  'campaign.editDetails': 'Edit details',
   'campaign.saveChanges': 'Save changes',
   'campaign.saved': 'Saved',
   'campaign.saveFailed': 'Could not save the campaign. Please try again.',
@@ -400,7 +461,7 @@ export const en = {
     'Nothing you did caused this, and trying again won’t clear it. You can still set EVA up yourself in the meantime.',
   'onboarding.tryAnotherLink': 'Try another link',
   'onboarding.continueManually': 'Continue manually',
-  'onboarding.reviewTitle': 'Here’s what EVA understood',
+  'onboarding.reviewTitle': 'Here’s what EVA learned',
   'onboarding.reviewSubtitle':
     'Have a quick look. Fix anything that’s wrong — EVA will remember your version.',
   'onboarding.missingTitle': 'A few things are still missing',
@@ -438,6 +499,38 @@ export const en = {
   'onboarding.invalidUrl': 'That doesn’t look like a valid website URL.',
   'onboarding.notAProfile':
     'That looks like a link to a post or video, not a page. Paste the link to your page or profile instead.',
+  'onboarding.stepOf': 'Step {step} of {total}',
+
+  /* --- plans & upgrade ------------------------------------------------------ */
+  'plan.modalTitle': 'Upgrade your plan',
+  'plan.modalSubtitle': 'Choose the plan that fits your business.',
+  'plan.basicDescription': 'For small businesses getting started with EVA.',
+  'plan.proDescription': 'For businesses that want more from EVA.',
+  'plan.perMonth': '/month',
+  'plan.launchPrice': 'Launch price',
+  'plan.launchPriceFirstMonths': 'Launch price for your first 3 months',
+  'plan.thenPrice': 'Then {price}/month',
+  'plan.launchNote': 'Launch price for your first 3 months — then {price}/month from 5 December 2026.',
+  'plan.benefitChat': 'Chat with EVA about your business',
+  'plan.benefitBrain': 'Business Brain and profile',
+  'plan.benefitCampaigns': 'Campaigns and creative',
+  'plan.benefitImages': 'Standard image creation',
+  'plan.benefitEverythingBasic': 'Everything in Basic',
+  'plan.benefitMorePowerful': 'More powerful EVA assistance',
+  'plan.benefitAdvancedTools': 'More advanced campaign and creative tools',
+  'plan.benefitMoreRoom': 'More room to use EVA every month',
+  'plan.recommended': 'Recommended',
+  'plan.currentPlan': 'Current plan',
+  'plan.yourCurrentPlan': 'Your current plan',
+  'plan.upgradeToPro': 'Upgrade to Pro',
+  'plan.comparePlans': 'Compare plans',
+  'plan.starting': 'One moment…',
+  'plan.modalFootnote':
+    'Cancel anytime. After your first 3 months, your plan continues at the normal monthly price.',
+  'plan.upgradeErrorNotice':
+    'The upgrade couldn’t be started. You haven’t been charged — please try again in a moment.',
+  'plan.settingsFootnote':
+    'Prices in Malaysian Ringgit (RM). You can cancel anytime — your plan stays active until the end of the month you’ve paid for.',
 
   // Provenance wording — where a Business Brain value came from.
   'brain.confirmedByYou': 'Confirmed by you',
@@ -445,12 +538,12 @@ export const en = {
   'brain.fromFacebook': 'From your Facebook Page',
   'brain.fromInstagram': 'From your Instagram profile',
   'brain.fromGoogleBusiness': 'From your Google Business Profile',
-  'brain.evaInference': 'EVA’s inference',
+  'brain.evaInference': 'EVA’s reading',
   'brain.fromDocument': 'From a document you uploaded',
   'brain.fromConnectedSource': 'From a connected source',
 
   // Business Brain page and sections.
-  'business.notKnownYet': 'Not known yet',
+  'business.notKnownYet': 'Not known yet — tell EVA',
   'business.emptyTitle': 'EVA doesn’t know your business yet',
   'business.emptyBody':
     'Give EVA one link — your website, Facebook Page, or Instagram profile — and she works out the rest.',

@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
+import { useAuth } from '@/hooks/useAuth'
+import { useI18n } from '@/hooks/useI18n'
 import { useConversation } from './useConversation'
 import { ChatComposer } from './components/ChatComposer'
-import { EmptyState } from './components/EmptyState'
+import { EmptyState, ExploreGrid, SuggestionChips } from './components/EmptyState'
 import { MessageBubble } from './components/MessageBubble'
 import { StreamingMessage } from './components/StreamingMessage'
 import { ThinkingIndicator } from './components/ThinkingIndicator'
@@ -17,6 +19,8 @@ import { ThinkingIndicator } from './components/ThinkingIndicator'
 export default function ChatPage() {
   const { conversationId } = useParams<{ conversationId: string }>()
   const navigate = useNavigate()
+  const { business } = useAuth()
+  const { t } = useI18n()
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -62,11 +66,23 @@ export default function ChatPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {isEmpty ? (
-        <div className="flex min-h-0 flex-1 flex-col justify-center px-6 pb-6">
-          <EmptyState onPick={(text) => void send(text)} />
-          <div className="mx-auto mt-10 w-full max-w-3xl">
-            <ChatComposer onSend={(text, attachments) => void send(text, attachments)} autoFocus />
-            {error ? <ErrorNotice message={error} /> : null}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center px-6 py-10">
+            <EmptyState />
+            <div className="mx-auto mt-8 w-full max-w-[640px]">
+              <ChatComposer
+                onSend={(text, attachments) => void send(text, attachments)}
+                autoFocus
+              />
+              {error ? <ErrorNotice message={error} /> : null}
+            </div>
+            <SuggestionChips onPick={(text) => void send(text)} />
+            <ExploreGrid />
+            {business ? (
+              <p className="mt-10 text-center text-xs text-muted-foreground">
+                {t('chat.evaKnowsFooter', { name: business.name })}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : (
@@ -89,7 +105,11 @@ export default function ChatPage() {
 
           <div className="shrink-0 px-6 pb-5">
             <div className="mx-auto w-full max-w-3xl">
-              <ChatComposer onSend={(text, attachments) => void send(text, attachments)} disabled={awaitingReply} />
+              <ChatComposer
+                onSend={(text, attachments) => void send(text, attachments)}
+                disabled={awaitingReply}
+                placeholder={t('chat.replyPlaceholder')}
+              />
               {error ? <ErrorNotice message={error} /> : null}
             </div>
           </div>

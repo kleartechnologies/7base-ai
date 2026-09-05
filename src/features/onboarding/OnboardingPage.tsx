@@ -99,6 +99,8 @@ export default function OnboardingPage() {
   if (completingId) {
     return (
       <OnboardingLayout
+        step={3}
+        spark
         title={t('onboarding.completionTitle')}
         subtitle={t('onboarding.completionSubtitle')}
       >
@@ -113,6 +115,8 @@ export default function OnboardingPage() {
   if (analysis.phase === 'starting' || analysis.phase === 'running') {
     return (
       <OnboardingLayout
+        step={2}
+        spark
         title={t('onboarding.analysingTitle')}
         subtitle={t('onboarding.analysingSubtitle', { source: displaySource(url) })}
       >
@@ -123,7 +127,7 @@ export default function OnboardingPage() {
 
   if (analysis.phase === 'failed' && analysis.failure) {
     return (
-      <OnboardingLayout title={t('onboarding.failedTitle')}>
+      <OnboardingLayout step={2} title={t('onboarding.failedTitle')}>
         <AnalysisFailed
           failure={analysis.failure}
           onRetryWebsite={() => {
@@ -143,6 +147,7 @@ export default function OnboardingPage() {
     return (
       <OnboardingLayout
         wide
+        step={3}
         title={t('onboarding.reviewTitle')}
         subtitle={t('onboarding.reviewSubtitle')}
       >
@@ -163,6 +168,7 @@ export default function OnboardingPage() {
   if (step === 'website') {
     return (
       <OnboardingLayout
+        step={1}
         title={t('onboarding.websiteTitle')}
         subtitle={t('onboarding.websiteSubtitle')}
       >
@@ -180,6 +186,7 @@ export default function OnboardingPage() {
   if (step === 'manual') {
     return (
       <OnboardingLayout
+        step={1}
         title={t('onboarding.manualTitle')}
         subtitle={t('onboarding.manualSubtitle')}
       >
@@ -195,6 +202,7 @@ export default function OnboardingPage() {
 
   return (
     <OnboardingLayout
+      step={1}
       title={t('onboarding.chooseTitle')}
       subtitle={t('onboarding.chooseSubtitle')}
     >

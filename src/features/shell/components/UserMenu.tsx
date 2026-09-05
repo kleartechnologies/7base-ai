@@ -12,6 +12,7 @@ import {
 import { ROUTES } from '@/app/routes/paths'
 import { useAuth } from '@/hooks/useAuth'
 import { useI18n } from '@/hooks/useI18n'
+import { getCurrentPlan, getPlanName } from '@/services/billing/billing.service'
 
 function initialsFrom(name: string | null, email: string | null): string {
   const source = name?.trim() || email?.trim() || ''
@@ -42,7 +43,9 @@ export function UserMenu() {
             {displayName}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
-            {business?.name ?? t('shell.noBusinessYet')}
+            {business
+              ? `${business.name} · ${getPlanName(getCurrentPlan())}`
+              : t('shell.noBusinessYet')}
           </span>
         </span>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />

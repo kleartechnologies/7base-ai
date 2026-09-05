@@ -41,3 +41,30 @@ export function getPlanName(planId: PlanId): string {
 export function getCurrentPlan(): PlanId {
   return 'basic'
 }
+
+/**
+ * Display-only pricing, mirroring the approved plan cards. Prices are copy,
+ * not billing state: nothing here charges anyone, and the server remains the
+ * only authority on what a plan may do.
+ */
+export interface PlanPricing {
+  /** Launch price, charged for the first 3 months. */
+  launchPrice: string
+  /** The normal monthly price the plan continues at. */
+  normalPrice: string
+}
+
+export const PLAN_PRICING: Record<PlanId, PlanPricing> = {
+  basic: { launchPrice: 'RM19.90', normalPrice: 'RM29.90' },
+  pro: { launchPrice: 'RM39.90', normalPrice: 'RM49.90' },
+}
+
+/**
+ * The upgrade entry point. Billing does not exist yet, so this always reports
+ * that the upgrade could not be started — the UI shows the approved quiet
+ * notice ("you haven't been charged"). When Billplz lands, this becomes the
+ * call that creates the bill server-side and returns the redirect.
+ */
+export function startUpgrade(): Promise<{ ok: false }> {
+  return Promise.resolve({ ok: false })
+}

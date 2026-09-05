@@ -1,17 +1,15 @@
+import { EvaMark } from '@/components/EvaMark'
 import { useI18n } from '@/hooks/useI18n'
 
-/** A quiet three-dot pulse while EVA composes its reply. */
+/** EVA's pulsing spark plus a quiet line while she composes her reply. */
 export function ThinkingIndicator() {
   const { t } = useI18n()
   return (
-    <div className="flex items-center gap-1.5 py-1" role="status" aria-label={t('chat.thinking')}>
-      {[0, 150, 300].map((delay) => (
-        <span
-          key={delay}
-          className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
-          style={{ animationDelay: `${delay}ms`, animationDuration: '1.1s' }}
-        />
-      ))}
+    <div className="flex items-center gap-3" role="status" aria-label={t('chat.thinking')}>
+      <EvaMark state="thinking" />
+      <span className="animate-eva-pulse text-[14px] text-muted-foreground motion-reduce:animate-none">
+        {t('chat.thinkingEllipsis')}
+      </span>
     </div>
   )
 }

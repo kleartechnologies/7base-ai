@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { ArrowUp, FileText, FolderOpen, ImageIcon, Paperclip, Upload, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -205,7 +206,14 @@ export function ChatComposer({
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div className="rounded-2xl border border-input bg-card px-3.5 py-2.5 shadow-xs transition-colors focus-within:border-ring">
+      <div
+        className={cn(
+          'border border-input bg-card px-3.5 py-2.5 shadow-xs transition-colors focus-within:border-ring',
+          // A single-line composer reads as a pill; staging attachments (or a
+          // grown textarea) needs corners that can hold a taller box.
+          pending.length > 0 ? 'rounded-2xl' : 'rounded-[26px]',
+        )}
+      >
         {pending.length > 0 ? (
           <ul className="mb-2 flex flex-wrap gap-2" aria-label={t('chat.attachmentsToSend')}>
             {pending.map((item) => (
@@ -321,7 +329,7 @@ export function ChatComposer({
             size="icon-sm"
             disabled={!canSend}
             aria-label={t('chat.sendMessage')}
-            className="mb-0.5 rounded-full"
+            className="mb-0.5 rounded-full disabled:opacity-45"
           >
             <ArrowUp />
           </Button>

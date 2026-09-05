@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sparkles } from 'lucide-react'
+import { EvaSpark } from '@/components/EvaMark'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/hooks/useI18n'
 import { buildCampaignFromRecommendation } from '@/services/ai/ai.client'
@@ -41,8 +41,8 @@ export function RecommendationCard({ block }: { block: MarketingRecommendationBl
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="border-b border-border px-5 py-3">
-        <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-          <Sparkles className="size-3.5" aria-hidden />
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-eva-label">
+          <EvaSpark className="size-3.5" aria-hidden />
           {t('campaign.evaRecommendation')}
         </p>
         <h3 className="mt-1 text-[16px] font-semibold tracking-[-0.01em] text-foreground">
@@ -89,7 +89,7 @@ export function RecommendationCard({ block }: { block: MarketingRecommendationBl
       </div>
 
       {block.nextAction === 'build_campaign' ? (
-        <div className="border-t border-border px-5 py-3.5">
+        <div className="flex flex-wrap items-center gap-2 border-t border-border px-5 py-3.5">
           <Button size="sm" onClick={() => void handleBuild()} disabled={building || built}>
             {building
               ? t('campaign.building')
@@ -97,8 +97,16 @@ export function RecommendationCard({ block }: { block: MarketingRecommendationBl
                 ? t('campaign.campaignCreated')
                 : t('campaign.buildCampaign')}
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground"
+            onClick={() => document.getElementById('chat-composer')?.focus()}
+          >
+            {t('campaign.askSomethingElse')}
+          </Button>
           {error ? (
-            <p role="alert" className="mt-2 text-[13px] text-destructive">
+            <p role="alert" className="w-full text-[13px] text-destructive">
               {error}
             </p>
           ) : null}

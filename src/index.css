@@ -51,6 +51,23 @@
    * creative content never changes with the theme.
    */
   --poster-surface: #20242b;
+
+  /*
+   * The EVA accent — a violet family reserved for EVA-authored moments: her
+   * spark mark, "EVA suggests", "EVA's reading", launch-price badges and the
+   * profile progress bar. Never used for generic UI emphasis; `--accent`
+   * (the warm-neutral hover surface) is a different token and stays as is.
+   */
+  --eva: oklch(0.49 0.12 275);
+  --eva-label: oklch(0.45 0.13 275);
+  --eva-tint: oklch(0.985 0.006 275);
+  --eva-tint-border: oklch(0.9 0.03 275);
+  --eva-badge: oklch(0.95 0.025 275);
+  --eva-badge-border: oklch(0.85 0.05 275);
+  --eva-badge-foreground: oklch(0.4 0.13 275);
+  --eva-progress: oklch(0.55 0.11 275);
+  /* The spark when it sits on a filled dark/primary button, in either theme. */
+  --eva-on-dark: oklch(0.8 0.06 275);
 }
 
 .dark {
@@ -87,6 +104,17 @@
   --sidebar-border: #2a2a26;
   --sidebar-accent: #232320;
   --sidebar-accent-foreground: #ededea;
+
+  /* EVA accent, lightened so the violet stays legible on dark surfaces. */
+  --eva: oklch(0.72 0.09 275);
+  --eva-label: oklch(0.75 0.1 275);
+  --eva-tint: oklch(0.24 0.02 275);
+  --eva-tint-border: oklch(0.35 0.04 275);
+  --eva-badge: oklch(0.3 0.04 275);
+  --eva-badge-border: oklch(0.42 0.05 275);
+  --eva-badge-foreground: oklch(0.82 0.07 275);
+  --eva-progress: oklch(0.65 0.1 275);
+  --eva-on-dark: oklch(0.8 0.06 275);
 }
 
 @theme inline {
@@ -115,6 +143,44 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-poster-surface: var(--poster-surface);
+  --color-eva: var(--eva);
+  --color-eva-label: var(--eva-label);
+  --color-eva-tint: var(--eva-tint);
+  --color-eva-tint-border: var(--eva-tint-border);
+  --color-eva-badge: var(--eva-badge);
+  --color-eva-badge-border: var(--eva-badge-border);
+  --color-eva-badge-foreground: var(--eva-badge-foreground);
+  --color-eva-progress: var(--eva-progress);
+  --color-eva-on-dark: var(--eva-on-dark);
+
+  /*
+   * The only approved EVA animations: the spark's thinking pulse and the
+   * card entrance. (The third, the streaming cursor blink, reuses Tailwind's
+   * animate-pulse.) Both respect prefers-reduced-motion at the usage site.
+   */
+  --animate-eva-pulse: eva-pulse 1.6s ease-in-out infinite;
+  --animate-card-in: card-in 120ms ease-out;
+
+  @keyframes eva-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

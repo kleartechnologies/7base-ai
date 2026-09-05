@@ -81,7 +81,15 @@ export function SourceBadge({ provenance }: { provenance: SourceClaim }) {
 
   const Icon = TONE_ICON[tone]
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+    <span
+      className={
+        tone === 'inferred'
+          ? // EVA's own reading carries her accent; quoted and confirmed
+            // facts stay neutral.
+            'inline-flex items-center gap-1.5 rounded-full border border-eva-badge-border bg-eva-badge px-2.5 py-1 text-[11px] font-medium text-eva-badge-foreground'
+          : 'inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground'
+      }
+    >
       <Icon className="size-3" aria-hidden />
       {label}
     </span>
@@ -102,7 +110,11 @@ export function SourceTag({ provenance }: { provenance: SourceClaim }) {
   const Icon = TONE_ICON[tone]
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground/70"
+      className={
+        tone === 'inferred'
+          ? 'inline-flex shrink-0 items-center gap-1 text-[11px] text-eva-label/80'
+          : 'inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground/70'
+      }
       title={label}
     >
       <Icon className="size-3" aria-hidden />
@@ -130,7 +142,7 @@ export function Field({
   return (
     <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-4 py-1.5 text-sm">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={value ? 'text-foreground' : 'text-muted-foreground/60'}>
+      <dd className={value ? 'text-foreground' : 'text-eva-label/80'}>
         <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span>{value || t('business.notKnownYet')}</span>
           {value ? <SourceTag provenance={provenance} /> : null}
@@ -165,7 +177,7 @@ export function ChipGroup({
 export function Chips({ items }: { items: string[] }) {
   const { t } = useI18n()
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground/60">{t('business.notKnownYet')}</p>
+    return <p className="text-sm text-eva-label/80">{t('business.notKnownYet')}</p>
   }
   return (
     <ul className="flex flex-wrap gap-1.5">

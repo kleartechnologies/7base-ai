@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { EvaSpark } from '@/components/EvaMark'
 import { useI18n } from '@/hooks/useI18n'
 import { completionIntro, missingQuestions } from '@/services/business/completion'
 import type { Business } from '@/types'
@@ -27,8 +28,11 @@ export function CompletionCard({
   if (!visible) return null
 
   return (
-    <section className="rounded-xl border border-dashed border-border bg-card px-6 py-5">
-      <h2 className="text-[15px] font-semibold text-foreground">{t('business.completionTitle')}</h2>
+    <section className="rounded-xl border border-eva-tint-border bg-eva-tint px-6 py-5">
+      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
+        <EvaSpark className="size-4 text-eva" aria-hidden />
+        {t('business.completionTitle')}
+      </h2>
       <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{intro}</p>
       <div className="mt-4">
         <CompletionQuestions business={business} onSaved={onSaved} />
