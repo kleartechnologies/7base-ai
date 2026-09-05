@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { cn } from '@/lib/utils'
 import type { Message } from '@/types'
 import { BlockRenderer } from './blocks/BlockRenderer'
@@ -8,8 +9,12 @@ import { BlockRenderer } from './blocks/BlockRenderer'
  * The user's turn sits in a soft container; MARKA's runs full width as plain
  * prose. That asymmetry is what makes a chat read as a conversation rather
  * than a list of cards.
+ *
+ * Memoised: while EVA streams, the page re-renders on every 50ms flush of
+ * local streaming text, but the stored messages themselves are unchanged —
+ * without memo every settled bubble re-renders per flush.
  */
-export function MessageBubble({ message }: { message: Message }) {
+export const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
 
   return (
@@ -28,4 +33,4 @@ export function MessageBubble({ message }: { message: Message }) {
       </div>
     </div>
   )
-}
+})

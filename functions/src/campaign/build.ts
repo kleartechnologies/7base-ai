@@ -10,6 +10,7 @@ import { OPENAI_API_KEY } from '../ai/openai.client'
 import { assertOwnership, requireBusinessOwner, requireUid, resolvePlanForUser } from '../lib/auth'
 import { internal, invalidArgument, permissionDenied } from '../lib/errors'
 import { COLLECTIONS, db, FieldValue } from '../lib/firebase'
+import { withOperationLock } from '../lib/operationLock'
 import type {
   BuildCampaignRequest,
   BuildCampaignResponse,
@@ -22,7 +23,12 @@ import { draftCampaignFromRecommendation, mergePolish } from './draft'
 import { buildCampaignBuiltPresentation } from './present'
 import { buildPolishInput, CAMPAIGN_POLISH_PROMPT } from './prompt'
 import { CAMPAIGN_POLISH_SCHEMA, CAMPAIGN_POLISH_SCHEMA_NAME } from './schema'
-import { buildStoredCampaign, saveCampaign, type StoredCampaign } from './store'
+import {
+  buildStoredCampaign,
+  findCampaignByRecommendation,
+  saveCampaign,
+  type StoredCampaign,
+} from './store'
 import { CampaignValidationError, validateCampaignPolish, type CampaignContent } from './validate'
 
 /**
@@ -70,6 +76,31 @@ export const campaignBuildFromRecommendation = onCall(
 
     // Server-resolved plan; the request payload has no say in model choice.
     const plan = await resolvePlanForUser(uid)
+
+    // One build per recommendation, ever: a concurrent duplicate is refused
+    // by the lock, and a repeat click after completion reuses the campaign
+    // that already exists (checked inside the lock, so the check cannot race
+    // a build in flight). The lock is acquired only after the ownership
+    // checks above — no account can hold a lock over another's resources.
+    return withOperationLock(
+      {
+        key: `campaign.build_${uid}_${recommendationId}`,
+        ownerId: uid,
+        operation: 'campaign.build',
+        busyMessage: 'This campaign is already being built. Give it a moment.',
+      },
+      buildOnce,
+    )
+
+    async function buildOnce(): Promise<BuildCampaignResponse> {
+    const existing = await findCampaignByRecommendation(recommendationId as string, uid)
+    if (existing) {
+      logger.info('Campaign build reused', {
+        recommendationId,
+        campaignId: existing.id,
+      })
+      return { campaignId: existing.id, conversationId: existing.campaign.conversationId }
+    }
 
     try {
       let content: CampaignContent = draftCampaignFromRecommendation(recommendation)
@@ -186,6 +217,7 @@ export const campaignBuildFromRecommendation = onCall(
       // user should read; wrapping it in `internal` would swallow it.
       if (error instanceof HttpsError) throw error
       throw internal('campaignBuildFromRecommendation', error)
+    }
     }
   },
 )

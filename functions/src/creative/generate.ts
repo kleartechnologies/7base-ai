@@ -12,6 +12,7 @@ import { assertOwnership, requireBusinessOwner, requireUid, resolvePlanForUser }
 import type { StoredBusiness } from '../lib/business.types'
 import { internal, invalidArgument, permissionDenied } from '../lib/errors'
 import { COLLECTIONS, db, FieldValue } from '../lib/firebase'
+import { withOperationLock } from '../lib/operationLock'
 import type {
   GenerateCreativeRequest,
   GenerateCreativeResponse,
@@ -103,6 +104,22 @@ export const creativeGenerateFromCampaign = onCall(
     // Server-resolved plan; the request payload has no say in model choice.
     const plan = await resolvePlanForUser(uid)
 
+    // One generation per campaign *at a time*: a double-click or client retry
+    // is refused before any model spend, while a deliberate later "create
+    // materials again" for the same campaign stays legitimate — the lock is
+    // in-flight only, released when this run settles. Acquired only after
+    // the ownership checks above.
+    return withOperationLock(
+      {
+        key: `creative.generate_${uid}_${campaignId}`,
+        ownerId: uid,
+        operation: 'creative.generate',
+        busyMessage: 'Materials for this campaign are already being created. Give it a moment.',
+      },
+      generateOnce,
+    )
+
+    async function generateOnce(): Promise<GenerateCreativeResponse> {
     try {
       const corpus = buildGroundingCorpus({ campaign, business })
 
@@ -315,6 +332,7 @@ export const creativeGenerateFromCampaign = onCall(
       if (error instanceof HttpsError) throw error
       throw internal('creativeGenerateFromCampaign', error)
     }
+    }
   },
 )
 
@@ -357,6 +375,20 @@ export const creativeRetryImage = onCall(
     // Server-resolved plan; the request payload has no say in model choice.
     const plan = await resolvePlanForUser(uid)
 
+    // One retry per creative at a time — a double-clicked [Try again] must
+    // not buy two image calls. In-flight only; a later deliberate retry is
+    // fine. Acquired only after the ownership checks above.
+    return withOperationLock(
+      {
+        key: `creative.retry_${uid}_${creativeId}`,
+        ownerId: uid,
+        operation: 'creative.retry',
+        busyMessage: 'This poster is already being retried. Give it a moment.',
+      },
+      retryOnce,
+    )
+
+    async function retryOnce(): Promise<RetryCreativeImageResponse> {
     try {
       let next: StoredCreative
       try {
@@ -405,6 +437,7 @@ export const creativeRetryImage = onCall(
       // The actionable asset-unavailable message must reach the owner as-is.
       if (error instanceof HttpsError) throw error
       throw internal('creativeRetryImage', error)
+    }
     }
   },
 )

@@ -413,6 +413,58 @@ await no('alice lists usage even scoped to herself', () => getDocs(query(collect
 await no('bob reads alice usage', () => getDoc(doc(bob, 'usage/alice_2026-09-04')))
 await no('anon reads a usage document', () => getDoc(doc(anon, 'usage/alice_2026-09-04')))
 
+console.log('\n-- STORAGE-PATH REGEX INJECTION (Phase 6H F1; path checks are segment-exact, never regex) --')
+// The attack: Firestore document ids may legally contain regex
+// metacharacters, and the old rules built a matches() pattern by
+// concatenating the client's businessId into it. A business whose id is `.*`
+// made the pattern accept ANY business's path. These fixtures give bob a
+// legitimately-owned business whose id is exactly `.*`, plus a conversation
+// pinned to it — the ownership checks all pass honestly; only the path
+// containment must refuse the forgery.
+await env.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore()
+  await setDoc(doc(db, 'businesses/.*'), biz('bob'))
+  await setDoc(doc(db, 'conversations/bobMetaConv'), { ownerId: 'bob', businessId: '.*', createdAt: 1000 })
+})
+
+const metaAtt = (over = {}) => ({
+  ownerId: 'bob', businessId: '.*', conversationId: 'bobMetaConv', messageId: 'm1',
+  fileName: 'photo.jpg', contentType: 'image/jpeg', sizeBytes: 2048,
+  storagePath: 'businesses/.*/conversations/bobMetaConv/attachments/a1_photo.jpg',
+  source: 'upload', status: 'active', assetId: null, createdAt: 1000, ...over,
+})
+
+await no('asset create: metacharacter businessId aiming at a victim\'s assets folder', () =>
+  setDoc(doc(bob, 'assets/regexExfil1'), asset('bob', '.*', { storagePath: 'businesses/aliceBiz/assets/1000_mandhi.jpg' })))
+await no('asset create: metacharacter businessId with a regex-shaped path spanning segments', () =>
+  setDoc(doc(bob, 'assets/regexExfil2'), asset('bob', '.*', { storagePath: 'businesses/x/y/assets/1000_mandhi.jpg' })))
+await ok('asset create: the metacharacter business may still use its own literal folder', () =>
+  setDoc(doc(bob, 'assets/regexOwn'), asset('bob', '.*')))
+await no('attachment create: metacharacter businessId aiming at a victim\'s namespace', () =>
+  setDoc(doc(bob, 'conversations/bobMetaConv/attachments/regexExfil1'), metaAtt({ storagePath: 'businesses/aliceBiz/conversations/bobMetaConv/attachments/a1_photo.jpg' })))
+await no('attachment create: metacharacter businessId aiming at a victim\'s assets folder', () =>
+  setDoc(doc(bob, 'conversations/bobMetaConv/attachments/regexExfil2'), metaAtt({ storagePath: 'businesses/aliceBiz/assets/1000_mandhi.jpg' })))
+await ok('attachment create: the metacharacter business may still use its own literal namespace', () =>
+  setDoc(doc(bob, 'conversations/bobMetaConv/attachments/regexOwn'), metaAtt()))
+// Prefix-of-segment: businessId `alice` must not unlock `businesses/aliceBiz/…`.
+await env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), 'businesses/alice'), biz('bob'))
+})
+await no('asset create: a businessId that is a prefix of a victim\'s segment', () =>
+  setDoc(doc(bob, 'assets/prefixExfil'), asset('bob', 'alice', { storagePath: 'businesses/aliceBiz/assets/1000_mandhi.jpg' })))
+
+console.log('\n-- OPERATIONS (Phase 6H.1 idempotency locks; server-only in BOTH directions) --')
+await env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), 'operations/chat.reply_alice_aliceConv'), {
+    ownerId: 'alice', operation: 'chat.reply', createdAt: 1000,
+  })
+})
+await no('alice reads her own operation lock', () => getDoc(doc(alice, 'operations/chat.reply_alice_aliceConv')))
+await no('alice deletes her own operation lock to bypass the duplicate guard', () => deleteDoc(doc(alice, 'operations/chat.reply_alice_aliceConv')))
+await no('alice pre-creates a lock to wedge her own future requests', () => setDoc(doc(alice, 'operations/campaign.build_alice_rec1'), { ownerId: 'alice', operation: 'campaign.build', createdAt: 1 }))
+await no('bob creates a lock over alice\'s resources', () => setDoc(doc(bob, 'operations/chat.reply_alice_aliceConv2'), { ownerId: 'alice', operation: 'chat.reply', createdAt: 1 }))
+await no('anon reads an operation lock', () => getDoc(doc(anon, 'operations/chat.reply_alice_aliceConv')))
+
 console.log(`\n===== RULES: ${pass} passed, ${fail} failed =====`)
 await env.cleanup()
 process.exit(fail ? 1 : 0)

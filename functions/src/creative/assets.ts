@@ -4,6 +4,7 @@ import type { StoredCampaign } from '../campaign/store'
 import type { SubscriptionPlan } from '../config/models'
 import type { Product, StoredBusiness } from '../lib/business.types'
 import { COLLECTIONS, db, storageBucket } from '../lib/firebase'
+import { isPathWithinBusiness } from '../lib/storagePaths'
 import type { MessageMeta } from '../lib/types'
 import { generateCreativeImage } from './image'
 import type { StoredCreative } from './store'
@@ -109,7 +110,10 @@ export async function listEligibleAssets(
       ({ asset }) =>
         asset.status === 'active' &&
         asset.allowAiUse === true &&
-        ASSET_IMAGE_EXTENSIONS[asset.contentType] !== undefined,
+        ASSET_IMAGE_EXTENSIONS[asset.contentType] !== undefined &&
+        // Never even select a document whose file lies outside its own
+        // business — defence in depth behind the same check in the copy.
+        isPathWithinBusiness(asset.storagePath, asset.businessId),
     )
     .sort((a, b) => a.asset.createdAt - b.asset.createdAt || a.id.localeCompare(b.id))
 }
@@ -199,6 +203,12 @@ export async function copyAssetToCreativeStorage(
   const extension = ASSET_IMAGE_EXTENSIONS[asset.contentType]
   if (!extension) {
     throw new Error(`asset is not a poster-usable image (${asset.contentType})`)
+  }
+  // The source path is client-recorded at asset creation and this copy
+  // bypasses Storage rules, so containment is re-checked here: the file must
+  // live inside the asset's own business. Literal prefix, never a regex.
+  if (!isPathWithinBusiness(asset.storagePath, asset.businessId)) {
+    throw new Error('asset storagePath is outside its own business')
   }
   const storagePath = `businesses/${businessId}/creatives/${randomUUID()}.${extension}`
   const bucket = storageBucket()
@@ -295,6 +305,7 @@ export function assetIneligibility(
   if (asset.status !== 'active') return 'not_active'
   if (asset.allowAiUse !== true) return 'ai_use_disallowed'
   if (ASSET_IMAGE_EXTENSIONS[asset.contentType] === undefined) return 'not_an_image'
+  if (!isPathWithinBusiness(asset.storagePath, asset.businessId)) return 'path_outside_business'
   return null
 }
 

@@ -27,8 +27,8 @@ import {
 /** Mirrors `timeoutSeconds: 300` on businessRunWebsiteAnalysis. */
 const ANALYSIS_FUNCTION_BUDGET_MS = 300_000
 
-/** Mirrors `timeoutSeconds: 180` on chatAssistantReply. */
-const CHAT_FUNCTION_BUDGET_MS = 180_000
+/** Mirrors `timeoutSeconds: 540` on chatAssistantReply. */
+const CHAT_FUNCTION_BUDGET_MS = 540_000
 
 /** Firestore reads/writes and framing around the model call. */
 const SAFETY_MARGIN_MS = 20_000
@@ -49,9 +49,21 @@ describe('reasoning tier retry budget', () => {
 })
 
 describe('marketing recommendation budget', () => {
-  it('fits request timeout + safety margin inside the 180s chat function deadline', () => {
+  it('fits request timeout + safety margin inside the chat function deadline', () => {
     const reasoning = getModelConfig('reasoning')
     const worstCaseModelMs = reasoning.timeoutMs * (reasoning.maxRetries + 1)
+
+    expect(worstCaseModelMs + SAFETY_MARGIN_MS).toBeLessThan(CHAT_FUNCTION_BUDGET_MS)
+  })
+
+  it('fits a conversational visual edit — fast copy call plus image call, both at worst case — inside the chat function deadline', () => {
+    // The Phase 6H audit found the old 180s chat deadline underneath this
+    // path: fast tier 60s x 3 attempts + image tier 120s x 2 attempts = 420s
+    // of model time. The billed image call would die with the function.
+    const fast = getModelConfig('fast')
+    const image = getModelConfig('image')
+    const worstCaseModelMs =
+      fast.timeoutMs * (fast.maxRetries + 1) + image.timeoutMs * (image.maxRetries + 1)
 
     expect(worstCaseModelMs + SAFETY_MARGIN_MS).toBeLessThan(CHAT_FUNCTION_BUDGET_MS)
   })

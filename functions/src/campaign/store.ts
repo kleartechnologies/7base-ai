@@ -63,6 +63,30 @@ export async function saveCampaign(campaign: StoredCampaign): Promise<string> {
   return ref.id
 }
 
+/**
+ * The campaign already built from this recommendation, if any. A
+ * recommendation is built at most once — "Build this campaign" clicked twice
+ * must reuse the first result, not bill a second polish call. Equality-only
+ * query (no composite index), sorted in memory; one recommendation yields at
+ * most a campaign, so the scan is tiny.
+ */
+export async function findCampaignByRecommendation(
+  recommendationId: string,
+  ownerId: string,
+): Promise<{ id: string; campaign: StoredCampaign } | null> {
+  const snapshot = await db
+    .collection(COLLECTIONS.campaigns)
+    .where('sourceRecommendationId', '==', recommendationId)
+    .where('ownerId', '==', ownerId)
+    .get()
+
+  const existing = snapshot.docs
+    .map((doc) => ({ id: doc.id, campaign: doc.data() as StoredCampaign }))
+    .sort((a, b) => a.campaign.createdAt - b.campaign.createdAt)
+
+  return existing[0] ?? null
+}
+
 export async function updateStoredCampaign(
   campaignId: string,
   campaign: StoredCampaign,

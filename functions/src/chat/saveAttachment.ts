@@ -5,6 +5,7 @@ import type { StoredAsset } from '../creative/assets'
 import { requireBusinessOwner, requireConversationOwner, requireUid } from '../lib/auth'
 import { internal, invalidArgument, permissionDenied } from '../lib/errors'
 import { COLLECTIONS, db, storageBucket } from '../lib/firebase'
+import { isPathWithinBusiness } from '../lib/storagePaths'
 import type {
   SaveAttachmentToAssetsRequest,
   SaveAttachmentToAssetsResponse,
@@ -140,6 +141,15 @@ export async function performSaveAttachmentToAssets(
 
   const business = await deps.requireBusinessOwner(attachment.businessId, uid)
   if (!business) throw permissionDenied()
+
+  // The source path is client-recorded and the copy below bypasses Storage
+  // rules, so containment is re-checked here: the file must live inside the
+  // (ownership-verified) business the attachment claims. A literal prefix
+  // check, never a regex — see lib/storagePaths.ts.
+  if (!isPathWithinBusiness(attachment.storagePath, attachment.businessId)) {
+    logger.warn('chat.attachment.save_path_refused', { conversationId, attachmentId })
+    throw permissionDenied()
+  }
 
   const destinationPath = `businesses/${attachment.businessId}/assets/${Date.now()}_${sanitizeFileName(attachment.fileName)}`
 

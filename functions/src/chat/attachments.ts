@@ -1,5 +1,6 @@
 import { logger } from 'firebase-functions'
 import { COLLECTIONS, db, storageBucket } from '../lib/firebase'
+import { isPathWithinBusiness } from '../lib/storagePaths'
 import type { TurnAttachmentPart } from '../ai/orchestrator'
 import type { AttachmentBlock, MessageBlock, StoredMessage } from '../lib/types'
 
@@ -141,6 +142,15 @@ export async function buildAttachmentParts(
 
     if (attachment.sizeBytes > MAX_AI_ATTACHMENT_BYTES) {
       skipped.push({ fileName: attachment.fileName, reason: 'too_large' })
+      continue
+    }
+
+    // The path is client-recorded data and this download bypasses Storage
+    // rules, so containment is re-checked here: the bytes must live inside
+    // the business the attachment itself claims. A document that points
+    // anywhere else is never fetched, whatever the rules said at creation.
+    if (!isPathWithinBusiness(attachment.storagePath, attachment.businessId)) {
+      skipped.push({ fileName: attachment.fileName, reason: 'unavailable' })
       continue
     }
 

@@ -14,6 +14,7 @@ import {
 import type { SubscriptionPlan } from '../config/models'
 import { internal, invalidArgument, notConfigured } from '../lib/errors'
 import { COLLECTIONS, db, FieldValue } from '../lib/firebase'
+import { withOperationLock } from '../lib/operationLock'
 import type {
   AssistantReplyRequest,
   AssistantReplyResponse,
@@ -107,12 +108,15 @@ export const chatAssistantReply = onCall(
     region: 'asia-southeast1',
     secrets: [OPENAI_API_KEY],
     /**
-     * The marketing path runs the reasoning tier, whose per-request budget is
-     * 110s with no retry (see config/models.ts). 180s covers that call plus
-     * the Firestore reads and writes around it; models.test.ts pins the
-     * arithmetic so a retimed tier cannot silently outgrow this.
+     * The slowest path through this function is a conversational visual
+     * edit: a fast-tier copy call (60s x 3 attempts) followed by an image
+     * call (120s x 2 attempts) — up to 420s of model time before Firestore
+     * round trips. The marketing path (reasoning tier, 150s, no retry) fits
+     * easily inside the same budget. 540s covers the worst case with margin;
+     * models.test.ts pins the arithmetic so a retimed tier cannot silently
+     * outgrow this. The client-side deadline in ai.client.ts matches.
      */
-    timeoutSeconds: 180,
+    timeoutSeconds: 540,
     memory: '512MiB',
     // Chat is bursty per user but low volume overall while in foundation.
     maxInstances: 10,
@@ -126,14 +130,49 @@ export const chatAssistantReply = onCall(
     response?: CallableResponse<AssistantReplyStreamChunk>,
   ): Promise<AssistantReplyResponse> => {
     const uid = requireUid(request)
-    const { conversationId, businessId } = request.data ?? {}
+    const { conversationId, businessId: requestBusinessId } = request.data ?? {}
 
     if (!conversationId || typeof conversationId !== 'string') {
       throw invalidArgument('A conversationId is required.')
     }
 
-    await requireConversationOwner(conversationId, uid)
+    const conversation = await requireConversationOwner(conversationId, uid)
 
+    // The conversation document — whose businessId was validated by rules at
+    // creation and is frozen ever since — decides which business EVA speaks
+    // for, not the request payload. The payload's businessId is honoured only
+    // for a conversation created before the account had a business (pinned to
+    // null), and even then only after the same ownership check.
+    const pinnedBusinessId =
+      typeof conversation.businessId === 'string' && conversation.businessId
+        ? conversation.businessId
+        : null
+    const businessId =
+      pinnedBusinessId ??
+      (typeof requestBusinessId === 'string' && requestBusinessId ? requestBusinessId : null)
+    if (pinnedBusinessId && requestBusinessId && requestBusinessId !== pinnedBusinessId) {
+      // Ignored, not fatal: a stale client tab is indistinguishable from a
+      // tampered one, and the pinned business is the correct answer to both.
+      logger.warn('chat.request_business_ignored', { conversationId })
+    }
+
+    // One reply at a time per conversation. The lock is scoped to this owner
+    // and this conversation and released when the reply settles, so a later
+    // message with identical text is unaffected — only a concurrent
+    // duplicate (double-submit, client retry) is refused, before any model
+    // spend. Acquired after the ownership check so no one can hold a lock
+    // over someone else's conversation.
+    return withOperationLock(
+      {
+        key: `chat.reply_${uid}_${conversationId}`,
+        ownerId: uid,
+        operation: 'chat.reply',
+        busyMessage: 'EVA is already working on a reply in this conversation. Give it a moment.',
+      },
+      generateReply,
+    )
+
+    async function generateReply(): Promise<AssistantReplyResponse> {
     // The plan is resolved from the server's own subscription record, once
     // per request, and threaded to every model call below. The request
     // payload has no say in it.
@@ -444,6 +483,7 @@ export const chatAssistantReply = onCall(
         throw new HttpsError('internal', 'EVA could not finish that thought. Please try again.')
       }
       throw internal('chatAssistantReply', error)
+    }
     }
   },
 )

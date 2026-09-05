@@ -207,9 +207,44 @@ describe('performSaveAttachmentToAssets — ownership', () => {
   })
 
   it('verifies the business on the attachment — never one the client names', async () => {
-    const { deps, recorded } = makeDeps(attachment({ businessId: 'bizFromDoc' }))
+    const { deps, recorded } = makeDeps(
+      attachment({
+        businessId: 'bizFromDoc',
+        storagePath: 'businesses/bizFromDoc/conversations/convo1/attachments/att1_shop_front.jpg',
+      }),
+    )
     await performSaveAttachmentToAssets(PARAMS, deps)
     expect(recorded.businessChecks).toEqual(['bizFromDoc'])
+  })
+
+  it('rejects a forged record whose storagePath aims outside its own business — nothing is copied', async () => {
+    // The Phase 6H F1 shape: a business id made of regex metacharacters plus
+    // a storagePath deep in a victim's namespace. The literal-prefix guard
+    // refuses it after ownership checks and before any Storage copy.
+    const { deps, recorded } = makeDeps(
+      attachment({
+        businessId: '.*',
+        storagePath: 'businesses/victimBiz/assets/1000_secret-menu.jpg',
+      }),
+    )
+    await expect(performSaveAttachmentToAssets(PARAMS, deps)).rejects.toMatchObject({
+      code: 'permission-denied',
+    })
+    expect(recorded.copies).toEqual([])
+    expect(recorded.assets).toEqual([])
+  })
+
+  it('a metacharacter businessId still saves from its own literal namespace', async () => {
+    const { deps, recorded } = makeDeps(
+      attachment({
+        businessId: '.*',
+        storagePath: 'businesses/.*/conversations/convo1/attachments/att1_shop_front.jpg',
+      }),
+    )
+    await expect(performSaveAttachmentToAssets(PARAMS, deps)).resolves.toEqual({
+      assetId: 'newAsset1',
+    })
+    expect(recorded.copies).toHaveLength(1)
   })
 
   it('rejects when the attachment’s business no longer resolves to the caller', async () => {

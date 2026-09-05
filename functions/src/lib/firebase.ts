@@ -50,4 +50,10 @@ export const COLLECTIONS = {
    * become a client contract.
    */
   usage: 'usage',
+  /**
+   * Phase 6H.1 idempotency locks: one short-lived document per in-flight
+   * expensive callable (see lib/operationLock.ts). Server-only in both
+   * directions, like usage.
+   */
+  operations: 'operations',
 } as const

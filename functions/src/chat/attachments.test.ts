@@ -200,6 +200,47 @@ describe('buildAttachmentParts', () => {
     expect(result.skipped).toEqual([{ fileName: 'photo.jpg', reason: 'too_large' }])
   })
 
+  it('skips a forged record pointing outside its own business, without downloading — victim bytes never reach the model', async () => {
+    // The Phase 6H F1 shape: an attacker who controls a business whose
+    // document id is a regex metacharacter string forges an attachment doc
+    // whose storagePath aims at a victim's namespace. The literal-prefix
+    // guard must refuse it before any Storage read.
+    const forged = attachment({
+      businessId: '.*',
+      storagePath: 'businesses/victimBiz/assets/1000_secret-menu.jpg',
+    })
+    const { deps, downloads } = makeDeps(
+      { att1: forged },
+      { [forged.storagePath]: Buffer.from('victim-bytes') },
+    )
+    const result = await buildAttachmentParts(
+      { uid: UID, conversationId: CONVO, blocks: [block()] },
+      deps,
+    )
+    expect(result.parts).toEqual([])
+    expect(result.skipped).toEqual([{ fileName: 'photo.jpg', reason: 'unavailable' }])
+    expect(downloads).toEqual([])
+  })
+
+  it('a metacharacter businessId grants only its own literal namespace, nothing regex-shaped', async () => {
+    // Owning business `.*` is legitimate; it must scope you to the literal
+    // folder `businesses/.*/…` and nowhere else.
+    const literal = attachment({
+      businessId: '.*',
+      storagePath: 'businesses/.*/conversations/convo1/attachments/att1_photo.jpg',
+    })
+    const { deps } = makeDeps(
+      { att1: literal },
+      { [literal.storagePath]: Buffer.from('own-bytes') },
+    )
+    const result = await buildAttachmentParts(
+      { uid: UID, conversationId: CONVO, blocks: [block()] },
+      deps,
+    )
+    expect(result.skipped).toEqual([])
+    expect(result.parts).toHaveLength(1)
+  })
+
   it('reports a failed retrieval as unavailable and keeps analysing the rest', async () => {
     const good = attachment({
       fileName: 'ok.png',

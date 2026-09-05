@@ -153,12 +153,21 @@ service cloud.firestore {
         }
 
         // An uploaded file must sit in this conversation's own attachments
-        // folder, inside a business the caller actually owns.
+        // folder, inside a business the caller actually owns. Segment-exact
+        // comparison, never a regex built from client-controlled ids (a
+        // document id may contain regex metacharacters — see the assets
+        // rule). Uploads always produce exactly
+        // businesses/{businessId}/conversations/{conversationId}/attachments/{file}.
         function uploadAttachmentValid() {
+          let parts = request.resource.data.storagePath.split('/');
           return request.resource.data.assetId == null
-            && request.resource.data.storagePath
-              .matches('businesses/' + request.resource.data.businessId
-                + '/conversations/' + conversationId + '/attachments/.+')
+            && parts.size() == 6
+            && parts[0] == 'businesses'
+            && parts[1] == request.resource.data.businessId
+            && parts[2] == 'conversations'
+            && parts[3] == conversationId
+            && parts[4] == 'attachments'
+            && parts[5].size() > 0
             && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
               .data.ownerId == request.auth.uid;
         }
@@ -309,9 +318,18 @@ service cloud.firestore {
     // never be repointed at a file that was not uploaded for it.
     match /assets/{assetId} {
 
+      // Segment-exact path check, never a regex built from client data: a
+      // business document id may itself contain regex metacharacters ('.*'
+      // is a legal id), which would let a matches() pattern claim paths in
+      // other businesses. Uploads always produce exactly
+      // businesses/{businessId}/assets/{file} — four literal segments.
       function assetPathInOwnAssets() {
-        return request.resource.data.storagePath
-          .matches('businesses/' + request.resource.data.businessId + '/assets/.+');
+        let parts = request.resource.data.storagePath.split('/');
+        return parts.size() == 4
+          && parts[0] == 'businesses'
+          && parts[1] == request.resource.data.businessId
+          && parts[2] == 'assets'
+          && parts[3].size() > 0;
       }
 
       // The claimed business must actually belong to the caller. Without this
@@ -381,6 +399,15 @@ service cloud.firestore {
     // never become a client contract and a tampered client learns nothing
     // about how the limits work.
     match /usage/{usageId} {
+      allow read, write: if false;
+    }
+
+    // --- operations -------------------------------------------------------
+    // Phase 6H.1 idempotency locks: one short-lived document per in-flight
+    // expensive callable (chat reply, campaign build, creative generation).
+    // Server-only in both directions, like usage — a client that could read
+    // or write these could probe or wedge another session's in-flight work.
+    match /operations/{operationId} {
       allow read, write: if false;
     }
 

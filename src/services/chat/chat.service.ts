@@ -86,14 +86,27 @@ export function observeConversations(
   )
 }
 
+/**
+ * How many recent messages the chat view subscribes to. Bounds the read cost
+ * and render weight of a long-running thread; far beyond what fits on
+ * screen. Extension point: "load older messages" would page backwards from
+ * before the oldest loaded `createdAt` with a one-shot query — the live
+ * window below stays this size regardless.
+ */
+export const MESSAGE_WINDOW = 200
+
 export function observeMessages(
   conversationId: string,
   onChange: (messages: Message[]) => void,
   onError?: (error: unknown) => void,
+  max = MESSAGE_WINDOW,
 ): () => void {
   return onSnapshot(
-    query(messagesCollection(conversationId), orderBy('createdAt', 'asc')),
-    (snapshot) => onChange(snapshot.docs.map((d) => fromSnapshot<Message>(d))),
+    // Newest-first with a limit, then restored to chronological order —
+    // ascending + limit would pin the window to the *oldest* messages and
+    // new turns would never appear.
+    query(messagesCollection(conversationId), orderBy('createdAt', 'desc'), fbLimit(max)),
+    (snapshot) => onChange(snapshot.docs.map((d) => fromSnapshot<Message>(d)).reverse()),
     (error) => onError?.(error),
   )
 }

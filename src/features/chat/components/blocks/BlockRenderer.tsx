@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { AlertCircle } from 'lucide-react'
 import type { MessageBlock } from '@/types'
 import { AttachmentBlockView } from './AttachmentBlockView'
@@ -14,8 +15,11 @@ import { RecommendationCard } from './RecommendationCard'
  *
  * Unknown block types render nothing rather than throwing, so a client running
  * older code never breaks on a message from a newer backend.
+ *
+ * Memoised alongside MessageBubble: stored blocks never mutate, so a settled
+ * block never needs to re-render during streaming flushes.
  */
-export function BlockRenderer({
+export const BlockRenderer = memo(function BlockRenderer({
   block,
   conversationId,
 }: {
@@ -59,4 +63,4 @@ export function BlockRenderer({
     default:
       return null
   }
-}
+})

@@ -43,7 +43,18 @@ export function ChatHistoryList({
     )
   }
 
+  // Error before empty: when the listener fails, the list is cleared, and
+  // "Your conversations will appear here" over a broken subscription would
+  // be a lie. An error alongside a populated list (a failed delete) renders
+  // as a banner above the rows instead.
   if (conversations.length === 0) {
+    if (error) {
+      return (
+        <p role="alert" className="px-2.5 py-2 text-[13px] leading-relaxed text-destructive">
+          {error}
+        </p>
+      )
+    }
     return (
       <p className="px-2.5 py-2 text-[13px] leading-relaxed text-muted-foreground">
         Your conversations with EVA will appear here.

@@ -118,10 +118,12 @@ export function requestAssistantReply(
 
 /**
  * The reply generation itself can outlast the 70s callable default: the
- * marketing path's reasoning tier has a 110s model budget and the function
- * allows 180s in total, so the client-side deadline matches the function's.
+ * slowest chat path is a conversational visual edit (fast-tier copy call
+ * plus an image call, up to 420s of model time at worst case), and the
+ * function allows 540s in total, so the client-side deadline matches the
+ * function's rather than abandoning a reply that is still being billed.
  */
-const ASSISTANT_REPLY_TIMEOUT_MS = 180_000
+const ASSISTANT_REPLY_TIMEOUT_MS = 540_000
 
 /**
  * Like {@link requestAssistantReply}, but delivered live: text deltas arrive
