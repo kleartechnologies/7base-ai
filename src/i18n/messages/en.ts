@@ -417,16 +417,36 @@ export const en = {
   'campaign.assumptionsTitle': 'Assumptions this campaign relies on',
   'campaign.unknownsTitle': 'Still unknown — confirm before launch',
   'campaign.worthConfirming': 'Worth confirming before launch',
-  'campaign.editDetails': 'Edit details',
   'campaign.saveChanges': 'Save changes',
-  'campaign.saved': 'Saved',
   'campaign.saveFailed': 'Could not save the campaign. Please try again.',
   'campaign.statusUpdateFailed': 'Could not update the campaign status. Please try again.',
   'campaign.continueInChat': 'Continue in chat',
   'campaign.materialsPreparing':
     'EVA is writing your copy and preparing the poster — this can take a minute or two.',
-  'campaign.materialsReady': 'Your marketing materials are ready — they’re waiting in the conversation.',
-  'campaign.openChatToSee': 'Open the chat to see them.',
+  'campaign.materialsInWorkbench': 'Your creative is ready — it’s in the workbench below.',
+
+  /* --- campaign workspace (Phase 7E) --------------------------------------- */
+  'campaign.strategyTitle': 'Campaign strategy',
+  'campaign.statusLabel': 'Status',
+  'campaign.editCampaign': 'Edit campaign',
+  'campaign.createWithEva': 'Create creative with EVA',
+  'campaign.createAnotherWithEva': 'Create another creative with EVA',
+  'campaign.workbenchTitle': 'Creatives',
+  'campaign.workbenchEmptyTitle': 'No creatives yet',
+  'campaign.workbenchEmptyReady':
+    'Your campaign strategy is ready. Create your first promotional creative with EVA.',
+  'campaign.workbenchEmptyBody':
+    'Create the first promotional creative for this campaign with EVA.',
+  'campaign.progressTitle': 'Campaign progress',
+  'campaign.progressStrategy': 'Strategy created',
+  'campaign.progressReady': 'Campaign ready',
+  'campaign.progressCreative': 'Creative created',
+  'campaign.evaSuggestDraft':
+    'This campaign is still a draft. Complete the strategy, then mark it Ready and I can start on creatives.',
+  'campaign.evaSuggestFirst':
+    'Your campaign strategy is ready. Want me to create the first promotional creative?',
+  'campaign.evaSuggestAnother': 'Want another creative for this campaign? I’ll keep it on-brand.',
+  'campaign.evaCreateCta': 'Create with EVA',
 
   /* --- onboarding ---------------------------------------------------------- */
   'onboarding.chooseTitle': 'Let’s get EVA up to speed',

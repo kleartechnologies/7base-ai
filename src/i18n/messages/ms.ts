@@ -422,16 +422,37 @@ export const ms: Record<MessageKey, string> = {
   'campaign.assumptionsTitle': 'Andaian yang kempen ini bergantung padanya',
   'campaign.unknownsTitle': 'Belum pasti — sahkan sebelum melancarkan',
   'campaign.worthConfirming': 'Wajar disahkan sebelum melancarkan',
-  'campaign.editDetails': 'Edit butiran',
   'campaign.saveChanges': 'Simpan perubahan',
-  'campaign.saved': 'Disimpan',
   'campaign.saveFailed': 'Kempen tidak dapat disimpan. Sila cuba lagi.',
   'campaign.statusUpdateFailed': 'Status kempen tidak dapat dikemas kini. Sila cuba lagi.',
   'campaign.continueInChat': 'Sambung dalam chat',
   'campaign.materialsPreparing':
     'EVA sedang menulis copy dan menyediakan poster anda — ini mungkin mengambil masa satu dua minit.',
-  'campaign.materialsReady': 'Bahan pemasaran anda sudah siap — semuanya menunggu dalam perbualan.',
-  'campaign.openChatToSee': 'Buka chat untuk melihatnya.',
+  'campaign.materialsInWorkbench': 'Kreatif anda sudah siap — lihat di ruang kerja di bawah.',
+
+  /* --- campaign workspace (Phase 7E) --------------------------------------- */
+  'campaign.strategyTitle': 'Strategi kempen',
+  'campaign.statusLabel': 'Status',
+  'campaign.editCampaign': 'Edit kempen',
+  'campaign.createWithEva': 'Hasilkan kreatif dengan EVA',
+  'campaign.createAnotherWithEva': 'Hasilkan satu lagi kreatif dengan EVA',
+  'campaign.workbenchTitle': 'Kreatif',
+  'campaign.workbenchEmptyTitle': 'Belum ada kreatif',
+  'campaign.workbenchEmptyReady':
+    'Strategi kempen anda sudah sedia. Hasilkan kreatif promosi pertama anda dengan EVA.',
+  'campaign.workbenchEmptyBody':
+    'Hasilkan kreatif promosi pertama untuk kempen ini dengan EVA.',
+  'campaign.progressTitle': 'Kemajuan kempen',
+  'campaign.progressStrategy': 'Strategi dicipta',
+  'campaign.progressReady': 'Kempen sedia',
+  'campaign.progressCreative': 'Kreatif dihasilkan',
+  'campaign.evaSuggestDraft':
+    'Kempen ini masih draf. Lengkapkan strategi, kemudian tandakan Sedia dan saya boleh mula menghasilkan kreatif.',
+  'campaign.evaSuggestFirst':
+    'Strategi kempen anda sudah sedia. Mahu saya hasilkan kreatif promosi yang pertama?',
+  'campaign.evaSuggestAnother':
+    'Mahu satu lagi kreatif untuk kempen ini? Saya akan pastikan ia kekal mengikut jenama anda.',
+  'campaign.evaCreateCta': 'Hasilkan dengan EVA',
 
   /* --- onboarding ---------------------------------------------------------- */
   'onboarding.chooseTitle': 'Mari bantu EVA mengenali perniagaan anda',
