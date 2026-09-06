@@ -377,14 +377,20 @@ async function runDnaAnalysis(params: RunParams): Promise<AnalyseBusinessDnaResp
 
 /* --- request + sources -------------------------------------------------- */
 
-function parseRequest(data: unknown): { businessId: string; links: string[] } {
+/**
+ * Exported for its tests. `links` is optional; the Firebase client SDK
+ * serialises an omitted-but-present `undefined` as `null`, so both spellings
+ * of "no extra links" must be accepted or the whole run is refused before it
+ * starts (the Matheasy regression of 6 Sep 2026).
+ */
+export function parseRequest(data: unknown): { businessId: string; links: string[] } {
   const record = typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {}
   const businessId = record['businessId']
   if (!businessId || typeof businessId !== 'string') {
     throw invalidArgument('A businessId is required.')
   }
   const raw = record['links']
-  if (raw !== undefined && !Array.isArray(raw)) {
+  if (raw !== undefined && raw !== null && !Array.isArray(raw)) {
     throw invalidArgument('links must be a list of page addresses.')
   }
   const links = ((raw as unknown[] | undefined) ?? []).map((link) => {

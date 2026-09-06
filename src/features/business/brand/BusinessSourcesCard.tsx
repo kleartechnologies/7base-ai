@@ -86,10 +86,11 @@ export function BusinessSourcesCard({
   async function analyse() {
     setRequested(true)
     setCallError(null)
-    const result = await analyseBusinessDna({
-      businessId: business.id,
-      links: links.length > 0 ? links : undefined,
-    })
+    // The field is left out entirely when there is nothing to add: the
+    // callable SDK would send an explicit `undefined` as `null`.
+    const result = await analyseBusinessDna(
+      links.length > 0 ? { businessId: business.id, links } : { businessId: business.id },
+    )
     if (!result.ok) {
       setCallError(result.error.message || t('brand.sourcesFailed'))
       return
