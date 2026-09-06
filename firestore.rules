@@ -72,6 +72,8 @@ service cloud.firestore {
           && discovery.get('sourceRef', null) == null
           && discovery.get('completedAt', null) == null
           && discovery.get('pagesAnalysed', 0) == 0
+          // Phase 7E: the Business DNA report is written by the backend only.
+          && discovery.get('dna', null) == null
           && request.resource.data.get('sources', []).size() == 0;
       }
 

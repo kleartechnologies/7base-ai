@@ -222,6 +222,7 @@ function resolveModelId(tier: ModelTier, plan: SubscriptionPlan): string {
 export type AiTask =
   | 'chat.reply'
   | 'business.analyse_website'
+  | 'business.analyse_dna'
   | 'campaign.diagnose'
   | 'campaign.generate'
   | 'campaign.build'
@@ -235,6 +236,9 @@ const TASK_TIERS: Record<AiTask, ModelTier> = {
   // judgement task, and it happens once per business — quality over cost.
   'chat.reply': 'fast',
   'business.analyse_website': 'reasoning',
+  // Business DNA (Phase 7E) is the same judgement over more evidence —
+  // several sources plus a bounded set of images — in ONE structured call.
+  'business.analyse_dna': 'reasoning',
   'campaign.diagnose': 'reasoning',
   'campaign.generate': 'reasoning',
   // Turning a recommendation into a campaign, and applying one owner

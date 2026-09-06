@@ -19,6 +19,13 @@ export interface BrandVisual {
   logoUrl: string | null
   /** A font named in the HTML, only when it maps onto the approved list. */
   fontFamily: BrandFont | null
+  /**
+   * The first font the HTML names, exactly as written ("Plus Jakarta Sans"),
+   * whether or not it is on the approved list (Phase 7E). Shown honestly to
+   * the owner; never silently mapped onto another font. Optional so older
+   * fixtures and stored values without it keep type-checking.
+   */
+  fontName?: string | null
 }
 
 export function hasBrandVisual(visual: BrandVisual | null | undefined): boolean {
@@ -28,10 +35,12 @@ export function hasBrandVisual(visual: BrandVisual | null | undefined): boolean 
 const MAX_COLORS = 3
 
 export function extractBrandVisual(url: string, html: string): BrandVisual {
+  const fonts = extractFontCandidates(html)
   return {
     colors: extractColors(html),
     logoUrl: extractLogoCandidate(url, html),
-    fontFamily: extractFontCandidate(html),
+    fontFamily: fonts.approved,
+    fontName: fonts.raw,
   }
 }
 
@@ -180,7 +189,7 @@ export function isBrandLike(hex: string): boolean {
  * declaration in inline CSS — AND it maps exactly onto the approved Brand Kit
  * list. Anything else stays null rather than being forced into the enum.
  */
-function extractFontCandidate(html: string): BrandFont | null {
+function extractFontCandidates(html: string): { approved: BrandFont | null; raw: string | null } {
   const candidates: string[] = []
 
   for (const tag of collectTags(html, 'link')) {
@@ -201,13 +210,56 @@ function extractFontCandidate(html: string): BrandFont | null {
     }
   }
 
+  let approved: BrandFont | null = null
+  let raw: string | null = null
   for (const candidate of candidates) {
     const cleaned = candidate.trim().toLowerCase()
-    const approved = BRAND_FONTS.find((font) => font.toLowerCase() === cleaned)
-    if (approved) return approved
+    if (
+      !cleaned ||
+      GENERIC_FONT_NAMES.has(cleaned) ||
+      cleaned.startsWith('var(') ||
+      cleaned.length > MAX_FONT_NAME_CHARS ||
+      !/^[a-z0-9][a-z0-9 .'&-]*$/i.test(cleaned)
+    ) {
+      continue
+    }
+    // The raw name is the first real family the page names, in the page's
+    // own words; the approved match may come from a later candidate.
+    if (raw === null) raw = candidate.trim().replace(/\s+/g, ' ')
+    if (approved === null) {
+      approved = BRAND_FONTS.find((font) => font.toLowerCase() === cleaned) ?? null
+    }
+    if (raw !== null && approved !== null) break
   }
-  return null
+  return { approved, raw }
 }
+
+/** Generic families and system stacks — never a brand's font. */
+const GENERIC_FONT_NAMES = new Set([
+  'inherit',
+  'initial',
+  'unset',
+  'serif',
+  'sans-serif',
+  'monospace',
+  'cursive',
+  'fantasy',
+  'system-ui',
+  'ui-sans-serif',
+  'ui-serif',
+  'ui-monospace',
+  'ui-rounded',
+  '-apple-system',
+  'blinkmacsystemfont',
+  'segoe ui',
+  'apple color emoji',
+  'segoe ui emoji',
+  'segoe ui symbol',
+  'noto color emoji',
+  'sans',
+])
+
+const MAX_FONT_NAME_CHARS = 40
 
 /* --- small HTML helpers (no DOM, no parser dependency) ------------------ */
 

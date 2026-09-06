@@ -321,6 +321,12 @@ export interface DiscoveryState {
   summary: string | null
   /** What the website did not answer. Stated plainly rather than guessed at. */
   unknowns: string[]
+  /**
+   * The latest Business DNA run (Phase 7E), when one has completed. Optional:
+   * documents from before 7E do not carry it, and readers treat absent the
+   * same as null.
+   */
+  dna?: BusinessDna | null
 }
 
 export type DiscoveryStage =
@@ -359,4 +365,108 @@ export interface BusinessDraft {
   industry?: BusinessIndustry
   /** The manual-fallback answer to "what do you sell?". Optional by design. */
   offering?: string | null
+}
+
+/* --- Business DNA (Phase 7E) -------------------------------------------- */
+
+/**
+ * The four kinds of business source EVA can read. A website is ONE of them,
+ * not the required one: a business that lives on Facebook and Instagram and
+ * has uploaded a few photos is fully valid.
+ */
+export type DnaSourceType = 'website' | 'facebook' | 'instagram' | 'asset'
+
+/**
+ * How one source fared in a run. `limited` means EVA could only access
+ * limited public information — a login wall, a thin page — which is NOT the
+ * same as the business not existing there.
+ */
+export type DnaSourceStatus = 'analyzed' | 'limited' | 'inaccessible' | 'failed'
+
+export interface DnaSourceSummary {
+  type: DnaSourceType
+  /** Canonical URL for a page source; null for the Assets library. */
+  reference: string | null
+  status: DnaSourceStatus
+  /** How many items contributed — pages read, or assets included. */
+  count: number
+}
+
+/** Categorical, so the UI never shows a made-up percentage. */
+export type DnaConfidence = 'high' | 'medium' | 'low'
+
+export interface DetectedColor {
+  /** Normalised lowercase #rrggbb. */
+  hex: string
+  confidence: DnaConfidence
+  /** `extracted` = deterministic (theme colour, CSS); `observed` = read by the model from evidence. */
+  provenance: 'extracted' | 'observed'
+  source: DnaSourceType
+}
+
+export interface DetectedLogoCandidate {
+  /** An Asset the owner already uploaded, or an image URL a source exposed. */
+  kind: 'asset' | 'url'
+  assetId: string | null
+  url: string | null
+  source: DnaSourceType
+  confidence: DnaConfidence
+}
+
+export interface DetectedTypography {
+  /** The font exactly as the evidence named it, e.g. "Plus Jakarta Sans". */
+  detectedFont: string
+  /** The approved Brand Kit font when the name maps onto one — never a substitute. */
+  supportedMatch: BrandFont | null
+  source: DnaSourceType
+  confidence: DnaConfidence
+}
+
+export interface DetectedBrandDna {
+  logoCandidate: DetectedLogoCandidate | null
+  /** Ranked; strongest first. Never more than five. */
+  colors: DetectedColor[]
+  typography: DetectedTypography | null
+  visualStyle: string | null
+  /** The model's own words, bounded. */
+  styleTraits: string[]
+  /** The subset that maps onto the closed Brand Kit list, for "Use these". */
+  suggestedTraits: BrandStyleTrait[]
+  imageryStyle: string | null
+  compositionStyle: string | null
+  visualMood: string | null
+  confidence: DnaConfidence
+}
+
+/** "Who are we" — the business half of the DNA, all null/empty when unknown. */
+export interface DetectedBusinessDna {
+  businessName: string | null
+  category: string | null
+  productsServices: string[]
+  bestSellers: string[]
+  targetAudience: string | null
+  location: string | null
+  positioning: string | null
+  valueProposition: string | null
+  differentiators: string[]
+  tagline: string | null
+  keyMessages: string[]
+  tone: string | null
+  personalityTraits: string[]
+  description: string | null
+}
+
+/**
+ * What EVA detected across the business sources, held for the owner's
+ * review. Written server-side only (it lives under `discovery`), read by the
+ * Brand Identity tab, and applied to the Brand Kit ONLY through "Use these"
+ * or "Edit first". Nothing here is authoritative until the owner says so.
+ */
+export interface BusinessDna {
+  version: 1
+  analysedAt: Millis
+  sources: DnaSourceSummary[]
+  business: DetectedBusinessDna
+  brand: DetectedBrandDna
+  unknowns: string[]
 }

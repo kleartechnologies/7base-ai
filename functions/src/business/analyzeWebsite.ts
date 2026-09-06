@@ -2,9 +2,9 @@ import { onCall, type CallableRequest } from 'firebase-functions/v2/https'
 import { logger } from 'firebase-functions'
 import { requireBusinessOwner, requireUid, resolvePlanForUser } from '../lib/auth'
 import { internal, invalidArgument, notConfigured } from '../lib/errors'
+import { classify, recordFailure, REANALYSIS_COOLDOWN_MS } from './discoveryFailure'
 import { COLLECTIONS, db } from '../lib/firebase'
 import type {
-  DiscoveryErrorCode,
   DiscoveryStage,
   RunWebsiteAnalysisRequest,
   RunWebsiteAnalysisResponse,
@@ -13,12 +13,7 @@ import type {
   StoredBusiness,
 } from '../lib/business.types'
 import { OPENAI_API_KEY } from '../ai/openai.client'
-import { AiServiceError } from '../ai/errors'
-import {
-  AiNotConfiguredError,
-  AiResponseError,
-  runStructuredTask,
-} from '../ai/orchestrator'
+import { AiNotConfiguredError, runStructuredTask } from '../ai/orchestrator'
 import {
   BUSINESS_ANALYSIS_PROMPT,
   buildSocialAnalysisInput,
@@ -30,23 +25,17 @@ import { CRAWL_LIMITS, crawlSite, SiteUnreachableError } from './website/crawl'
 import type { BrandVisual } from './website/brandVisual'
 import { normalizeSite } from './website/normalize'
 import { InvalidUrlError } from './website/url'
-import { BlockedHostError, UnresolvableHostError } from './website/guard'
 import {
   detectDiscoverySource,
   UnsupportedSocialUrlError,
   type DiscoverySource,
 } from './discovery/source'
-import {
-  fetchSocialProfile,
-  NotPublicError,
-  SocialThrottledError,
-} from './discovery/fetchSocial'
+import { fetchSocialProfile } from './discovery/fetchSocial'
 import { emptyBrain } from './brain/empty'
 import { linkBusinessToUser } from './onboardingState'
 import { mergeWebsiteAnalysis } from './brain/merge'
 import { WEBSITE_ANALYSIS_SCHEMA, WEBSITE_ANALYSIS_SCHEMA_NAME } from './brain/schema'
 import {
-  AnalysisValidationError,
   assertAnalysisUseful,
   InsufficientContentError,
   validateWebsiteAnalysis,
@@ -78,9 +67,6 @@ import {
 
 /** One user does not need dozens of businesses; this bounds abuse of the crawler. */
 const MAX_BUSINESSES_PER_USER = 5
-
-/** Minimum gap between analyses of the same business. */
-const REANALYSIS_COOLDOWN_MS = 15_000
 
 export const businessStartWebsiteAnalysis = onCall(
   {
@@ -369,6 +355,9 @@ export const businessRunWebsiteAnalysis = onCall(
           errorCode: null,
           summary: analysis.summary || null,
           unknowns: analysis.unknowns,
+          // The Business DNA report (Phase 7E) belongs to its own run; a
+          // website re-analysis neither refreshes nor erases it.
+          dna: stored.discovery?.dna ?? null,
         },
         updatedAt: now,
       })
@@ -433,120 +422,6 @@ export const businessRunWebsiteAnalysis = onCall(
     }
   },
 )
-
-/* --- helpers ----------------------------------------------------------- */
-
-interface AnalysisFailure {
-  code: DiscoveryErrorCode
-  message: string
-}
-
-/**
- * Maps an internal cause to something a restaurant owner can act on.
- *
- * Nothing from the provider, the stack or the network layer reaches the
- * client — only these five messages.
- */
-function classify(error: unknown): AnalysisFailure {
-  if (error instanceof InvalidUrlError) {
-    return { code: 'invalid_url', message: 'That does not look like a valid website address.' }
-  }
-  if (error instanceof BlockedHostError) {
-    return { code: 'invalid_url', message: 'That address is not a public website.' }
-  }
-  if (error instanceof UnresolvableHostError) {
-    return {
-      code: 'unreachable',
-      message: 'I could not access this website. Check the address and try again.',
-    }
-  }
-  if (error instanceof NotPublicError) {
-    return {
-      code: 'not_public',
-      message:
-        "I couldn't get enough public information from this page — it may be private, or only visible when logged in. No worries, you can tell EVA about your business instead.",
-    }
-  }
-  // Rate-limited on every attempt. Temporary by definition — `unreachable`
-  // keeps the retry button, and the wording says when, not "your page is
-  // private".
-  if (error instanceof SocialThrottledError) {
-    return {
-      code: 'unreachable',
-      message:
-        'This page is busy and did not let EVA read it just now. Please try again in a few minutes — or tell EVA about your business instead.',
-    }
-  }
-  if (error instanceof SiteUnreachableError) {
-    return { code: 'unreachable', message: unreachableMessage(error.reason) }
-  }
-  if (error instanceof InsufficientContentError) {
-    return {
-      code: 'insufficient_content',
-      message: 'I could not find enough information to confidently understand this business.',
-    }
-  }
-  // A provider failure has already been classified and stripped of anything
-  // internal; `userMessage` is the whole of what may be shown.
-  if (error instanceof AiServiceError) {
-    if (error.kind === 'billing') {
-      return { code: 'ai_unavailable', message: error.userMessage }
-    }
-    if (error.kind === 'rate_limit') {
-      return { code: 'ai_busy', message: error.userMessage }
-    }
-    return { code: 'ai_failed', message: error.userMessage }
-  }
-  if (error instanceof AiResponseError || error instanceof AnalysisValidationError) {
-    return {
-      code: 'ai_failed',
-      message: 'EVA could not finish analysing the business right now. Please try again.',
-    }
-  }
-  if (error instanceof AiNotConfiguredError) {
-    return { code: 'ai_failed', message: 'EVA’s AI backend is not configured yet.' }
-  }
-  return { code: 'internal', message: 'EVA ran into a problem. Please try again.' }
-}
-
-/**
- * Owner-facing wording for a site that could not be read.
- *
- * The crawler distinguishes far more cases than this (see `PageFetchFailure`),
- * and deliberately so — but an owner needs an action, not a diagnosis. Only
- * the reasons they can actually do something about get their own sentence; the
- * rest share one honest, generic message. No status code, host, library name
- * or error string is ever passed through.
- */
-function unreachableMessage(reason: string): string {
-  switch (reason) {
-    case 'tls':
-      return "This website's security certificate could not be verified, so I stopped rather than read it. Your web host can renew or reinstall it."
-    case 'blocked':
-      return 'This website refused to let EVA read it. Your web host or security plugin may be blocking automated visitors.'
-    case 'timeout':
-      return 'This website took too long to respond. Try again in a moment.'
-    case 'not_html':
-      return 'That address did not return a web page I could read.'
-    case 'too_large':
-      return 'This website’s home page is too large for me to read.'
-    default:
-      return 'I could not access this website. Check the address and try again.'
-  }
-}
-
-async function recordFailure(
-  ref: FirebaseFirestore.DocumentReference,
-  failure: AnalysisFailure,
-): Promise<void> {
-  await ref.update({
-    'discovery.status': 'failed',
-    'discovery.stage': null,
-    'discovery.error': failure.message,
-    'discovery.errorCode': failure.code,
-    updatedAt: Date.now(),
-  })
-}
 
 /** Two URLs point at the same site when their hosts match. */
 function sameSiteUrl(stored: string | null | undefined, candidate: string): boolean {

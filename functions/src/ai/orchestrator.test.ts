@@ -168,6 +168,45 @@ const IMAGE_BASE = {
   size: '1024x1024' as const,
 }
 
+describe('runStructuredTask input mapping (Phase 7E)', () => {
+  it('without parts the request keeps the plain-string content it always had', async () => {
+    createMock.mockResolvedValue({
+      status: 'completed',
+      output_text: '{"ok":true}',
+      usage: { input_tokens: 10, output_tokens: 5 },
+    })
+    await runStructuredTask(STRUCTURED_BASE)
+    expect(createMock.mock.calls[0]![0].input).toEqual([{ role: 'user', content: 'the campaign' }])
+  })
+
+  it('with parts the text comes first, then the server-built image parts', async () => {
+    createMock.mockResolvedValue({
+      status: 'completed',
+      output_text: '{"ok":true}',
+      usage: { input_tokens: 10, output_tokens: 5 },
+    })
+    await runStructuredTask({
+      ...STRUCTURED_BASE,
+      task: 'business.analyse_dna',
+      parts: [{ type: 'input_image', imageUrl: 'data:image/png;base64,AAAA' }],
+    })
+    expect(createMock.mock.calls[0]![0].input).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'input_text', text: 'the campaign' },
+          { type: 'input_image', detail: 'auto', image_url: 'data:image/png;base64,AAAA' },
+        ],
+      },
+    ])
+    // The reservation counted the image, so the cap sees the visual weight.
+    expect(vi.mocked(reserveAiUsage).mock.calls[0]![0].task).toBe('business.analyse_dna')
+    expect(vi.mocked(reserveAiUsage).mock.calls[0]![0].reservation.inputTokens).toBeGreaterThan(
+      STRUCTURED_BASE.input.length,
+    )
+  })
+})
+
 describe('usage guardrail ordering', () => {
   it('reserves BEFORE the model call, with the resolved model and full output ceiling', async () => {
     let callsAtCreateTime = -1

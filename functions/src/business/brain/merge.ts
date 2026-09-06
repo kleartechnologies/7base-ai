@@ -46,8 +46,12 @@ const INFERRED_SECTIONS = {
 /** Applied when the model returns a fact without an explicit confidence. */
 const DEFAULT_FACT_CONFIDENCE = 0.6
 
-/** Where the analysed page lives. Website discovery long predates the rest. */
-export type DiscoveredFrom = 'website' | 'facebook' | 'instagram'
+/**
+ * Where the analysed page lives. Website discovery long predates the rest.
+ * `document` is the Phase 7E case of a business with no page at all — only
+ * uploaded Assets were read; it stamps the brain without a URL.
+ */
+export type DiscoveredFrom = 'website' | 'facebook' | 'instagram' | 'document'
 
 export interface MergeContext {
   /** The URL that was actually analysed. */
@@ -448,13 +452,14 @@ const SOURCE_LABELS: Record<DiscoveredFrom, string> = {
   website: 'Website',
   facebook: 'Facebook Page',
   instagram: 'Instagram profile',
+  document: 'Uploaded assets',
 }
 
 /**
  * Records what was analysed in the sources list, one entry per kind. A
  * business that gave a website and later a Facebook Page keeps both entries.
  */
-function upsertDiscoverySource(
+export function upsertDiscoverySource(
   existing: ConnectedSource[],
   context: MergeContext,
   pageSource: DiscoveredFrom,
@@ -478,12 +483,12 @@ function upsertDiscoverySource(
  * social profiles — the owner told us it is theirs by pasting it. Appended,
  * never replacing anything already listed at the same URL.
  */
-function withAnalysedProfile(
+export function withAnalysedProfile(
   profiles: SocialProfile[],
   pageSource: DiscoveredFrom,
   analysedUrl: string,
 ): SocialProfile[] {
-  if (pageSource === 'website') return profiles
+  if (pageSource !== 'facebook' && pageSource !== 'instagram') return profiles
 
   const normalize = (url: string) => url.replace(/\/+$/, '').toLowerCase()
   if (profiles.some((profile) => normalize(profile.url) === normalize(analysedUrl))) {

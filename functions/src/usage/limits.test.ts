@@ -60,7 +60,7 @@ describe('guardrail configuration', () => {
   it('routes every AI task to a category — a task the guardrail cannot classify cannot exist', () => {
     // Compile-time exhaustiveness is enforced by the Record type; this pins
     // the runtime shape for anyone weakening the type later.
-    expect(Object.keys(CATEGORY_FOR_TASK)).toHaveLength(9)
+    expect(Object.keys(CATEGORY_FOR_TASK)).toHaveLength(10)
     expect(CATEGORY_FOR_TASK['creative.generate_image']).toBe('imageGeneration')
     expect(CATEGORY_FOR_TASK['business.analyse_website']).toBe('websiteAnalysis')
   })

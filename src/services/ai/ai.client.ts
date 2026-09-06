@@ -5,6 +5,8 @@ import type { MessageKey } from '@/i18n/translate'
 import { getFirebaseFunctions } from '@/lib/firebase/app'
 import type {
   AiError,
+  AnalyseBusinessDnaRequest,
+  AnalyseBusinessDnaResponse,
   AiErrorCode,
   AiResult,
   AssistantReplyRequest,
@@ -46,6 +48,7 @@ const CALLABLES = {
   downloadCreativeImage: 'creativeDownloadImage',
   startWebsiteAnalysis: 'businessStartWebsiteAnalysis',
   runWebsiteAnalysis: 'businessRunWebsiteAnalysis',
+  analyseBusinessDna: 'businessAnalyseDna',
   saveAttachmentToAssets: 'chatSaveAttachmentToAssets',
 } as const
 
@@ -285,6 +288,23 @@ export function runWebsiteAnalysis(
 ): Promise<AiResult<RunWebsiteAnalysisResponse>> {
   return call<RunWebsiteAnalysisRequest, RunWebsiteAnalysisResponse>(
     CALLABLES.runWebsiteAnalysis,
+    request,
+    ANALYSIS_TIMEOUT_MS,
+  )
+}
+
+/**
+ * Reads every source the business has — website, Facebook, Instagram,
+ * uploaded assets — and stores the detected Business DNA for the owner to
+ * review (Phase 7E). Only the business id and, optionally, up to three page
+ * links are sent; the server decides what to fetch and what to show the
+ * model.
+ */
+export function analyseBusinessDna(
+  request: AnalyseBusinessDnaRequest,
+): Promise<AiResult<AnalyseBusinessDnaResponse>> {
+  return call<AnalyseBusinessDnaRequest, AnalyseBusinessDnaResponse>(
+    CALLABLES.analyseBusinessDna,
     request,
     ANALYSIS_TIMEOUT_MS,
   )

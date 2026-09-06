@@ -38,6 +38,7 @@ export type UsageCategory = 'chat' | 'websiteAnalysis' | 'aiGeneration' | 'image
 export const CATEGORY_FOR_TASK: Record<AiTask, UsageCategory> = {
   'chat.reply': 'chat',
   'business.analyse_website': 'websiteAnalysis',
+  'business.analyse_dna': 'websiteAnalysis',
   // Everything that turns strategy into artefacts — recommendations,
   // campaigns, creative copy and their edits — shares one generation bucket.
   'campaign.diagnose': 'aiGeneration',
@@ -122,6 +123,10 @@ export const GUARDRAIL_LIMITS: Record<SubscriptionPlan, PlanGuardrails> = {
  *     CHAT_HISTORY_MAX_CHARS below) ≈ 75k chars worst case.
  *   - business.analyse_website: crawl corpus is budgeted to 24k chars
  *     (sliced ≤ 28k) plus prompt overhead.
+ *   - business.analyse_dna: one website corpus (≤28k) plus two social
+ *     profiles and asset metadata, each bounded by the evidence builder —
+ *     under 60k chars plus prompt overhead. Images are counted separately
+ *     as parts, not characters.
  *   - the transformation tasks carry one structured object plus a bounded
  *     instruction — tens of kilobytes at most.
  *   - creative.generate_image prompts are built from structured Creative
@@ -130,6 +135,7 @@ export const GUARDRAIL_LIMITS: Record<SubscriptionPlan, PlanGuardrails> = {
 export const MAX_REQUEST_CHARS: Record<AiTask, number> = {
   'chat.reply': 120_000,
   'business.analyse_website': 160_000,
+  'business.analyse_dna': 200_000,
   'campaign.diagnose': 80_000,
   'campaign.generate': 80_000,
   'campaign.build': 60_000,

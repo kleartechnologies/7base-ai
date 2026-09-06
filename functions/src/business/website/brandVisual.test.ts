@@ -205,14 +205,24 @@ describe('font candidate', () => {
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway&display=swap">
       <style>body { font-family: Raleway, Helvetica, sans-serif; }</style>
     `)
-    expect(extractBrandVisual(BASE, html).fontFamily).toBeNull()
+    const visual = extractBrandVisual(BASE, html)
+    expect(visual.fontFamily).toBeNull()
+    // Phase 7E: the honest raw name travels beside the (absent) approved match.
+    expect(visual.fontName).toBe('Raleway')
+  })
+
+  it('carries the raw name exactly as the page wrote it, beside the approved match', () => {
+    const html = page('<style>body { font-family: "MONTSERRAT", sans-serif; }</style>')
+    const visual = extractBrandVisual(BASE, html)
+    expect(visual.fontFamily).toBe('Montserrat')
+    expect(visual.fontName).toBe('MONTSERRAT')
   })
 })
 
 describe('hasBrandVisual and the empty page', () => {
   it('an empty or brandless page yields an entirely empty result', () => {
     const visual = extractBrandVisual(BASE, page('', '<h1>Warung Mak Cik</h1>'))
-    expect(visual).toEqual({ colors: [], logoUrl: null, fontFamily: null })
+    expect(visual).toEqual({ colors: [], logoUrl: null, fontFamily: null, fontName: null })
     expect(hasBrandVisual(visual)).toBe(false)
     expect(hasBrandVisual(null)).toBe(false)
   })

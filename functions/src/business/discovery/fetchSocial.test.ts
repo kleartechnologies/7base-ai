@@ -84,6 +84,22 @@ describe('fetchSocialProfile recovery ladder', () => {
     expect(result.corpus).toContain('Banting')
   })
 
+  it('exposes the page it read — final URL, title and the images the platform put in the markup (Phase 7E)', async () => {
+    const html = RICH_SHELL.replace(
+      '</head>',
+      '<meta property="og:image" content="https://scontent.example.com/profile.jpg" /></head>',
+    )
+    const { deps } = harness([{ html, finalUrl: 'https://www.facebook.com/nasiarabalshams' }])
+
+    const result = await fetchSocialProfile(SOURCE, deps)
+
+    expect(result.page).toEqual({
+      url: 'https://www.facebook.com/nasiarabalshams',
+      title: 'Nasi Arab AlShams Bukit Changgang | Banting',
+      images: ['https://scontent.example.com/profile.jpg'],
+    })
+  })
+
   it('recovers when a login wall is followed by the public representation', async () => {
     const { deps, fetches, delays } = harness([
       { html: WALL_SHELL, finalUrl: 'https://www.facebook.com/login/?next=x' },

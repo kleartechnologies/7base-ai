@@ -18,3 +18,4 @@ export {
   businessStartWebsiteAnalysis,
   businessRunWebsiteAnalysis,
 } from './business/analyzeWebsite'
+export { businessAnalyseDna } from './business/analyzeDna'

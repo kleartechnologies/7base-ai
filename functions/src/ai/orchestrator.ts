@@ -94,6 +94,14 @@ export interface StructuredRequest {
   systemPrompt: string
   /** The evidence the model reasons over. Never mixed into the instructions. */
   input: string
+  /**
+   * Bounded visual evidence (Phase 7E), already resolved to safe payloads by
+   * the caller — bytes the server fetched itself from owned Storage objects
+   * or from URLs an approved source fetch exposed, encoded as data URLs.
+   * Never a client- or model-supplied URL. Absent or empty means the request
+   * is sent exactly as before, as a plain string.
+   */
+  parts?: TurnAttachmentPart[]
   schema: { name: string; schema: Record<string, unknown> }
 }
 
@@ -284,6 +292,10 @@ export async function runStructuredTask<T>(
   const promptChars = request.systemPrompt.length + request.input.length
   assertContextWithinLimit({ task: request.task, uid: request.uid, plan: request.plan, promptChars })
 
+  // Visual parts carry token weight the char count cannot see, so the
+  // reservation counts them the same way the chat path does.
+  const parts = request.parts ?? []
+
   // Enforcement BEFORE OpenAI: worst case reserved, or resource-exhausted.
   const handle = await reserveAiUsage({
     uid: request.uid,
@@ -294,6 +306,8 @@ export async function runStructuredTask<T>(
       model: config.model,
       maxOutputTokens: config.maxOutputTokens,
       promptChars,
+      imageParts: parts.filter((part) => part.type === 'input_image').length,
+      fileParts: parts.filter((part) => part.type === 'input_file').length,
     }),
   })
 
@@ -303,7 +317,23 @@ export async function runStructuredTask<T>(
     response = await getOpenAI().responses.create({
       model: config.model,
       instructions: request.systemPrompt,
-      input: [{ role: 'user', content: request.input }],
+      // A request without parts keeps the plain-string content it always
+      // had — text-only analyses produce a byte-identical request.
+      input: [
+        parts.length > 0
+          ? {
+              role: 'user' as const,
+              content: [
+                { type: 'input_text' as const, text: request.input },
+                ...parts.map((part) =>
+                  part.type === 'input_image'
+                    ? { type: 'input_image' as const, detail: 'auto' as const, image_url: part.imageUrl }
+                    : { type: 'input_file' as const, filename: part.filename, file_data: part.fileData },
+                ),
+              ],
+            }
+          : { role: 'user' as const, content: request.input },
+      ],
       max_output_tokens: config.maxOutputTokens,
       ...(config.temperature === null ? {} : { temperature: config.temperature }),
       text: {

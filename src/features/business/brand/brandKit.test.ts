@@ -12,6 +12,7 @@ import {
   isBrandTrait,
   normalizeBrandHex,
   toggleTrait,
+  type DetectedBrandSuggestion,
 } from './brandKit'
 
 /** A kit that satisfies every required section. */
@@ -259,6 +260,12 @@ describe('detectedBrandSuggestion', () => {
       logoUrl: null,
       fontFamily: null,
       visualStyle: 'Clean, modern and visual',
+      logoAssetId: null,
+      supportedFont: null,
+      traits: [],
+      category: null,
+      sources: [],
+      unknown: [],
       source: 'website',
     })
   })
@@ -273,12 +280,18 @@ describe('detectedBrandSuggestion', () => {
 })
 
 describe('applyDetectedBrand — the only path from discovery into the kit', () => {
-  const suggestion = {
+  const suggestion: DetectedBrandSuggestion = {
     colors: ['#1a7f5a', '#f5efe6', '#c2410c'],
     logoUrl: 'https://example.com/logo.png',
+    logoAssetId: null,
     fontFamily: 'Raleway',
+    supportedFont: null,
     visualStyle: 'warm, photo-led',
-    source: 'website' as const,
+    traits: [],
+    category: null,
+    sources: [],
+    unknown: [],
+    source: 'website',
   }
 
   it('seeds colours in order and carries visualStyle into styleNotes', () => {

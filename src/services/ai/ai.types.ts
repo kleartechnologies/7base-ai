@@ -1,4 +1,4 @@
-import type { EntityId } from '@/types'
+import type { DnaSourceSummary, EntityId } from '@/types'
 
 /**
  * The contract between the browser and the MARKA AI backend.
@@ -79,6 +79,22 @@ export interface RunWebsiteAnalysisResponse {
   businessId: EntityId
   pagesAnalysed: number
   summary: string
+}
+
+/**
+ * Business DNA (Phase 7E). The server resolves the business's own sources;
+ * `links` may add or replace at most three page links (a website, a
+ * Facebook Page, an Instagram profile). Nothing about the brand — colours,
+ * fonts, logo — is ever sent from the client.
+ */
+export interface AnalyseBusinessDnaRequest {
+  businessId: EntityId
+  links?: string[]
+}
+
+export interface AnalyseBusinessDnaResponse {
+  businessId: EntityId
+  sources: DnaSourceSummary[]
 }
 
 /**

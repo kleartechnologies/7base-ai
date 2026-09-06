@@ -126,6 +126,9 @@ await no('rewrite ownerId', () => updateDoc(doc(alice, 'businesses/aliceBiz'), {
 await no('rewrite createdAt', () => updateDoc(doc(alice, 'businesses/aliceBiz'), { createdAt: 9999 }))
 await no('client writes discovery', () => updateDoc(doc(alice, 'businesses/aliceBiz'), { discovery: { status: 'complete', pagesAnalysed: 6 } }))
 await no('client writes sources', () => updateDoc(doc(alice, 'businesses/aliceBiz'), { sources: [{ id: 'website' }] }))
+// Phase 7E: the Business DNA report lives under discovery and is server-only.
+await no('client writes discovery.dna (nested field path)', () => updateDoc(doc(alice, 'businesses/aliceBiz'), { 'discovery.dna': { version: 1, brand: { colors: [{ hex: '#ff0000' }] } } }))
+await no('client injects a DNA report on create', () => setDoc(doc(alice, 'businesses/fakeBizDna'), biz('alice', { discovery: { status: 'not_started', stage: null, lastRunAt: null, completedAt: null, sourceRef: null, pagesAnalysed: 0, error: null, errorCode: null, summary: null, unknowns: [], dna: { version: 1 } } })))
 await ok('alice creates a pristine business', () => setDoc(doc(alice, 'businesses/newBiz'), biz('alice')))
 await no('create claiming a completed discovery', () => setDoc(doc(alice, 'businesses/fakeBiz'), biz('alice', { discovery: { status: 'complete', sourceRef: 'x', completedAt: 1, pagesAnalysed: 6 } })))
 await no('create claiming sources', () => setDoc(doc(alice, 'businesses/fakeBiz2'), biz('alice', { sources: [{ id: 'website' }] })))

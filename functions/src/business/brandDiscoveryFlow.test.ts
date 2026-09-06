@@ -235,6 +235,12 @@ describe('homepage → extraction → merge → suggestion → Use these → Bra
       logoUrl: 'https://warungmakcik.com/icons/apple-touch-icon.png',
       fontFamily: 'Poppins',
       visualStyle: 'Rustic, food-photography led',
+      logoAssetId: null,
+      supportedFont: null,
+      traits: [],
+      category: null,
+      sources: [],
+      unknown: [],
       // The brand section is an inferred claim (INFERRED_SECTIONS.brand), so
       // the card shows the generic "detected brand" title, not "from your
       // website" — the same provenance honesty as everywhere else.
@@ -368,6 +374,12 @@ describe('the stranded-visualStyle case (the production Matheasy shape)', () => 
       logoUrl: null,
       fontFamily: null,
       visualStyle: 'Clean, modern and visual, using animated mathematical examples.',
+      logoAssetId: null,
+      supportedFont: null,
+      traits: [],
+      category: null,
+      sources: [],
+      unknown: [],
       // 'inferred' is not one of the card's named platforms, so it renders
       // under the generic title.
       source: 'other',

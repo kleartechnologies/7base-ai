@@ -241,7 +241,7 @@ function record(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {}
 }
 
-function text(value: unknown, max: number): string | null {
+export function text(value: unknown, max: number): string | null {
   if (typeof value !== 'string') return null
   const clean = value.replace(/\s+/g, ' ').trim()
   if (!clean) return null
@@ -250,7 +250,7 @@ function text(value: unknown, max: number): string | null {
   return clean.length > max ? `${clean.slice(0, max).trimEnd()}…` : clean
 }
 
-function list(value: unknown, max: number = LIMITS.listItemText): string[] {
+export function list(value: unknown, max: number = LIMITS.listItemText): string[] {
   if (!Array.isArray(value)) return []
   const items: string[] = []
   const seen = new Set<string>()

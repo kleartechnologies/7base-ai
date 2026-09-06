@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils'
 import { BrandBoard, TRAIT_KEYS } from './BrandBoard'
 import { BrandStatusCard } from './BrandStatusCard'
+import { BusinessSourcesCard } from './BusinessSourcesCard'
 import { DetectedBrandCard } from './DetectedBrandCard'
 import { LogoSection } from './LogoSection'
 import {
@@ -108,6 +109,9 @@ export function BrandIdentityTab({
   }, [editing, onDirtyChange])
 
   const suggestion = useMemo(() => detectedBrandSuggestion(business), [business])
+  const suggestedLogoAsset = suggestion?.logoAssetId
+    ? (assets ?? []).find((asset) => asset.id === suggestion.logoAssetId) ?? null
+    : null
   const logoAsset = kit.logoAssetId
     ? (assets ?? []).find((asset) => asset.id === kit.logoAssetId) ?? null
     : null
@@ -132,10 +136,12 @@ export function BrandIdentityTab({
   )
 
   /**
-   * "Use these": discovered colours and style copied into the kit, the
-   * discovery marked owner-confirmed with its provenance intact (source stays
-   * 'website'), and the discovered logo imported into Assets when the browser
+   * "Use these": discovered colours, style words, approved font and an
+   * already-uploaded logo Asset copied into the kit (never over something the
+   * owner set), the discovery marked owner-confirmed with its provenance
+   * intact, and a discovered logo URL imported into Assets when the browser
    * can fetch it — a CORS-blocked logo degrades to colours-only, silently.
+   * This is the only path from anything detected into the Brand Kit.
    */
   async function handleUseDetected() {
     if (!suggestion) return
@@ -169,10 +175,18 @@ export function BrandIdentityTab({
     <div className="space-y-4">
       <BrandStatusCard kit={business.brandKit ?? null} onContinue={openFirstIncomplete} />
 
+      <BusinessSourcesCard
+        business={business}
+        assets={assets}
+        applied={Boolean(business.discovery?.dna) && suggestion === null}
+        busy={busy}
+      />
+
       {suggestion ? (
         <DetectedBrandCard
           suggestion={suggestion}
           provenance={business.brand}
+          logoAssetPath={suggestedLogoAsset?.storagePath ?? null}
           busy={busy}
           onUse={() => void handleUseDetected()}
           onChange={() => {

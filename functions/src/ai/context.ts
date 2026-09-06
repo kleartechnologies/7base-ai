@@ -151,7 +151,7 @@ export function buildBusinessContext(business: StoredBusiness | null): string | 
   const unknowns = business.discovery?.unknowns
   if (Array.isArray(unknowns) && unknowns.length > 0) {
     lines.push('')
-    lines.push('NOT KNOWN — the website did not establish these. Ask; never guess.')
+    lines.push('NOT KNOWN — the business’s sources did not establish these. Ask; never guess.')
     for (const unknown of unknowns.slice(0, MAX_LIST_ITEMS)) {
       lines.push(`${SECTION_INDENT}- ${unknown}`)
     }

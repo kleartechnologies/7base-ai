@@ -61,6 +61,13 @@ export class SocialThrottledError extends Error {
 export interface SocialProfileContent {
   corpus: string
   signals: { emails: string[]; phones: string[]; outboundLinks: string[] }
+  /**
+   * What the profile page exposed visually (Phase 7E): the URL that finally
+   * served it and the images the platform itself put in the markup — the
+   * OG image (usually the profile picture) first. Read off the page already
+   * fetched; nothing extra is requested here.
+   */
+  page?: { url: string; title: string | null; images: string[] }
 }
 
 /** Injectable seams so the retry ladder is testable without a network. */
@@ -126,7 +133,11 @@ export async function fetchSocialProfile(
       continue
     }
 
-    return { corpus: social.corpus, signals: social.signals }
+    return {
+      corpus: social.corpus,
+      signals: social.signals,
+      page: { url: fetched.url, title: page.ogTitle ?? page.title, images: page.images },
+    }
   }
 
   // Every attempt failed. Report the most accurate thing that happened:

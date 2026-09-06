@@ -15,10 +15,10 @@ import { PROVENANCE_FIELDS } from '../../lib/business.types'
  *    `validate.ts` after the fact
  */
 
-const nullableString = { type: ['string', 'null'] } as const
-const stringArray = { type: 'array', items: { type: 'string' } } as const
+export const nullableString = { type: ['string', 'null'] } as const
+export const stringArray = { type: 'array', items: { type: 'string' } } as const
 
-function object<T extends Record<string, unknown>>(properties: T) {
+export function object<T extends Record<string, unknown>>(properties: T) {
   return {
     type: 'object',
     additionalProperties: false,

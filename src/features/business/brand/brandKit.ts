@@ -7,6 +7,8 @@ import {
   type BrandKit,
   type BrandStyleTrait,
   type Business,
+  type BusinessDna,
+  type DnaSourceSummary,
   type Millis,
 } from '@/types'
 
@@ -129,23 +131,50 @@ export function toggleTrait(
 }
 
 /**
- * What discovery (Phase 6D/6G) found that the owner has not yet turned into
- * Brand Identity. Purely descriptive — nothing here is applied until the
- * owner confirms with "Use these".
+ * What discovery found that the owner has not yet turned into Brand
+ * Identity. Purely descriptive — nothing here is applied until the owner
+ * confirms with "Use these".
+ *
+ * Two producers feed it. The Business DNA report (Phase 7E, `discovery.dna`)
+ * is preferred: it carries a ranked palette, the font exactly as the source
+ * named it, an Asset that looks like the logo, style words, and which
+ * sources were read. Businesses analysed before 7E fall back to the brain's
+ * discovered brand section (7D.1), which the same card has always shown.
  */
 export interface DetectedBrandSuggestion {
-  /** Up to three normalised hexes, in discovery order. */
+  /** Up to three normalised hexes, strongest first. */
   colors: string[]
+  /** A logo image a source exposed. Imported into Assets on "Use these". */
   logoUrl: string | null
-  /** Shown as a hint only — free text never auto-maps onto the closed font list. */
+  /** An Asset the owner already uploaded that looks like the logo (7E). */
+  logoAssetId: string | null
+  /**
+   * The font exactly as the source named it. Shown honestly; it becomes a
+   * Brand Kit font only when `supportedFont` is set, never by silent mapping.
+   */
   fontFamily: string | null
+  /** The approved-list match for `fontFamily`, when there is one. */
+  supportedFont: BrandFont | null
   visualStyle: string | null
-  source: 'website' | 'facebook' | 'instagram' | 'other'
+  /** Style words that map onto the closed trait list (7E). */
+  traits: BrandStyleTrait[]
+  /** What EVA understood the business to be (7E). Shown, not applied to the kit. */
+  category: string | null
+  /** Which sources the suggestion was read from (7E); empty for older runs. */
+  sources: DnaSourceSummary[]
+  /** Slots the analysis could not fill. Told plainly, never guessed. */
+  unknown: DetectedBrandSlot[]
+  source: 'website' | 'facebook' | 'instagram' | 'other' | 'sources'
 }
 
+export type DetectedBrandSlot = 'logo' | 'colors' | 'typography' | 'style'
+
 export function detectedBrandSuggestion(
-  business: Pick<Business, 'brand' | 'brandKit'>,
+  business: Pick<Business, 'brand' | 'brandKit'> & { discovery?: Business['discovery'] | null },
 ): DetectedBrandSuggestion | null {
+  const dna = business.discovery?.dna
+  if (dna) return suggestionFromDna(dna, business.brandKit ?? null)
+
   const discovered = business.brand?.value
   if (!discovered) return null
 
@@ -172,19 +201,90 @@ export function detectedBrandSuggestion(
   return {
     colors,
     logoUrl,
+    logoAssetId: null,
     fontFamily,
+    // Pre-7E discovery keeps its hint-only font: the card tells the owner to
+    // pick the closest match, so "Use these" must not set one behind it.
+    supportedFont: null,
     visualStyle,
+    traits: [],
+    category: null,
+    sources: [],
+    unknown: [],
     source:
       source === 'website' || source === 'facebook' || source === 'instagram' ? source : 'other',
   }
 }
 
 /**
+ * The DNA report through the same per-field gate. A slot the owner already
+ * filled is silent; a slot the analysis could not fill is listed as unknown
+ * (unless the owner filled it, in which case there is nothing to say).
+ */
+function suggestionFromDna(dna: BusinessDna, kit: BrandKit | null): DetectedBrandSuggestion | null {
+  const brand = dna.brand
+  const kitHasColors = Boolean(kit?.colors.primary)
+  const kitHasLogo = Boolean(kit?.logoAssetId)
+  const kitHasFont = Boolean(kit?.typography.heading || kit?.typography.body)
+  const kitHasStyle = Boolean(kit?.styleNotes || (kit?.styleTraits.length ?? 0) > 0)
+
+  const colors = kitHasColors
+    ? []
+    : brand.colors
+        .map((color) => normalizeBrandHex(color.hex))
+        .filter((hex): hex is string => hex !== null)
+        .filter((hex, index, all) => all.indexOf(hex) === index)
+        .slice(0, 3)
+  const logoCandidate = kitHasLogo ? null : brand.logoCandidate
+  const logoAssetId = logoCandidate?.kind === 'asset' ? logoCandidate.assetId : null
+  const logoUrl = logoCandidate?.kind === 'url' ? logoCandidate.url : null
+  const fontFamily = kitHasFont ? null : brand.typography?.detectedFont ?? null
+  const supportedFont = kitHasFont ? null : brand.typography?.supportedMatch ?? null
+  const visualStyle = kitHasStyle ? null : brand.visualStyle
+  const traits = kitHasStyle ? [] : brand.suggestedTraits.filter(isBrandTrait).slice(0, BRAND_TRAITS_MAX)
+
+  const unknown: DetectedBrandSlot[] = []
+  if (!kitHasLogo && !brand.logoCandidate) unknown.push('logo')
+  if (!kitHasColors && brand.colors.length === 0) unknown.push('colors')
+  if (!kitHasFont && !brand.typography) unknown.push('typography')
+  if (!kitHasStyle && !brand.visualStyle && brand.suggestedTraits.length === 0) unknown.push('style')
+
+  // Everything detected has been applied, or nothing was detected at all:
+  // the card has nothing to offer and stays out of the way.
+  const nothingLeft =
+    colors.length === 0 &&
+    !logoAssetId &&
+    !logoUrl &&
+    !fontFamily &&
+    !visualStyle &&
+    traits.length === 0
+  if (nothingLeft) return null
+
+  return {
+    colors,
+    logoUrl,
+    logoAssetId,
+    fontFamily,
+    supportedFont,
+    visualStyle,
+    traits,
+    category: dna.business.category,
+    sources: dna.sources,
+    unknown,
+    source: 'sources',
+  }
+}
+
+/**
  * The kit produced by "Use these": discovered colours seeded in order
  * (primary, secondary, accent), the discovered style description carried into
- * `styleNotes`. The font stays a hint (closed list; never auto-applied) and
- * the logo is handled separately — it becomes an Asset first, then a
- * reference.
+ * `styleNotes`, style words into the traits when the owner picked none, the
+ * approved font into both slots when the owner set none, and an already
+ * uploaded logo Asset referenced — never duplicated. A detected font with no
+ * approved match stays a hint: the closed list is never bypassed and the name
+ * is never swapped for a look-alike. A logo that is only a URL is handled by
+ * the caller — it becomes an Asset first, then a reference. Nothing the owner
+ * already set is overwritten.
  */
 export function applyDetectedBrand(
   kit: BrandKit,
@@ -192,13 +292,21 @@ export function applyDetectedBrand(
   now: Millis = Date.now(),
 ): BrandKit {
   const [primary, secondary, accent] = suggestion.colors
+  const kitHasFont = Boolean(kit.typography.heading || kit.typography.body)
+  const font = !kitHasFont && suggestion.supportedFont ? suggestion.supportedFont : null
   return {
     ...kit,
+    logoAssetId: kit.logoAssetId ?? suggestion.logoAssetId ?? null,
     colors: {
-      primary: primary ?? kit.colors.primary,
-      secondary: secondary ?? kit.colors.secondary,
-      accent: accent ?? kit.colors.accent,
+      primary: kit.colors.primary ?? primary ?? null,
+      secondary: kit.colors.secondary ?? secondary ?? null,
+      accent: kit.colors.accent ?? accent ?? null,
     },
+    typography: font ? { heading: font, body: font } : kit.typography,
+    styleTraits:
+      kit.styleTraits.length === 0 && suggestion.traits.length > 0
+        ? suggestion.traits.slice(0, BRAND_TRAITS_MAX)
+        : kit.styleTraits,
     styleNotes: kit.styleNotes ?? suggestion.visualStyle,
     updatedAt: now,
   }
