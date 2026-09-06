@@ -6,7 +6,13 @@
     "noEmit": true,
     "declaration": false,
     "sourceMap": false,
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    // Tests never emit, so rootDir can widen to let the end-to-end discovery
+    // test type-check the client modules it exercises through the same `@`
+    // alias vitest resolves (vitest.config.ts). Pure-TS client modules only.
+    "rootDir": "..",
+    "baseUrl": ".",
+    "paths": { "@/*": ["../src/*"] }
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules"]

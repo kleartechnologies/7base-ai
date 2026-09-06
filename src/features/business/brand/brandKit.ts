@@ -148,24 +148,32 @@ export function detectedBrandSuggestion(
 ): DetectedBrandSuggestion | null {
   const discovered = business.brand?.value
   if (!discovered) return null
-  // Only surface while the kit has not been seeded: once the owner has set
-  // colours or a logo themselves, the card would just be noise.
-  const kit = business.brandKit ?? null
-  if (kit && (kit.logoAssetId || kit.colors.primary)) return null
 
-  const colors = discovered.colors
-    .map((color) => normalizeBrandHex(color.hex))
-    .filter((hex): hex is string => hex !== null)
-    .slice(0, 3)
-  const logoUrl = discovered.logoUrl
-  if (colors.length === 0 && !logoUrl) return null
+  // Suppression is per field, not all-or-nothing (Phase 7D.1): each discovered
+  // value goes quiet once the owner has filled its slot in the kit, and the
+  // card shows whatever is left. Discovery often finds only some of the four —
+  // a visual-style description without colours is still worth surfacing.
+  const kit = business.brandKit ?? null
+
+  const colors = kit?.colors.primary
+    ? []
+    : discovered.colors
+        .map((color) => normalizeBrandHex(color.hex))
+        .filter((hex): hex is string => hex !== null)
+        .slice(0, 3)
+  const logoUrl = kit?.logoAssetId ? null : discovered.logoUrl
+  const fontFamily = kit?.typography.heading || kit?.typography.body ? null : discovered.fontFamily
+  const visualStyle =
+    kit?.styleNotes || (kit?.styleTraits.length ?? 0) > 0 ? null : discovered.visualStyle
+
+  if (colors.length === 0 && !logoUrl && !fontFamily && !visualStyle) return null
 
   const source = business.brand?.source
   return {
     colors,
     logoUrl,
-    fontFamily: discovered.fontFamily,
-    visualStyle: discovered.visualStyle,
+    fontFamily,
+    visualStyle,
     source:
       source === 'website' || source === 'facebook' || source === 'instagram' ? source : 'other',
   }

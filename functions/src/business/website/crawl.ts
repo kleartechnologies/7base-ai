@@ -1,3 +1,4 @@
+import { extractBrandVisual, type BrandVisual } from './brandVisual'
 import { extractPage, type ExtractedPage } from './extract'
 import { fetchPage, PageFetchError } from './fetchPage'
 import { fetchRobots, isAllowedByRobots, type RobotsRules } from './robots'
@@ -64,6 +65,11 @@ export interface CrawlResult {
   pages: ExtractedPage[]
   failures: CrawlFailure[]
   totalTextLength: number
+  /**
+   * Deterministic brand visuals read off the homepage HTML that was already
+   * fetched for the crawl — no extra request is ever made for them.
+   */
+  brandVisual: BrandVisual
 }
 
 export class SiteUnreachableError extends Error {
@@ -85,10 +91,12 @@ export async function crawlSite(rawUrl: string, options: CrawlOptions = {}): Pro
   // The homepage is not optional: if it cannot be read, there is no analysis.
   let root: ExtractedPage
   let rootUrl: string
+  let brandVisual: BrandVisual
   try {
     const fetched = await fetchPage(startUrl)
     rootUrl = fetched.url
     root = extractPage(fetched.url, fetched.html)
+    brandVisual = extractBrandVisual(fetched.url, fetched.html)
   } catch (error) {
     throw new SiteUnreachableError(
       startUrl,
@@ -135,6 +143,7 @@ export async function crawlSite(rawUrl: string, options: CrawlOptions = {}): Pro
     pages,
     failures,
     totalTextLength: pages.reduce((total, page) => total + page.textLength, 0),
+    brandVisual,
   }
 }
 

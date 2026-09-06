@@ -177,23 +177,90 @@ describe('detectedBrandSuggestion', () => {
       brand: discoveredBrand({ colors: [{ label: 'bad', hex: 'reddish' }], logoUrl: null }),
       brandKit: null,
     })
-    // Nothing usable left — no card.
+    // The bad colour is dropped, not repaired; the rest still surfaces.
+    expect(suggestion?.colors).toEqual([])
+    expect(suggestion?.fontFamily).toBe('Raleway')
+    expect(suggestion?.visualStyle).toBe('warm, photo-led')
+  })
+
+  it('returns nothing when no usable field is left', () => {
+    const suggestion = detectedBrandSuggestion({
+      brand: discoveredBrand({
+        colors: [{ label: 'bad', hex: 'reddish' }],
+        logoUrl: null,
+        fontFamily: null,
+        visualStyle: null,
+      }),
+      brandKit: null,
+    })
     expect(suggestion).toBeNull()
   })
 
-  it('goes quiet once the owner has seeded the kit', () => {
+  it('suppresses each field once the owner has filled its slot (Phase 7D.1)', () => {
     const brand = discoveredBrand()
-    expect(
-      detectedBrandSuggestion({ brand, brandKit: { ...emptyBrandKit(1), logoAssetId: 'a' } }),
-    ).toBeNull()
+    // A manually-set logo silences only the logo — everything else survives.
+    const withLogo = detectedBrandSuggestion({
+      brand,
+      brandKit: { ...emptyBrandKit(1), logoAssetId: 'a' },
+    })
+    expect(withLogo?.logoUrl).toBeNull()
+    expect(withLogo?.colors).toEqual(['#1a7f5a', '#f5efe6'])
+    expect(withLogo?.visualStyle).toBe('warm, photo-led')
+    // Owner-set colours silence only the colours.
+    const withColors = detectedBrandSuggestion({
+      brand,
+      brandKit: { ...emptyBrandKit(1), colors: { primary: '#111111', secondary: null, accent: null } },
+    })
+    expect(withColors?.colors).toEqual([])
+    expect(withColors?.logoUrl).toBe('https://example.com/logo.png')
+    // Typography and style notes silence the font hint and the style text.
+    const withRest = detectedBrandSuggestion({
+      brand,
+      brandKit: {
+        ...emptyBrandKit(1),
+        typography: { heading: 'Inter', body: null },
+        styleNotes: 'my own words',
+      },
+    })
+    expect(withRest?.fontFamily).toBeNull()
+    expect(withRest?.visualStyle).toBeNull()
+    // An untouched kit hides nothing.
+    expect(detectedBrandSuggestion({ brand, brandKit: emptyBrandKit(1) })).not.toBeNull()
+  })
+
+  it('goes quiet only when every slot the card covers is owner-filled', () => {
+    const brand = discoveredBrand()
     expect(
       detectedBrandSuggestion({
         brand,
-        brandKit: { ...emptyBrandKit(1), colors: { primary: '#111111', secondary: null, accent: null } },
+        brandKit: {
+          ...emptyBrandKit(1),
+          logoAssetId: 'a',
+          colors: { primary: '#111111', secondary: null, accent: null },
+          typography: { heading: 'Inter', body: null },
+          styleTraits: ['modern', 'minimal'],
+        },
       }),
     ).toBeNull()
-    // An untouched kit does not hide the card.
-    expect(detectedBrandSuggestion({ brand, brandKit: emptyBrandKit(1) })).not.toBeNull()
+  })
+
+  it('surfaces a visualStyle-only discovery — the stranded-field case', () => {
+    const suggestion = detectedBrandSuggestion({
+      brand: discoveredBrand({
+        colors: [],
+        logoUrl: null,
+        fontFamily: null,
+        visualStyle: 'Clean, modern and visual',
+      }),
+      brandKit: { ...emptyBrandKit(1), logoAssetId: 'manual-upload' },
+    })
+    expect(suggestion).toEqual({
+      colors: [],
+      logoUrl: null,
+      fontFamily: null,
+      visualStyle: 'Clean, modern and visual',
+      source: 'website',
+    })
   })
 
   it('maps unknown sources to "other"', () => {

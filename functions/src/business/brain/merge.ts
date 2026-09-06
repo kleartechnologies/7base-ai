@@ -13,6 +13,7 @@ import type {
 } from '../../lib/business.types'
 import { BRAIN_VERSION, PROVENANCE_FIELDS, type ProvenanceField } from '../../lib/business.types'
 import { claimOf, outranks } from './authority'
+import { hasBrandVisual, type BrandVisual } from '../website/brandVisual'
 import type { WebsiteAnalysis } from './validate'
 
 /**
@@ -55,6 +56,12 @@ export interface MergeContext {
   now: number
   /** Which kind of page `websiteUrl` is. Absent means website. */
   source?: DiscoveredFrom
+  /**
+   * Deterministic visuals (icon URL, theme colours, named font) read off the
+   * homepage HTML the crawl already fetched. Null for social sources and for
+   * callers that predate Phase 7D.1.
+   */
+  brandVisual?: BrandVisual | null
 }
 
 export type BrainPatch = Partial<StoredBusiness>
@@ -193,23 +200,55 @@ export function mergeWebsiteAnalysis(
     now,
   )
 
+  /**
+   * The brand section is AI-inferred text plus deterministically extracted
+   * visuals (Phase 7D.1). The visuals overlay whatever the previous run left;
+   * absent visuals carry the stored ones forward, so a flaky homepage never
+   * erases a colour that was found before. When the model has no brand text at
+   * all but the homepage yielded visuals, the stored text fields are kept and
+   * only the visuals move. Either way the whole section stays one inferred,
+   * unconfirmed claim — a section the owner confirmed is never replaced.
+   */
+  const visual = hasBrandVisual(context.brandVisual) ? context.brandVisual! : null
+  const storedBrand = existing.brand?.value
+
+  const brandValue: BrandProfile | null = hasBrand(analysis)
+    ? {
+        voice: analysis.brand.voice,
+        personalityTraits: analysis.brand.personalityTraits,
+        colors: visual?.colors.length ? visual.colors : storedBrand?.colors ?? [],
+        logoUrl: visual?.logoUrl ?? storedBrand?.logoUrl ?? null,
+        fontFamily: visual?.fontFamily ?? storedBrand?.fontFamily ?? null,
+        visualStyle: analysis.brand.visualStyle,
+        keyMessages: analysis.brand.keyMessages,
+        valuePropositions: analysis.brand.valuePropositions,
+      }
+    : visual
+      ? {
+          voice: storedBrand?.voice ?? null,
+          personalityTraits: storedBrand?.personalityTraits ?? [],
+          colors: visual.colors.length ? visual.colors : storedBrand?.colors ?? [],
+          logoUrl: visual.logoUrl ?? storedBrand?.logoUrl ?? null,
+          fontFamily: visual.fontFamily ?? storedBrand?.fontFamily ?? null,
+          visualStyle: storedBrand?.visualStyle ?? null,
+          keyMessages: storedBrand?.keyMessages ?? [],
+          valuePropositions: storedBrand?.valuePropositions ?? [],
+        }
+      : null
+
   const brand = mergeSection<BrandProfile>(
     existing.brand,
-    hasBrand(analysis)
-      ? {
-          voice: analysis.brand.voice,
-          personalityTraits: analysis.brand.personalityTraits,
-          colors: existing.brand?.value.colors ?? [],
-          logoUrl: existing.brand?.value.logoUrl ?? null,
-          fontFamily: existing.brand?.value.fontFamily ?? null,
-          visualStyle: analysis.brand.visualStyle,
-          keyMessages: analysis.brand.keyMessages,
-          valuePropositions: analysis.brand.valuePropositions,
-        }
-      : null,
+    brandValue,
     INFERRED_SECTIONS.brand,
     analysis.brand.sourceUrl ?? context.websiteUrl,
-    analysis.brand.confidence,
+    // Extracted visuals must be able to land on a brain that already holds an
+    // unconfirmed brand claim: matching the stored confidence lets the newer
+    // claim win the inferred-vs-inferred tie. Authority is untouched, so a
+    // CONFIRMED brand section still outranks this and stays exactly as the
+    // owner left it.
+    visual
+      ? Math.max(analysis.brand.confidence, existing.brand?.confidence ?? 0)
+      : analysis.brand.confidence,
     now,
   )
 

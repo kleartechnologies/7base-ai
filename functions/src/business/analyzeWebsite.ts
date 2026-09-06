@@ -27,6 +27,7 @@ import {
 import { assertRequestBudgetRemains } from '../usage/guardrail'
 import { HttpsError } from 'firebase-functions/v2/https'
 import { CRAWL_LIMITS, crawlSite, SiteUnreachableError } from './website/crawl'
+import type { BrandVisual } from './website/brandVisual'
 import { normalizeSite } from './website/normalize'
 import { InvalidUrlError } from './website/url'
 import { BlockedHostError, UnresolvableHostError } from './website/guard'
@@ -277,6 +278,9 @@ export const businessRunWebsiteAnalysis = onCall(
       let pagesAnalysed: number
       let corpusChars: number
       let modelInput: string
+      // Deterministic visuals from the homepage HTML the crawler already
+      // fetched. A social page offers none — its icons are the platform's.
+      let brandVisual: BrandVisual | null = null
 
       if (source.kind === 'website') {
         const crawl = await crawlSite(websiteUrl, {
@@ -287,6 +291,8 @@ export const businessRunWebsiteAnalysis = onCall(
         if (crawl.totalTextLength < CRAWL_LIMITS.minTotalTextLength) {
           throw new InsufficientContentError()
         }
+
+        brandVisual = crawl.brandVisual
 
         const site = normalizeSite(crawl)
         analysedUrl = site.startUrl
@@ -344,6 +350,7 @@ export const businessRunWebsiteAnalysis = onCall(
         pagesAnalysed,
         now,
         source: source.kind,
+        brandVisual,
       })
 
       await setStage('saving')

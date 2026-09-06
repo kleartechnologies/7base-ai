@@ -570,7 +570,7 @@ export const ms: Record<MessageKey, string> = {
   'brain.fromConnectedSource': 'Dari sumber yang disambungkan',
 
   // Halaman dan bahagian Business Brain.
-  'business.notKnownYet': 'Belum diketahui — beritahu EVA',
+  'business.notKnownYet': 'Belum diketahui — anda boleh beritahu EVA dalam sembang',
   'business.emptyTitle': 'EVA belum kenal perniagaan anda',
   'business.emptyBody':
     'Beri EVA satu pautan — laman web, Facebook Page, atau profil Instagram anda — dan dia akan uruskan yang selebihnya.',

@@ -563,7 +563,7 @@ export const en = {
   'brain.fromConnectedSource': 'From a connected source',
 
   // Business Brain page and sections.
-  'business.notKnownYet': 'Not known yet — tell EVA',
+  'business.notKnownYet': 'Not known yet — you can tell EVA in chat',
   'business.emptyTitle': 'EVA doesn’t know your business yet',
   'business.emptyBody':
     'Give EVA one link — your website, Facebook Page, or Instagram profile — and she works out the rest.',
