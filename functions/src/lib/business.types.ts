@@ -152,6 +152,59 @@ export interface BrandProfile {
   valuePropositions: string[]
 }
 
+/**
+ * Brand Identity (Phase 7D) — owner-set visual identity, mirrored from
+ * `src/types/business.ts`. Every value was set or confirmed by the owner, so
+ * no `Discovered<T>` wrapper. Completion is derived, never stored.
+ */
+export interface BrandKit {
+  /** Reference into Assets — never a copied file. */
+  logoAssetId: string | null
+  colors: {
+    primary: string | null
+    secondary: string | null
+    accent: string | null
+  }
+  typography: {
+    heading: BrandFont | null
+    body: BrandFont | null
+  }
+  styleTraits: BrandStyleTrait[]
+  styleNotes: string | null
+  notes: string | null
+  updatedAt: Millis
+}
+
+/** Closed, approved list — no arbitrary font URLs or uploads. */
+export const BRAND_FONTS = [
+  'Inter',
+  'Poppins',
+  'Playfair Display',
+  'Merriweather',
+  'Montserrat',
+  'Lora',
+  'Nunito',
+  'DM Serif Display',
+] as const
+
+export type BrandFont = (typeof BRAND_FONTS)[number]
+
+/** Canonical trait ids. Localised at render time on the client. */
+export const BRAND_STYLE_TRAITS = [
+  'modern',
+  'premium',
+  'friendly',
+  'playful',
+  'minimal',
+  'bold',
+  'elegant',
+  'warm',
+  'traditional',
+  'professional',
+] as const
+
+export type BrandStyleTrait = (typeof BRAND_STYLE_TRAITS)[number]
+
 export interface MarketingProfile {
   positioning: string | null
   valueProposition: string | null
@@ -246,6 +299,8 @@ export interface StoredBusiness {
   brand: Discovered<BrandProfile> | null
   marketing: Discovered<MarketingProfile> | null
   operations: Discovered<OperationsProfile> | null
+  /** Owner-set Brand Identity. Absent on documents from before Phase 7D. */
+  brandKit?: BrandKit | null
   provenance: Record<string, FieldProvenance>
   sources: ConnectedSource[]
   discovery: DiscoveryState

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { FileText, FolderOpen, Upload } from 'lucide-react'
+import { ROUTES } from '@/app/routes/paths'
 import { EvaSpark } from '@/components/EvaMark'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -222,6 +224,7 @@ export default function AssetsPage() {
                   asset={asset}
                   products={business?.products ?? []}
                   showStatus={filter !== 'active'}
+                  officialLogoId={business?.brandKit?.logoAssetId ?? null}
                   onEdit={() => setEditingId(asset.id)}
                 />
               </li>
@@ -283,11 +286,14 @@ function AssetCard({
   asset,
   products,
   showStatus,
+  officialLogoId,
   onEdit,
 }: {
   asset: Asset
   products: Product[]
   showStatus: boolean
+  /** brandKit.logoAssetId — so a logo already crowned official isn't nudged. */
+  officialLogoId: string | null
   onEdit: () => void
 }) {
   const { t } = useI18n()
@@ -364,6 +370,20 @@ function AssetCard({
           <p className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium text-eva-label">
             <EvaSpark className="size-3" aria-hidden />
             {t('asset.evaCanUse')}
+          </p>
+        ) : null}
+
+        {asset.type === 'logo' && asset.status === 'active' && asset.id !== officialLogoId ? (
+          // A logo-typed file that isn't the official one — one-line nudge
+          // into Brand Identity, where the crowning actually happens.
+          <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+            {t('brand.assetSuggestion')}{' '}
+            <Link
+              to={ROUTES.businessBrand}
+              className="font-medium text-foreground underline-offset-2 hover:underline"
+            >
+              {t('brand.assetSuggestionCta')}
+            </Link>
           </p>
         ) : null}
 

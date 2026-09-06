@@ -182,11 +182,21 @@ function assetMentions(asset: StoredAsset, needle: string): boolean {
 }
 
 /**
- * The business's logo, when one exists in Assets: the first eligible
- * logo-type asset in stable order. It is composited onto the poster
- * client-side — never selected by, sent to, or recreated by the image model.
+ * The business's logo, when one exists in Assets. The owner's official logo
+ * (Brand Identity's `logoAssetId`) wins when it is still in the eligible
+ * list; otherwise the first eligible logo-type asset in stable order. It is
+ * composited onto the poster client-side — never selected by, sent to, or
+ * recreated by the image model. `preferredAssetId` is read from the business
+ * document server-side, never from the request.
  */
-export function selectLogoAsset(assets: AssetWithId[]): AssetWithId | null {
+export function selectLogoAsset(
+  assets: AssetWithId[],
+  preferredAssetId: string | null = null,
+): AssetWithId | null {
+  if (preferredAssetId) {
+    const official = assets.find(({ id }) => id === preferredAssetId)
+    if (official) return official
+  }
   return assets.find(({ asset }) => asset.type === 'logo') ?? null
 }
 

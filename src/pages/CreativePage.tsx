@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Download, Image as ImageIcon } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { EvaSpark } from '@/components/EvaMark'
+import { BrandAppliedPanel } from '@/features/creative/BrandAppliedPanel'
 import { downloadCreativePoster } from '@/features/creative/poster'
 import { firstUsableColor, readableTextOn } from '@/features/creative/posterSpec'
 import { useAuth } from '@/hooks/useAuth'
@@ -255,6 +256,12 @@ function CreativeCard({ creative }: { creative: Creative }) {
         </div>
         {downloadError ? (
           <p className="mt-2 text-[12px] text-destructive">{t('creative.downloadFailed')}</p>
+        ) : null}
+
+        {/* Only creatives generated after Brand Identity shipped carry the
+            server-stamped summary; older ones simply show nothing here. */}
+        {creative.style.brandApplied ? (
+          <BrandAppliedPanel applied={creative.style.brandApplied} />
         ) : null}
       </div>
     </div>

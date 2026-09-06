@@ -5,8 +5,9 @@ import type { SubscriptionPlan } from '../config/models'
 import type { StoredBusiness } from '../lib/business.types'
 import { storageBucket } from '../lib/firebase'
 import type { MessageMeta } from '../lib/types'
+import { resolveBrandStyle, resolveVisualStyle } from './brand'
 import { buildImagePrompt } from './prompt'
-import { CREATIVE_LIMITS, text, type CreativeFormat, type CreativeImageRef } from './validate'
+import { CREATIVE_LIMITS, type CreativeFormat, type CreativeImageRef } from './validate'
 
 /**
  * The creative's generated image.
@@ -44,12 +45,14 @@ export async function generateCreativeImage(params: {
    */
   plan: SubscriptionPlan
 }): Promise<GeneratedImage> {
-  const brand = params.business?.brand?.value ?? null
+  // Brand Identity first, discovered brand as fallback — resolved from the
+  // business document, so retries and visual edits inherit it the same way.
+  const brandStyle = resolveBrandStyle(params.business)
   const prompt = buildImagePrompt({
     brief: params.brief,
     format: params.format,
-    paletteHexes: (brand?.colors ?? []).map((color) => color.hex).slice(0, 3),
-    visualStyle: text(brand?.visualStyle ?? null, CREATIVE_LIMITS.imageBrief),
+    paletteHexes: (brandStyle.palette ?? []).slice(0, 3),
+    visualStyle: resolveVisualStyle(params.business, CREATIVE_LIMITS.imageBrief),
   })
 
   const result = await runImageTask({

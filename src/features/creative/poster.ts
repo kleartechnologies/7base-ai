@@ -1,5 +1,6 @@
 import { downloadCreativeImage } from '@/services/ai/ai.client'
 import type { AiResult, CreativeImagePayload, DownloadCreativeImageResponse } from '@/services/ai/ai.types'
+import { waitForBrandFonts } from '@/features/business/brand/fonts'
 import { posterFileName, posterSpec, wrapLines, type PosterSpec } from './posterSpec'
 
 /**
@@ -154,6 +155,10 @@ export async function renderPosterBlob(params: {
   logoUrl?: string | null
 }): Promise<Blob> {
   const spec = posterSpec(params.content.format, params.style)
+  // Approved brand fonts are fetched before rasterising so the canvas does
+  // not paint mid-swap. Best-effort with a short cap — a missing font falls
+  // back to the system stack, never blocks the download.
+  await waitForBrandFonts([params.style?.headingFont, params.style?.bodyFont])
   const canvas = document.createElement('canvas')
   canvas.width = spec.width
   canvas.height = spec.height

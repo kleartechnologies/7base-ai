@@ -36,6 +36,11 @@ Rules:
 export interface CopyInputParams {
   businessName: string | null
   brandVoice: string | null
+  /**
+   * The owner's Brand Identity style in one line (traits, style notes, brand
+   * notes), resolved server-side from the business document. Null when unset.
+   */
+  brandStyle: string | null
   campaign: StoredCampaign
   format: CreativeFormat
   /** Standing owner constraints ("don't mention discounts"), oldest first. */
@@ -49,6 +54,9 @@ export function buildCopyInput(params: CopyInputParams): string {
   const lines = [
     `BUSINESS: ${params.businessName ?? 'not named'}`,
     `BRAND VOICE: ${params.brandVoice ?? 'not recorded'}`,
+    `BRAND STYLE (owner-set — keep the wording consistent with it): ${
+      params.brandStyle ?? 'not recorded'
+    }`,
     `CAMPAIGN: ${c.name}`,
     `OBJECTIVE: ${c.objective ?? 'not set'}`,
     `AUDIENCE (${c.targetAudience?.basis ?? 'none'}): ${c.targetAudience?.description ?? 'not set'}`,

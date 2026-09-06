@@ -133,6 +133,26 @@ await no('create owned by someone else', () => setDoc(doc(alice, 'businesses/fak
 await ok('alice writes a brain section', () => updateDoc(doc(alice, 'businesses/aliceBiz'), { audience: { value: {}, source: 'user', confidence: 1, confirmed: true, discoveredAt: 1 }, updatedAt: 3000 }))
 await ok('alice deletes her business', () => deleteDoc(doc(alice, 'businesses/newBiz')))
 
+console.log('\n-- BRAND IDENTITY (PHASE 7D) --')
+const brandKit = {
+  logoAssetId: 'aliceAsset',
+  colors: { primary: '#1a7f5a', secondary: '#f5efe6', accent: '#c2410c' },
+  typography: { heading: 'Poppins', body: 'Inter' },
+  styleTraits: ['modern', 'warm'], styleNotes: null, notes: null, updatedAt: 5000,
+}
+await ok('alice writes her brandKit', () =>
+  updateDoc(doc(alice, 'businesses/aliceBiz'), { brandKit, updatedAt: 5000 }))
+await ok('alice clears her brandKit logo reference', () =>
+  updateDoc(doc(alice, 'businesses/aliceBiz'), { brandKit: { ...brandKit, logoAssetId: null }, updatedAt: 5100 }))
+await no('bob writes alice\'s brandKit', () =>
+  updateDoc(doc(bob, 'businesses/aliceBiz'), { brandKit }))
+await no('brandKit write cannot smuggle in a discovery result', () =>
+  updateDoc(doc(alice, 'businesses/aliceBiz'), { brandKit, discovery: { status: 'complete', pagesAnalysed: 9 } }))
+await no('brandKit write cannot smuggle in a connected source', () =>
+  updateDoc(doc(alice, 'businesses/aliceBiz'), { brandKit, sources: [{ id: 'website' }] }))
+await no('brandKit write cannot rewrite ownerId', () =>
+  updateDoc(doc(alice, 'businesses/aliceBiz'), { brandKit, ownerId: 'bob' }))
+
 console.log('\n-- OWNER ACCEPTANCE ("LOOKS GOOD") --')
 const acceptedStamp = { source: 'website', sourceRef: 'https://x.my', confidence: 0.9, confirmed: true, discoveredAt: 1, confirmedAt: 2 }
 await ok('alice confirms discovered provenance without changing its source', () =>

@@ -57,6 +57,7 @@ describe('buildCopyInput', () => {
     const input = buildCopyInput({
       businessName: 'Secret Recipe Kopitiam',
       brandVoice: null,
+      brandStyle: null,
       campaign,
       format: 'square_post',
       directives: [],
@@ -73,6 +74,7 @@ describe('buildCopyInput', () => {
     const input = buildCopyInput({
       businessName: null,
       brandVoice: null,
+      brandStyle: null,
       campaign,
       format: 'portrait_post',
       directives: ["Don't mention discounts"],

@@ -635,6 +635,125 @@ export const en = {
   'business.choiceTakeaway': 'Takeaway',
   'business.choiceDelivery': 'Delivery',
   'business.choiceWhatsappOrders': 'WhatsApp orders',
+
+  // Business page tabs.
+  'business.tabProfile': 'Profile',
+
+  // Brand Identity — the second tab of the Business page.
+  'brand.tabTitle': 'Brand Identity',
+  'brand.pageHint': 'Your Brand Identity helps EVA keep your marketing creatives consistent.',
+  'brand.evaConnection': 'Your Brand Identity helps EVA keep your marketing creatives consistent.',
+  'brand.unsavedGuard': 'Save your brand changes? Leaving now will discard them.',
+
+  // Status card.
+  'brand.statusTitle': 'Brand Identity setup',
+  'brand.statusNotStarted': 'Not started',
+  'brand.statusPartial': 'Needs a few details',
+  'brand.statusReady': 'Ready',
+  'brand.readyUsing': 'Your brand is ready for EVA to use in creatives.',
+  'brand.setUpCta': 'Set up Brand Identity',
+  'brand.continueCta': 'Continue setup',
+  'brand.progressAria': 'Brand Identity setup, {done} of {total} sections complete',
+  'brand.checklistLogo': 'Official logo',
+  'brand.checklistColors': 'Brand colours',
+  'brand.checklistTypography': 'Typography',
+  'brand.checklistStyle': 'Brand style',
+  'brand.checklistNotes': 'Brand notes',
+  'brand.optional': 'optional',
+
+  // Detected from discovery — never applied without "Use these".
+  'brand.detectedTitleWebsite': 'EVA found these from your website',
+  'brand.detectedTitleFacebook': 'EVA found these from your Facebook page',
+  'brand.detectedTitleInstagram': 'EVA found these from your Instagram',
+  'brand.detectedTitleOther': 'EVA found these from your links',
+  'brand.detectedLogoAlt': 'Logo found on your website',
+  'brand.detectedFontHint': 'Your website uses {font} — pick the closest match below.',
+  'brand.useThese': 'Use these',
+  'brand.changeDetected': 'Change',
+
+  // Official logo.
+  'brand.logoTitle': 'Official logo',
+  'brand.logoHint': 'This is the logo EVA will use in your marketing creatives.',
+  'brand.logoNote':
+    'The logo file lives in Assets. Brand Identity only marks which file is the official one.',
+  'brand.logoUpload': 'Upload logo',
+  'brand.logoChoose': 'Choose from Assets',
+  'brand.logoChange': 'Change logo',
+  'brand.logoRemove': 'Remove',
+  'brand.logoRemoveConfirm':
+    'EVA will stop placing your logo on new creatives — the file stays in your Assets.',
+  'brand.logoAlt': '{name} official logo',
+  'brand.logoMissing': 'This file is no longer in your Assets.',
+  'brand.logoNotImage': 'The official logo needs to be an image file.',
+  'brand.logoUploadFailed': 'The upload didn’t go through. Your previous logo is untouched — try again.',
+  'brand.pickerTitle': 'Choose from your Assets',
+  'brand.pickerEmpty': 'No images in your Assets yet — upload one instead.',
+  'brand.pickerFailed': 'Couldn’t load your Assets. Refresh to try again.',
+  'brand.saveFailed': 'Couldn’t save that change. Your edits are still here — try again.',
+
+  // Brand colours.
+  'brand.colorsTitle': 'Brand colours',
+  'brand.colorsHint': 'Three colours EVA will keep your creatives to.',
+  'brand.colorPrimary': 'Primary',
+  'brand.colorSecondary': 'Secondary',
+  'brand.colorAccent': 'Accent',
+  'brand.colorInvalid': 'That doesn’t look like a colour code. Use a hex value like #1A7F5A.',
+
+  // Typography.
+  'brand.typographyTitle': 'Typography',
+  'brand.typographyHint': 'The fonts EVA pairs on your posters and creatives.',
+  'brand.fontHeading': 'Heading font',
+  'brand.fontBody': 'Body font',
+  'brand.fontNone': 'Not set',
+  'brand.previewHeading': 'Fresh from the kitchen',
+  'brand.previewBody': 'This is how your headings and text will sit together on a creative.',
+
+  // Brand style traits.
+  'brand.styleTitle': 'Brand style',
+  'brand.styleHint': 'Pick 2–4 words that describe how your brand should feel.',
+  'brand.styleCount': '{count} selected — pick {min} to {max}.',
+  'brand.styleMax': 'Four is the limit — unselect one to swap it.',
+  'brand.styleMin': 'Pick at least two words, so EVA has enough to work with.',
+  'brand.styleNotesLabel': 'Anything else about the look?',
+  'brand.styleNotesPlaceholder': 'Earthy tones, hand-drawn feel, no stock photos.',
+  'brand.traitModern': 'Modern',
+  'brand.traitPremium': 'Premium',
+  'brand.traitFriendly': 'Friendly',
+  'brand.traitPlayful': 'Playful',
+  'brand.traitMinimal': 'Minimal',
+  'brand.traitBold': 'Bold',
+  'brand.traitElegant': 'Elegant',
+  'brand.traitWarm': 'Warm',
+  'brand.traitTraditional': 'Traditional',
+  'brand.traitProfessional': 'Professional',
+
+  // Brand notes.
+  'brand.notesTitle': 'Brand notes',
+  'brand.notesHint': 'Anything else EVA should know about your brand. Optional.',
+  'brand.notesPlaceholder': 'Always mention we’re halal-certified. Never use red.',
+  'brand.notesEmpty': 'Nothing yet — this never blocks your brand from being ready.',
+
+  // Brand board preview.
+  'brand.boardTitle': 'Preview',
+  'brand.boardSampleBody': 'A taste of how your creatives will read.',
+
+  // Applied panel on a creative.
+  'brand.appliedTitle': 'Brand Identity — applied',
+  'brand.appliedPartialTitle': 'Brand Identity — partly applied',
+  'brand.appliedBody':
+    'EVA used your approved logo, colours, typography and visual style for this creative.',
+  'brand.appliedPartialBody': 'EVA used what you’ve set so far. Complete it for full coverage.',
+  'brand.appliedLogo': 'Logo',
+  'brand.appliedColors': 'Colours',
+  'brand.appliedTypography': 'Typography',
+  'brand.appliedStyle': 'Style',
+  'brand.appliedNotSet': 'not set',
+  'brand.editBrand': 'Edit Brand Identity',
+  'brand.completeBrand': 'Complete it',
+
+  // Assets page nudge.
+  'brand.assetSuggestion': 'Looks like a logo — set it as your official logo?',
+  'brand.assetSuggestionCta': 'Open Brand Identity',
 } as const
 
 export type MessageKey = keyof typeof en

@@ -57,6 +57,11 @@ export interface Business extends OwnedEntity {
   marketing: Discovered<MarketingProfile> | null
   operations: Discovered<OperationsProfile> | null
   /**
+   * Owner-set Brand Identity. Optional: documents from before Phase 7D do not
+   * carry it, and readers treat absent the same as null.
+   */
+  brandKit?: BrandKit | null
+  /**
    * Where each plain fact came from, keyed by dotted path. Absent entries mean
    * MARKA has no provenance for that field — usually because it is still empty.
    */
@@ -183,6 +188,75 @@ export interface BrandColor {
   label: string
   hex: string
 }
+
+/**
+ * Brand Identity (Phase 7D) — the owner-confirmed visual identity EVA applies
+ * to creatives. Distinct from `brand` (discovered, provenance-wrapped): every
+ * value here was set or explicitly confirmed by the owner, so it needs no
+ * `Discovered<T>` wrapper. Completion is DERIVED from the fields (see
+ * `brandKitStatus`), never stored as a flag.
+ */
+export interface BrandKit {
+  /**
+   * Reference to the official logo in Assets — never a copied file. Removing
+   * it clears the reference; the Asset itself is untouched.
+   */
+  logoAssetId: string | null
+  colors: BrandKitColors
+  typography: BrandKitTypography
+  /** 2–4 ids from BRAND_STYLE_TRAITS. Localised at render time. */
+  styleTraits: BrandStyleTrait[]
+  /** Free-text style description; aligns with the discovered `visualStyle`. */
+  styleNotes: string | null
+  /** Optional guidance for EVA. Never affects readiness. */
+  notes: string | null
+  updatedAt: Millis
+}
+
+export interface BrandKitColors {
+  /** Normalised lowercase #rrggbb, or null while unset. */
+  primary: string | null
+  secondary: string | null
+  accent: string | null
+}
+
+export interface BrandKitTypography {
+  heading: BrandFont | null
+  body: BrandFont | null
+}
+
+/** Closed, approved list — no arbitrary font URLs or uploads. */
+export const BRAND_FONTS = [
+  'Inter',
+  'Poppins',
+  'Playfair Display',
+  'Merriweather',
+  'Montserrat',
+  'Lora',
+  'Nunito',
+  'DM Serif Display',
+] as const
+
+export type BrandFont = (typeof BRAND_FONTS)[number]
+
+/** Canonical trait ids. Localised at render (see i18n `brand.trait.*`). */
+export const BRAND_STYLE_TRAITS = [
+  'modern',
+  'premium',
+  'friendly',
+  'playful',
+  'minimal',
+  'bold',
+  'elegant',
+  'warm',
+  'traditional',
+  'professional',
+] as const
+
+export type BrandStyleTrait = (typeof BRAND_STYLE_TRAITS)[number]
+
+export const BRAND_TRAITS_MIN = 2
+export const BRAND_TRAITS_MAX = 4
 
 export interface MarketingProfile {
   positioning: string | null

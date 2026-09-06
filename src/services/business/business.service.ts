@@ -150,6 +150,29 @@ export async function saveBrainSection<K extends BrainSectionKey>(
 }
 
 /**
+ * Saves the owner's Brand Identity (Phase 7D).
+ *
+ * The kit is owner-authored by definition, so the whole object is replaced —
+ * the same wholesale-write discipline as the Brain sections. When discovered
+ * brand values were confirmed via "Use these", the caller passes the accepted
+ * `brand` wrapper too, so the discovery keeps its provenance (source stays
+ * 'website') while gaining owner authority.
+ */
+export async function saveBrandKit(
+  businessId: string,
+  kit: NonNullable<Business['brandKit']>,
+  acceptedBrand?: Business['brand'],
+): Promise<void> {
+  const now = Date.now()
+  const patch: Record<string, unknown> = {
+    brandKit: { ...kit, updatedAt: now },
+    updatedAt: now,
+  }
+  if (acceptedBrand) patch.brand = acceptedBrand
+  await updateDoc(businessDoc(businessId), patch)
+}
+
+/**
  * Saves the product list.
  *
  * Products the owner touched are marked confirmed so a later analysis leaves

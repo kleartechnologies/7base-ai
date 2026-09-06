@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Globe, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BusinessBrain } from '@/features/business/BusinessBrain'
 import { CompletionCard } from '@/features/business/components/CompletionCard'
+import { BrandIdentityTab } from '@/features/business/brand/BrandIdentityTab'
 import { ROUTES } from '@/app/routes/paths'
 import { useAuth } from '@/hooks/useAuth'
 import { useI18n } from '@/hooks/useI18n'
 import { observeBusiness } from '@/services/business/business.service'
+import { cn } from '@/lib/utils'
 import type { Business } from '@/types'
 
 /**
@@ -20,8 +22,28 @@ import type { Business } from '@/types'
  */
 export default function BusinessPage() {
   const { t, language } = useI18n()
-  const { business: initial, refresh } = useAuth()
+  const { user, business: initial, refresh } = useAuth()
   const businessId = initial?.id ?? null
+
+  // Which face of the page is showing is the route's call: /business is the
+  // Profile, /business/brand the Brand Identity — one page, two tabs, no new
+  // sidebar item.
+  const location = useLocation()
+  const navigate = useNavigate()
+  const onBrandTab = location.pathname === ROUTES.businessBrand
+
+  // Leaving the brand tab mid-edit asks first. A ref, not state — the guard
+  // only reads it at the moment of switching.
+  const brandDirtyRef = useRef(false)
+  const handleBrandDirty = useCallback((dirty: boolean) => {
+    brandDirtyRef.current = dirty
+  }, [])
+
+  const switchTab = (path: string) => {
+    if (location.pathname === path) return
+    if (onBrandTab && brandDirtyRef.current && !window.confirm(t('brand.unsavedGuard'))) return
+    navigate(path)
+  }
 
   // Live, because the backend writes into this document too. The snapshot is
   // tagged with the id it belongs to so a business switch never shows the
@@ -70,7 +92,7 @@ export default function BusinessPage() {
             {t('business.pageIntro')}
           </p>
 
-          {website ? (
+          {website && !onBrandTab ? (
             <div className="mt-5 flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <Globe className="size-3.5" aria-hidden />
@@ -96,17 +118,73 @@ export default function BusinessPage() {
           ) : null}
         </header>
 
-        <div className="mb-4">
-          {/* "Help EVA finish your profile" — shown only while EVA still has
-              questions worth asking. The persistent home of profile
-              completion, so skipping it during onboarding costs nothing. */}
-          <CompletionCard business={business} onSaved={refresh} />
-        </div>
+        <nav
+          role="tablist"
+          aria-label={business.name}
+          className="mb-6 flex items-center gap-1 border-b border-border"
+        >
+          <TabButton
+            selected={!onBrandTab}
+            label={t('business.tabProfile')}
+            onClick={() => switchTab(ROUTES.business)}
+          />
+          <TabButton
+            selected={onBrandTab}
+            label={t('brand.tabTitle')}
+            onClick={() => switchTab(ROUTES.businessBrand)}
+          />
+        </nav>
 
-        {/* onSaved keeps the provider's one-shot copy in step with edits made
-            here, so the rest of the app (chat context, guards) sees them too. */}
-        <BusinessBrain business={business} onSaved={refresh} />
+        {onBrandTab && user ? (
+          <BrandIdentityTab
+            business={business}
+            ownerId={user.uid}
+            onSaved={refresh}
+            onDirtyChange={handleBrandDirty}
+          />
+        ) : (
+          <>
+            <div className="mb-4">
+              {/* "Help EVA finish your profile" — shown only while EVA still
+                  has questions worth asking. The persistent home of profile
+                  completion, so skipping it during onboarding costs nothing. */}
+              <CompletionCard business={business} onSaved={refresh} />
+            </div>
+
+            {/* onSaved keeps the provider's one-shot copy in step with edits
+                made here, so the rest of the app (chat context, guards) sees
+                them too. */}
+            <BusinessBrain business={business} onSaved={refresh} />
+          </>
+        )}
       </div>
     </div>
+  )
+}
+
+function TabButton({
+  selected,
+  label,
+  onClick,
+}: {
+  selected: boolean
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      onClick={onClick}
+      className={cn(
+        '-mb-px border-b-2 px-3 py-2.5 text-[13.5px] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+        selected
+          ? 'border-foreground font-medium text-foreground'
+          : 'border-transparent text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {label}
+    </button>
   )
 }

@@ -110,6 +110,20 @@ export interface CreativeStyle {
    * logo is composited onto the poster client-side, never by the image model.
    */
   logoAssetId?: EntityId | null
+  /**
+   * Which parts of the owner's Brand Identity fed this creative. Server-set
+   * at generation time; absent on creatives made before Phase 7D (the applied
+   * panel simply does not render for those).
+   */
+  brandApplied?: BrandAppliedSummary | null
+}
+
+/** What the read-only "Brand Identity — applied" panel renders from. */
+export interface BrandAppliedSummary {
+  logo: boolean
+  colors: boolean
+  typography: boolean
+  style: boolean
 }
 
 export interface CreativeRender {

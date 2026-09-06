@@ -52,7 +52,8 @@ export function posterSpec(
     headingFont: style?.headingFont
       ? `'${style.headingFont}', ${HEADING_STACK}`
       : HEADING_STACK,
-    bodyFont: HEADING_STACK,
+    // The owner's body font (Brand Identity), with the same graceful stack.
+    bodyFont: style?.bodyFont ? `'${style.bodyFont}', ${HEADING_STACK}` : HEADING_STACK,
     scrimFraction: 0.55,
   }
 }

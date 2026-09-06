@@ -14,6 +14,8 @@ export const ROUTES = {
   calendar: '/calendar',
   results: '/results',
   business: '/business',
+  /** The Business page's second tab — same page component, no new sidebar item. */
+  businessBrand: '/business/brand',
   settings: '/settings',
 } as const
 

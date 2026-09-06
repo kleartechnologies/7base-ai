@@ -31,6 +31,7 @@ import {
   selectCreativeAsset,
   selectLogoAsset,
 } from './assets'
+import { brandAppliedSummary, brandStyleLine, readBrandKit, resolveBrandStyle } from './brand'
 import { buildGroundingCorpus, draftCreativeCopyFromCampaign, mergeCopy } from './draft'
 import { generateCreativeImage } from './image'
 import {
@@ -129,7 +130,10 @@ export const creativeGenerateFromCampaign = onCall(
       // photo and a generated one.
       const assets = await listEligibleAssets(campaign.businessId, uid)
       const productAsset = selectCreativeAsset(assets, campaign, business?.products ?? [])
-      const logoAsset = selectLogoAsset(assets)
+      // The official Brand Identity logo (read from the business document,
+      // never the request) outranks the type-based heuristic.
+      const brandKit = readBrandKit(business)
+      const logoAsset = selectLogoAsset(assets, brandKit?.logoAssetId ?? null)
 
       // 1. Copy: deterministic draft first, fast-tier wording on top.
       let draft = draftCreativeCopyFromCampaign(campaign)
@@ -150,6 +154,7 @@ export const creativeGenerateFromCampaign = onCall(
           input: buildCopyInput({
             businessName: business?.name ?? null,
             brandVoice: business?.brand?.value.voice ?? null,
+            brandStyle: brandStyleLine(business),
             campaign,
             format,
             directives: [],
@@ -271,14 +276,22 @@ export const creativeGenerateFromCampaign = onCall(
         }
       }
 
-      // 4. Persist. The brand's stored style rides along for the renderer.
-      const brand = business?.brand?.value ?? null
+      // 4. Persist. Brand Identity first, the discovered brand as fallback —
+      // resolved from the business document, so the client cannot inject
+      // brand values through the request. `brandApplied` records honestly
+      // which parts the owner's kit actually contributed.
+      const brandStyle = resolveBrandStyle(business)
       const style: CreativeStyle = {
-        palette: brand && brand.colors.length > 0 ? brand.colors.map((c) => c.hex) : null,
-        headingFont: brand?.fontFamily ?? null,
-        bodyFont: null,
+        palette: brandStyle.palette,
+        headingFont: brandStyle.headingFont,
+        bodyFont: brandStyle.bodyFont,
         logoStoragePath: logo?.storagePath ?? null,
         logoAssetId: logo?.assetId ?? null,
+        brandApplied: brandAppliedSummary(business, {
+          logoFromKit: logo !== null && logo.assetId === brandKit?.logoAssetId,
+          kitColors: brandStyle.kitColors,
+          kitTypography: brandStyle.kitTypography,
+        }),
       }
       const built = buildStoredCreative({
         ownerId: uid,

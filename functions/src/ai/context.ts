@@ -1,4 +1,5 @@
 import type { Discovered, Product, StoredBusiness } from '../lib/business.types'
+import { readBrandKit } from '../creative/brand'
 
 /**
  * Turns a stored Business Brain into prompt context.
@@ -98,6 +99,40 @@ export function buildBusinessContext(business: StoredBusiness | null): string | 
     nested.push('Visual style', brand.visualStyle)
     nested.pushList('Key messages', brand.keyMessages)
   })
+
+  // Brand Identity is owner-set by construction (only the owner can write
+  // it), so it carries the strongest provenance label without a wrapper.
+  const brandKit = readBrandKit(business)
+  if (
+    brandKit &&
+    (brandKit.logoAssetId ||
+      brandKit.colors.primary ||
+      brandKit.typography.heading ||
+      brandKit.styleTraits.length > 0 ||
+      brandKit.notes)
+  ) {
+    lines.push('')
+    lines.push(
+      'BRAND IDENTITY — SET BY THE OWNER. This is their approved visual identity; keep creatives on-brand with it by default. If they ask for something that clearly conflicts, keep the brand unless they confirm a one-off exception.',
+    )
+    if (brandKit.logoAssetId) {
+      lines.push(`${SECTION_INDENT}- Official logo: set (used on their creatives automatically)`)
+    }
+    const colours = [
+      brandKit.colors.primary && `primary ${brandKit.colors.primary}`,
+      brandKit.colors.secondary && `secondary ${brandKit.colors.secondary}`,
+      brandKit.colors.accent && `accent ${brandKit.colors.accent}`,
+    ].filter(Boolean)
+    if (colours.length > 0) lines.push(`${SECTION_INDENT}- Brand colours: ${colours.join(', ')}`)
+    const fonts = [
+      brandKit.typography.heading && `headings ${brandKit.typography.heading}`,
+      brandKit.typography.body && `body ${brandKit.typography.body}`,
+    ].filter(Boolean)
+    if (fonts.length > 0) lines.push(`${SECTION_INDENT}- Typography: ${fonts.join(', ')}`)
+    nested.pushList('Style', brandKit.styleTraits)
+    nested.push('Style notes', brandKit.styleNotes)
+    nested.push('Brand notes', brandKit.notes)
+  }
 
   section(lines, 'MARKETING', business.marketing, (marketing) => {
     nested.push('Positioning', marketing.positioning)

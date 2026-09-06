@@ -90,6 +90,16 @@ export interface CreativeStyle {
    * the poster client-side and is never sent to the image model.
    */
   logoAssetId?: string | null
+  /**
+   * Which parts of the owner's Brand Identity fed this creative. Server-set
+   * at generation time; absent on creatives made before Phase 7D.
+   */
+  brandApplied?: {
+    logo: boolean
+    colors: boolean
+    typography: boolean
+    style: boolean
+  } | null
 }
 
 /**

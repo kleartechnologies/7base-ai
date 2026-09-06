@@ -62,6 +62,9 @@ const routes: RouteObject[] = [
           { path: 'calendar', element: withSuspense(<CalendarPage />) },
           { path: 'results', element: withSuspense(<ResultsPage />) },
           { path: 'business', element: withSuspense(<BusinessPage />) },
+          // Same element as /business — the route selects the Brand Identity
+          // tab, mirroring the chat/:conversationId pattern.
+          { path: 'business/brand', element: withSuspense(<BusinessPage />) },
           { path: 'settings', element: withSuspense(<SettingsPage />) },
         ],
       },
