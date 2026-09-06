@@ -61,7 +61,7 @@ export default function BusinessPage() {
 
   if (!business) {
     return (
-      <div className="h-full overflow-y-auto">
+      <div className="relative h-full overflow-y-auto">
         <div className="mx-auto w-full max-w-lg px-8 py-20 text-center">
           <Globe className="mx-auto size-5 text-muted-foreground/60" aria-hidden />
           <h1 className="mt-4 text-[18px] font-semibold text-foreground">
@@ -82,7 +82,13 @@ export default function BusinessPage() {
   const analysedAt = business.discovery.completedAt
 
   return (
-    <div className="h-full overflow-y-auto">
+    // `relative` makes this scroller the containing block for absolutely
+    // positioned descendants — the screen-reader-only file input in the logo
+    // section among them. Without it their containing block is the document,
+    // they escape the shell's overflow clip, and a tall page grows the
+    // document behind the shell: the wheel chains to it once the inner
+    // scroller ends and the whole shell drifts up.
+    <div className="relative h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-2xl px-8 py-12">
         <header className="mb-8">
           <h1 className="text-[22px] font-semibold tracking-[-0.015em] text-foreground">

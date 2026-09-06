@@ -111,3 +111,56 @@ describe('client surface', () => {
     expect(logo).not.toContain('deleteAsset')
   })
 })
+
+describe('Brand Identity stays a normal scrolling page (Phase 7E layout regression)', () => {
+  const businessPage = read('../../../pages/BusinessPage.tsx')
+  const tab = read('./BrandIdentityTab.tsx')
+  const logoSection = read('./LogoSection.tsx')
+  const brandFiles = [
+    tab,
+    logoSection,
+    read('./BusinessSourcesCard.tsx'),
+    read('./DetectedBrandCard.tsx'),
+    read('./BrandStatusCard.tsx'),
+    read('./BrandBoard.tsx'),
+  ]
+
+  it('the page scroller is the containing block for positioned descendants', () => {
+    // The logo section hides its file input with `sr-only`, which is
+    // `position: absolute`. Without a positioned scroller the input's
+    // containing block is the document: it escapes the shell's overflow
+    // clip, and once Business sources + the detected card push it below the
+    // fold the document grows behind the shell and the wheel drags the whole
+    // app up. `relative` on the scroller keeps it inside the page.
+    expect(logoSection).toMatch(/<input[\s\S]*?className="sr-only"/)
+    const scrollers = businessPage.match(/className="[^"]*overflow-y-auto[^"]*"/g) ?? []
+    expect(scrollers.length).toBeGreaterThan(0)
+    for (const scroller of scrollers) expect(scroller).toContain('relative')
+  })
+
+  it('renders every section, the preview and the sources card in one flow', () => {
+    for (const part of ['logo', 'colors', 'typography', 'style']) {
+      expect(tab).toContain(`id={SECTION_DOM_IDS.${part}}`)
+    }
+    expect(tab).toContain('<BrandBoard ')
+    expect(tab).toContain('<BusinessSourcesCard')
+    expect(tab).toContain('<DetectedBrandCard')
+  })
+
+  it('no brand component opens a viewport-height wrapper or a nested scroller', () => {
+    for (const source of brandFiles) {
+      expect(source).not.toMatch(/\b(min-)?h-(screen|svh|dvh|lvh)\b/)
+      expect(source).not.toMatch(/100(d|s|l)?vh/)
+      expect(source).not.toMatch(/overflow-y-(auto|scroll)/)
+      expect(source).not.toMatch(/\bfixed\b(?! light surface)/)
+    }
+  })
+
+  it('the only sticky element is the phone save bar, and it goes static on desktop', () => {
+    const sticky = tab.match(/className="[^"]*\bsticky\b[^"]*"/g) ?? []
+    expect(sticky).toHaveLength(1)
+    expect(sticky[0]).toContain('bottom-0')
+    expect(sticky[0]).toContain('sm:static')
+    for (const source of brandFiles.filter((s) => s !== tab)) expect(source).not.toMatch(/\bsticky\b/)
+  })
+})
