@@ -118,3 +118,26 @@ export async function findLatestEditableCampaign(
 
   return editable[0] ?? null
 }
+
+/**
+ * Every draft or ready campaign of a business, newest first — the pool EVA
+ * chooses from when the owner asks for posters in a thread that has no
+ * campaign of its own (Phase 7F). Equality-only query, sorted in memory,
+ * like the finder above; the owner filter is what keeps another account's
+ * campaigns unreachable even with a guessed business id.
+ */
+export async function listEditableCampaignsForBusiness(
+  businessId: string,
+  ownerId: string,
+): Promise<{ id: string; campaign: StoredCampaign }[]> {
+  const snapshot = await db
+    .collection(COLLECTIONS.campaigns)
+    .where('businessId', '==', businessId)
+    .where('ownerId', '==', ownerId)
+    .get()
+
+  return snapshot.docs
+    .map((doc) => ({ id: doc.id, campaign: doc.data() as StoredCampaign }))
+    .filter((entry) => entry.campaign.status === 'draft' || entry.campaign.status === 'ready')
+    .sort((a, b) => b.campaign.updatedAt - a.campaign.updatedAt)
+}

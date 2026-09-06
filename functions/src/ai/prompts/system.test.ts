@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BM_PREFERENCE_NOTE,
   buildChatSystemPrompt,
+  buildPendingOfferNote,
   CURRENT_CAPABILITIES,
   EVA_IDENTITY,
 } from './system'
@@ -126,5 +127,32 @@ describe('buildChatSystemPrompt composition', () => {
     expect(withBrain).toContain('Using what you know about this business')
     expect(withBrain).toContain('What you know about this business:\n- Name: Warung Uji')
     expect(withBrain.endsWith(CURRENT_CAPABILITIES)).toBe(true)
+  })
+})
+
+describe('Phase 7F — action-first honesty', () => {
+  it('tells EVA that describing a poster does not create it, and to offer with a number then wait', () => {
+    expect(CURRENT_CAPABILITIES).toContain('You do not create a poster by describing it')
+    expect(CURRENT_CAPABILITIES).toContain('Want me to create the 3 posters?')
+    expect(CURRENT_CAPABILITIES).toContain('Then stop and wait')
+    expect(CURRENT_CAPABILITIES).toContain('never say the posters are ready, done or created')
+    // The go-ahead is acted on by the system: no double confirmation.
+    expect(CURRENT_CAPABILITIES).toContain('You never need to ask them to confirm twice')
+  })
+
+  it('appends the pending-offer note only while an offer is open, after the capability block', () => {
+    const note = buildPendingOfferNote('to create 3 poster(s) for the campaign "Raya Promo"')
+    expect(note).toContain('to create 3 poster(s) for the campaign "Raya Promo"')
+    expect(note).toContain('Answer their latest message first, then re-offer')
+    expect(note).toContain('Do not act on it yourself')
+
+    const withOffer = buildChatSystemPrompt(null, {
+      pendingOffer: 'to create 3 poster(s) for the campaign "Raya Promo"',
+    })
+    expect(withOffer.endsWith(note)).toBe(true)
+    expect(withOffer.indexOf(CURRENT_CAPABILITIES)).toBeLessThan(withOffer.indexOf(note))
+
+    expect(buildChatSystemPrompt(null, { pendingOffer: null })).not.toContain('An offer you made')
+    expect(buildChatSystemPrompt(null)).not.toContain('An offer you made')
   })
 })

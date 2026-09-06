@@ -18,14 +18,16 @@ describe('backend streaming wiring', () => {
 
   it('streams only when the client asked, through the callable’s own channel', () => {
     expect(callable).toContain('request.acceptsStreaming && response')
-    expect(callable).toContain("response.sendChunk({ type: 'delta', text: delta })")
+    expect(callable).toContain("sendChunk({ type: 'delta', text: delta })")
+    // Phase 7F: action progress rides the same channel, same guard.
+    expect(callable).toContain("sendChunk({ type: 'progress', steps })")
   })
 
   it('a disconnected client cannot fail or stall the reply', () => {
     // sendChunk failures are swallowed and further sends stop; generation,
     // persistence and settlement continue regardless.
     expect(callable).toContain('clientGone = true')
-    expect(callable).toContain('if (clientGone) return')
+    expect(callable).toContain('if (!streaming || clientGone) return')
   })
 
   it('the streamed reply is still persisted server-side through the same writer', () => {
@@ -53,14 +55,17 @@ describe('client streaming wiring', () => {
     expect(client).toContain('CALLABLES.assistantReply')
   })
 
-  it('forwards only well-formed delta chunks', () => {
+  it('forwards only well-formed delta and progress chunks', () => {
     expect(client).toContain("chunk?.type === 'delta' && typeof chunk.text === 'string'")
+    expect(client).toContain("chunk?.type === 'progress' && Array.isArray(chunk.steps)")
   })
 
   it('sendMessage routes deltas through the streaming call', () => {
     const service = read('../../services/chat/chat.service.ts')
     expect(service).toContain('onAssistantDelta?: (text: string) => void')
-    expect(service).toContain('streamAssistantReply(replyRequest, onAssistantDelta)')
+    expect(service).toContain(
+      'streamAssistantReply(replyRequest, onAssistantDelta, onAssistantProgress)',
+    )
   })
 
   it('the browser still has no OpenAI client and no key', () => {
@@ -103,6 +108,7 @@ describe('useConversation streaming state', () => {
 describe('chat page streaming UI', () => {
   const page = read('./ChatPage.tsx')
   const bubble = read('./components/StreamingMessage.tsx')
+  const markdown = read('./components/Markdown.tsx')
 
   it('shows thinking until first text, then the growing reply', () => {
     expect(page).toContain('<StreamingMessage text={streamingText} />')
@@ -118,8 +124,10 @@ describe('chat page streaming UI', () => {
   })
 
   it('the streaming bubble matches a finished text block, plus a quiet cursor', () => {
-    // Same typography as BlockRenderer's text case — no jump on completion.
-    expect(bubble).toContain('whitespace-pre-wrap text-[15px] leading-[1.65]')
+    // Same renderer and typography as a settled text block — no jump on
+    // completion. (Phase 7F: both go through the Markdown component.)
+    expect(bubble).toContain('<Markdown text={text} trailing={<StreamingCursor />} />')
+    expect(markdown).toContain('whitespace-pre-wrap text-[15px] leading-[1.65]')
     // The cursor is decorative and calm: hidden from AT, still under reduced
     // motion, fixed-size so it cannot change line height.
     expect(bubble).toContain('aria-hidden')

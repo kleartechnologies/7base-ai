@@ -17,9 +17,12 @@ import { internal, invalidArgument, notConfigured } from '../lib/errors'
 import { COLLECTIONS, db, FieldValue } from '../lib/firebase'
 import { withOperationLock } from '../lib/operationLock'
 import type {
+  ActionProgressStep,
+  ActionProposalBlock,
   AssistantReplyRequest,
   AssistantReplyResponse,
   AssistantReplyStreamChunk,
+  CreativeSetBlock,
   MessageBlock,
   MessageMeta,
   StoredMessage,
@@ -37,6 +40,16 @@ import { buildBusinessContext } from '../ai/context'
 import { buildChatSystemPrompt } from '../ai/prompts/system'
 import { CHAT_HISTORY_MAX_CHARS, trimTurnsToCharBudget } from '../usage/limits'
 import { buildUnavailableNote, resolveAttachmentInput } from './attachments'
+import {
+  decideChatAction,
+  detectAssistantOffer,
+  extractOfferBrief,
+  normalise,
+  pendingProposal,
+  readAffirmation,
+} from './actions/decide'
+import { describeProposal, proposeFromOffer, runChatAction } from './actions/execute'
+import { detectReplyLanguage, presentProposal } from './actions/present'
 import {
   applyCampaignPatch,
   generateCampaignEdit,
@@ -94,7 +107,10 @@ const MARKETING_CONTEXT_TURNS = 6
  * which means a tampered client cannot inject history, impersonate another
  * business, or steer the system prompt.
  *
- * Two paths out of one door:
+ * Three paths out of one door:
+ *  - an action (Phase 7F) → a go-ahead on a proposal EVA made, a pick among
+ *    offered campaigns, or an outright request for materials runs the
+ *    existing creative/campaign workflows and answers with the result
  *  - conversation → the fast chat tier, as before
  *  - a marketing goal → the marketing intelligence engine on the reasoning
  *    tier, which persists a structured recommendation and answers with a
@@ -257,7 +273,66 @@ export const chatAssistantReply = onCall(
 
     const intent = detectIntent(latest.text, { afterRecommendation })
 
+    // Phase 7F — action first. A proposal EVA made on her latest turn plus a
+    // go-ahead ("okay go design", "yes, make them"), a pick among offered
+    // campaigns, or an outright request for materials is carried out here,
+    // before any other route: the reply is the result, not a promise. The
+    // decision reads only the stored thread — never the request payload —
+    // and the executor re-checks ownership of every id it touches.
+    const startedAt = Date.now()
+    const language = detectReplyLanguage(latest.text, preferredLanguage)
+    const proposal = pendingProposal(lastAssistant ?? null)
+    const declined = proposal !== null && readAffirmation(latest.text) === 'no'
+    const decision = decideChatAction({
+      text: latest.text,
+      previousAssistant: lastAssistant ?? null,
+    })
+
+    // Live delivery, when the client called with `.stream()`: text deltas
+    // as the model produces them, progress steps as an action advances.
+    // sendChunk is fire-and-forget — a client that disconnects mid-reply
+    // must not stall or fail work that is billed and persisted regardless.
+    let clientGone = false
+    const streaming = request.acceptsStreaming && response ? response : null
+    const sendChunk = (chunk: AssistantReplyStreamChunk) => {
+      if (!streaming || clientGone) return
+      streaming.sendChunk(chunk).catch(() => {
+        clientGone = true
+      })
+    }
+    const sendDelta = streaming ? (delta: string) => sendChunk({ type: 'delta', text: delta }) : undefined
+    const sendProgress = (steps: ActionProgressStep[]) => sendChunk({ type: 'progress', steps })
+
     try {
+      if (decision.type !== 'none') {
+        const outcome =
+          repeatedRequest(decision, stored, lastAssistant, latest.text, language) ??
+          (await runChatAction(decision, {
+            uid,
+            plan,
+            conversationId,
+            businessId,
+            business,
+            language,
+            text: latest.text,
+            startedAt,
+            now: Date.now,
+            onProgress: sendProgress,
+          }))
+        const assistantMessageId = await writeAssistantMessage(
+          outcome.blocks,
+          outcome.plainText,
+          outcome.meta,
+        )
+        logger.info('Chat action handled', {
+          conversationId,
+          decision: decision.type,
+          latencyMs: Date.now() - startedAt,
+          ...outcome.log,
+        })
+        return { conversationId, assistantMessageId }
+      }
+
       // Conversational creative editing. Once marketing materials exist in
       // this thread, a generic edit instruction ("make the headline more
       // premium", "don't mention discounts") targets the *most recent
@@ -416,29 +491,20 @@ export const chatAssistantReply = onCall(
 
       const unavailableNote = buildUnavailableNote(attachmentInput.skipped)
 
-      // Live delivery, when the client asked for it: each text delta is
-      // pushed over the callable's own stream as the model produces it, so
-      // the reply starts rendering before it is finished. sendChunk is
-      // fire-and-forget — a client that disconnects mid-reply must not stall
-      // or fail a generation that is billed and persisted regardless.
-      let clientGone = false
-      const sendDelta =
-        request.acceptsStreaming && response
-          ? (delta: string) => {
-              if (clientGone) return
-              response.sendChunk({ type: 'delta', text: delta }).catch(() => {
-                clientGone = true
-              })
-            }
-          : undefined
+      // An offer still open from EVA's previous turn survives a side
+      // question — she is told to answer, then re-offer — unless the owner
+      // turned it down, in which case it is dropped for good.
+      const carried = proposal && !declined ? proposal : null
 
       const result = await runTask({
         task: 'chat.reply',
         uid,
         plan,
         systemPrompt:
-          buildChatSystemPrompt(buildBusinessContext(business), { preferredLanguage }) +
-          (unavailableNote ?? ''),
+          buildChatSystemPrompt(buildBusinessContext(business), {
+            preferredLanguage,
+            pendingOffer: carried ? describeProposal(carried.action) : null,
+          }) + (unavailableNote ?? ''),
         history:
           attachmentInput.parts.length > 0
             ? [...history.slice(0, -1), { ...latest, parts: attachmentInput.parts }]
@@ -446,8 +512,27 @@ export const chatAssistantReply = onCall(
         onDelta: sendDelta,
       })
 
+      // Closing the loop on the bug this phase exists for: when EVA's own
+      // reply offers to create materials, the offer becomes a proposal on
+      // her turn — resolved server-side against the owner's campaigns — so
+      // the "okay go design" that follows executes instead of being chatted
+      // back at. A fresh offer with a stated count supersedes a carried one;
+      // otherwise the carried proposal keeps its agreed number.
+      const offer = detectAssistantOffer(result.plainText)
+      let attached: ActionProposalBlock | null = null
+      if (offer && (!carried || offer.explicit)) {
+        attached = await proposeFromOffer(
+          { ...offer, brief: extractOfferBrief(result.plainText) },
+          { uid, conversationId, businessId, business, language, text: latest.text },
+        )
+      }
+      if (!attached && carried) attached = carried
+      const blocks: MessageBlock[] = attached
+        ? [...result.blocks, { ...attached, id: `b${result.blocks.length}` }]
+        : result.blocks
+
       const assistantMessageId = await writeAssistantMessage(
-        result.blocks,
+        blocks,
         result.plainText,
         result.meta,
       )
@@ -456,6 +541,8 @@ export const chatAssistantReply = onCall(
         conversationId,
         model: result.meta.model,
         latencyMs: result.meta.latencyMs,
+        proposal: attached ? attached.action.kind : null,
+        proposalCarried: attached !== null && attached === carried,
       })
 
       return { conversationId, assistantMessageId }
@@ -494,6 +581,46 @@ export const chatAssistantReply = onCall(
     }
   },
 )
+
+/**
+ * The same request, word for word, straight after EVA delivered it (a
+ * double send, a client retry after its own deadline) is not a new order.
+ * The posters already made are pointed to and another set is *offered* —
+ * one go-ahead away, never silently duplicated. Applies to outright
+ * requests only: a "yes" to a retry proposal is exactly the go-ahead it
+ * looks like and goes through untouched.
+ */
+function repeatedRequest(
+  decision: Parameters<typeof runChatAction>[0],
+  stored: StoredMessage[],
+  lastAssistant: StoredMessage | undefined,
+  text: string,
+  language: Parameters<typeof presentProposal>[1],
+): Awaited<ReturnType<typeof runChatAction>> | null {
+  if (decision.type !== 'creative_request') return null
+  const lastSet = lastAssistant?.blocks.find(
+    (block): block is CreativeSetBlock => block.type === 'creative_set',
+  )
+  if (!lastSet) return null
+  const previousUser = stored.filter((message) => message.role === 'user').at(-2)
+  if (!previousUser || normalise(previousUser.plainText) !== normalise(text)) return null
+  const presentation = presentProposal(
+    {
+      kind: 'creative.generate',
+      campaignId: lastSet.campaignId,
+      campaignName: lastSet.campaignName,
+      spec: decision.spec,
+    },
+    language,
+    { kind: 'repeat' },
+  )
+  return {
+    blocks: presentation.blocks,
+    plainText: presentation.plainText,
+    meta: null,
+    log: { action: 'creative.generate', repeated: true, campaignId: lastSet.campaignId },
+  }
+}
 
 /** Owner-facing image failure line. Provider internals never surface. */
 const CREATIVE_IMAGE_ERROR_MESSAGE = 'The poster image could not be created.'

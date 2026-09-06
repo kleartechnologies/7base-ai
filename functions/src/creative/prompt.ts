@@ -30,6 +30,7 @@ Fields:
 Rules:
 - Never invent facts: no prices, discounts, percentages, product names, opening hours, addresses or links that are not in the input. The server rejects fields that break this rule, so a made-up "RM9.90" costs you the whole field.
 - OWNER RULES in the input are standing instructions from the owner. They outrank everything else here.
+- SET CONTEXT in the input, when present, places this poster in a set the owner asked for in one go, with the owner's request quoted. Give this poster its own angle within that request: when the request lists distinct concepts or languages, this poster takes the one at its position, in the language named for it; otherwise vary the angle from the other posters. The campaign's facts still bound every claim.
 - Plain, warm, jargon-free language. Malaysian context. Write in the language the campaign's core message and offer are written in — Bahasa Melayu campaigns get Bahasa Melayu poster text and captions; do not translate the owner's wording into English. No hype, no ALL CAPS, no emoji walls (one or two emoji in captions are fine).
 - Return null for any field you cannot write honestly.`
 
@@ -47,6 +48,12 @@ export interface CopyInputParams {
   directives: string[]
   /** True when a real business photo will be used — the brief is then unused. */
   hasRealImage: boolean
+  /**
+   * Phase 7F: this poster's place in a multi-poster chat request ("poster 2
+   * of 3 … the owner asked: …"), built server-side by the chat action. Null
+   * for the button path and single posters.
+   */
+  setContext?: string | null
 }
 
 export function buildCopyInput(params: CopyInputParams): string {
@@ -77,6 +84,9 @@ export function buildCopyInput(params: CopyInputParams): string {
   ]
   if (params.directives.length > 0) {
     lines.push(`OWNER RULES (always follow):\n${params.directives.map((d) => `- ${d}`).join('\n')}`)
+  }
+  if (params.setContext) {
+    lines.push(`SET CONTEXT: ${params.setContext}`)
   }
   return lines.join('\n')
 }

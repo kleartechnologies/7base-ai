@@ -130,11 +130,23 @@ export function selectCreativeAsset(
   assets: AssetWithId[],
   campaign: StoredCampaign,
   products: Product[],
+  options: {
+    /**
+     * Phase 7F: assets already on earlier posters of the same set. They are
+     * passed over so a set rotates through the owner's photos — but only
+     * while another eligible photo exists; a business with one photo still
+     * gets that photo on every poster rather than a generated visual.
+     */
+    avoidAssetIds?: readonly string[]
+  } = {},
 ): AssetWithId | null {
-  const candidates = assets.filter(
+  const eligible = assets.filter(
     ({ asset }) => asset.type === 'product' || asset.type === 'photo',
   )
-  if (candidates.length === 0) return null
+  if (eligible.length === 0) return null
+  const avoid = new Set(options.avoidAssetIds ?? [])
+  const fresh = eligible.filter(({ id }) => !avoid.has(id))
+  const candidates = fresh.length > 0 ? fresh : eligible
 
   const campaignText = [
     campaign.offer?.description,

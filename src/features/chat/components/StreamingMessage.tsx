@@ -1,4 +1,5 @@
 import { EvaTurn } from './EvaTurn'
+import { Markdown } from './Markdown'
 
 /**
  * EVA's reply while it is still being composed.
@@ -18,14 +19,17 @@ export function StreamingMessage({ text }: { text: string }) {
   return (
     <div aria-live="off">
       <EvaTurn>
-        <p className="whitespace-pre-wrap text-[15px] leading-[1.65] text-foreground">
-          {text}
-          <span
-            aria-hidden
-            className="ml-0.5 inline-block h-[1em] w-0.5 translate-y-[0.15em] animate-pulse rounded-sm bg-muted-foreground/70 motion-reduce:animate-none"
-          />
-        </p>
+        <Markdown text={text} trailing={<StreamingCursor />} />
       </EvaTurn>
     </div>
+  )
+}
+
+function StreamingCursor() {
+  return (
+    <span
+      aria-hidden
+      className="ml-0.5 inline-block h-[1em] w-0.5 translate-y-[0.15em] animate-pulse rounded-sm bg-muted-foreground/70 motion-reduce:animate-none"
+    />
   )
 }

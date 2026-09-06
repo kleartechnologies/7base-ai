@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { useAuth } from '@/hooks/useAuth'
 import { useI18n } from '@/hooks/useI18n'
+import { ChatActionsContext, type ChatActions } from './chatActionsContext'
 import { useConversation } from './useConversation'
+import { ActionProgress } from './components/ActionProgress'
 import { ChatComposer } from './components/ChatComposer'
 import { EmptyState, ExploreGrid, SuggestionChips } from './components/EmptyState'
 import { MessageBubble } from './components/MessageBubble'
@@ -33,9 +35,14 @@ export default function ChatPage() {
     [navigate],
   )
 
-  const { messages, loading, awaitingReply, streamingText, error, send } = useConversation(
-    conversationId ?? null,
-    handleConversationCreated,
+  const { messages, loading, awaitingReply, streamingText, progress, error, send } =
+    useConversation(conversationId ?? null, handleConversationCreated)
+
+  // A card's button sends an ordinary chat message on the owner's behalf —
+  // the same path as typing it. The server decides what it meant.
+  const chatActions = useMemo<ChatActions>(
+    () => ({ sendQuickReply: (text) => void send(text), busy: awaitingReply }),
+    [send, awaitingReply],
   )
 
   // Opening a thread jumps to the newest message. After that, new content only
@@ -59,7 +66,7 @@ export default function ChatPage() {
     if (messages.length > 0) {
       scrolledThreadRef.current = threadKey
     }
-  }, [conversationId, messages.length, awaitingReply, streamingText?.length])
+  }, [conversationId, messages.length, awaitingReply, streamingText?.length, progress?.length])
 
   const isEmpty = !loading && messages.length === 0
 
@@ -88,19 +95,28 @@ export default function ChatPage() {
       ) : (
         <>
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-3xl space-y-7 px-6 py-8">
-              {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))}
-              {streamingText ? (
-                // EVA's reply, rendered as it is generated. Swapped for the
-                // stored message in the same render the snapshot delivers it.
-                <StreamingMessage text={streamingText} />
-              ) : awaitingReply ? (
-                <ThinkingIndicator />
-              ) : null}
-              <div ref={bottomRef} />
-            </div>
+            <ChatActionsContext.Provider value={chatActions}>
+              <div className="mx-auto w-full max-w-3xl space-y-7 px-6 py-8">
+                {messages.map((message, index) => (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    isLatest={index === messages.length - 1}
+                  />
+                ))}
+                {streamingText ? (
+                  // EVA's reply, rendered as it is generated. Swapped for the
+                  // stored message in the same render the snapshot delivers it.
+                  <StreamingMessage text={streamingText} />
+                ) : progress && progress.length > 0 ? (
+                  // EVA doing the work: the steps of an action, as reported.
+                  <ActionProgress steps={progress} />
+                ) : awaitingReply ? (
+                  <ThinkingIndicator />
+                ) : null}
+                <div ref={bottomRef} />
+              </div>
+            </ChatActionsContext.Provider>
           </div>
 
           <div className="shrink-0 px-6 pb-5">

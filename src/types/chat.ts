@@ -59,6 +59,8 @@ export type MessageBlock =
   | CampaignCardBlock
   | CreativePreviewBlock
   | AttachmentBlock
+  | ActionProposalBlock
+  | CreativeSetBlock
 
 export interface BlockBase {
   id: string
@@ -258,4 +260,75 @@ export interface PendingMessage {
   conversationId: EntityId
   role: 'assistant'
   createdAt: Millis
+}
+
+/* --- Phase 7F: EVA actions ------------------------------------------------- */
+
+/**
+ * What one request for materials asks for. Mirrors functions/src/lib/types.ts.
+ * `positions` are the slots of the set this request covers — a retry after a
+ * partial failure carries only the missing ones — and `size` is the whole
+ * set, so "2 of the 3" stays honest.
+ */
+export interface CreativeRequestSpec {
+  format: 'square_post' | 'portrait_post'
+  /** The owner's words, or the plan they agreed to — carried into the copy. */
+  brief: string | null
+  positions: number[]
+  size: number
+}
+
+/**
+ * An action EVA offered and is waiting on. Written only by the backend, on
+ * her own turn; the client never composes one. Saying yes sends an ordinary
+ * chat message — the server decides what the proposal meant and re-checks
+ * ownership of every id in it.
+ */
+export type ProposedAction =
+  | { kind: 'creative.generate'; campaignId: EntityId; campaignName: string; spec: CreativeRequestSpec }
+  | { kind: 'campaign.create'; goal: string; then: CreativeRequestSpec | null }
+  | { kind: 'campaign.choose'; choices: { campaignId: EntityId; name: string }[]; then: CreativeRequestSpec }
+
+export interface ActionProposalBlock extends BlockBase {
+  type: 'action_proposal'
+  action: ProposedAction
+  /** The go-ahead button's label, in the reply's language. */
+  confirmLabel: string
+}
+
+/** One poster of a set — the same render fields as a creative preview. */
+export interface CreativeSetItem {
+  creativeId: EntityId
+  position: number
+  name: string
+  format: 'square_post' | 'portrait_post'
+  headline: string | null
+  subheadline: string | null
+  callToAction: string | null
+  offerText: string | null
+  image: {
+    storagePath: string
+    source: 'upload' | 'generated' | 'stock'
+    altText: string | null
+  } | null
+  imageFailed: boolean
+}
+
+/** Several posters created in one go; the Creative page holds the full objects. */
+export interface CreativeSetBlock extends BlockBase {
+  type: 'creative_set'
+  campaignId: EntityId
+  campaignName: string
+  /** How many were asked for — the card says "2 of 3" when fewer arrived. */
+  requested: number
+  items: CreativeSetItem[]
+}
+
+/** A step of an action in flight, streamed while EVA works. */
+export interface ActionProgressStep {
+  key: 'campaign' | 'campaign_create' | 'brand' | 'assets' | 'concepts' | 'poster'
+  state: 'pending' | 'active' | 'done' | 'failed'
+  /** For `poster`: which one of `total`. */
+  index?: number
+  total?: number
 }

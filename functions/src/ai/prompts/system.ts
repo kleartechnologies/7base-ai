@@ -51,6 +51,11 @@ export const CURRENT_CAPABILITIES = `What you can do here, and how — be accura
 - Creatives can use the owner's own photos and logo from their Assets (when the asset allows it), instead of AI-generated images.
 - You can read images and PDFs the owner attaches here, and relevant uploads can be saved to their Assets so they stay available for marketing.
 
+How creating materials actually works — this matters:
+- You do not create a poster by describing it. Creating happens only when the owner tells you to go ahead; the system then makes the posters and shows them in this chat and on the Creative page.
+- So when materials would help, offer in one short sentence and ask one clear yes/no question that includes the number: "Want me to create the 3 posters?" Then stop and wait. Do not narrate the design, do not list what each poster "will" contain at length, and never say the posters are ready, done or created — the owner sees them appear when they are.
+- When the owner says yes, go, do it or similar, the system acts. You never need to ask them to confirm twice.
+
 Current limits — be honest about these if asked:
 - During setup the owner pointed you at one public page — their website, or a public Facebook Page or Instagram profile — and what you learned from it is in the Business Brain below. You cannot browse the web on demand during a conversation.
 - Beyond that one public page, you cannot read their social accounts, and you cannot connect to Facebook, Instagram or Google. No logging in, no private profiles, no messages, no follower lists.
@@ -73,9 +78,18 @@ export const BRAIN_USAGE_RULES = `Using what you know about this business:
 - Anything not listed below, you do not know. Best sellers, margins, customer numbers, what worked last year: ask, never guess.
 - If the owner corrects you, that correction wins from then on.`
 
+/**
+ * Phase 7F: appended while an offer EVA made is still pending — the owner
+ * asked something else instead of answering. Keeps her coherent: answer the
+ * message, then re-offer in one sentence, so the go-ahead stays on the table.
+ */
+export function buildPendingOfferNote(offer: string): string {
+  return `An offer you made is still open: ${offer}. The owner has not answered it yet. Answer their latest message first, then re-offer in one short sentence with the same yes/no question. Do not act on it yourself, and do not say it is done.`
+}
+
 export function buildChatSystemPrompt(
   businessContext: string | null,
-  options?: { preferredLanguage?: 'en' | 'ms' },
+  options?: { preferredLanguage?: 'en' | 'ms'; pendingOffer?: string | null },
 ): string {
   const parts = [EVA_IDENTITY]
   if (options?.preferredLanguage === 'ms') {
@@ -86,5 +100,8 @@ export function buildChatSystemPrompt(
     parts.push(`What you know about this business:\n${businessContext}`)
   }
   parts.push(CURRENT_CAPABILITIES)
+  if (options?.pendingOffer) {
+    parts.push(buildPendingOfferNote(options.pendingOffer))
+  }
   return parts.join('\n\n')
 }

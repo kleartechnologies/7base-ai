@@ -5,6 +5,8 @@ import {
   AiNotConfiguredError,
   AiResponseError,
   runStructuredTask,
+  type StructuredRequest,
+  type StructuredResult,
 } from '../ai/orchestrator'
 import { OPENAI_API_KEY } from '../ai/openai.client'
 import type { StoredCampaign } from '../campaign/store'
@@ -21,6 +23,7 @@ import type {
   RetryCreativeImageResponse,
   StoredMessage,
 } from '../lib/types'
+import type { SubscriptionPlan } from '../config/models'
 import {
   AssetUnavailableError,
   buildAssetImageRef,
@@ -30,10 +33,11 @@ import {
   resolveRetryImage,
   selectCreativeAsset,
   selectLogoAsset,
+  type AssetWithId,
 } from './assets'
 import { brandAppliedSummary, brandStyleLine, readBrandKit, resolveBrandStyle } from './brand'
 import { buildGroundingCorpus, draftCreativeCopyFromCampaign, mergeCopy } from './draft'
-import { generateCreativeImage } from './image'
+import { generateCreativeImage, type GeneratedImage } from './image'
 import {
   buildCreativePresentation,
   buildCreativeRetryPresentation,
@@ -51,6 +55,7 @@ import {
   CreativeValidationError,
   readFormat,
   validateCreativeCopy,
+  type CreativeFormat,
   type CreativeImageRef,
   type CreativeStyle,
 } from './validate'
@@ -112,242 +117,338 @@ export const creativeGenerateFromCampaign = onCall(
     // the ownership checks above.
     return withOperationLock(
       {
-        key: `creative.generate_${uid}_${campaignId}`,
+        key: creativeGenerateLockKey(uid, campaignId),
         ownerId: uid,
         operation: 'creative.generate',
-        busyMessage: 'Materials for this campaign are already being created. Give it a moment.',
+        busyMessage: CREATIVE_GENERATE_BUSY_MESSAGE,
       },
       generateOnce,
     )
 
     async function generateOnce(): Promise<GenerateCreativeResponse> {
-    try {
-      const corpus = buildGroundingCorpus({ campaign, business })
-
-      // The owner's Assets, resolved server-side and scoped to their own
-      // business: the poster photo and the logo are both chosen
-      // deterministically here — the image model never picks between a real
-      // photo and a generated one.
-      const assets = await listEligibleAssets(campaign.businessId, uid)
-      const productAsset = selectCreativeAsset(assets, campaign, business?.products ?? [])
-      // The official Brand Identity logo (read from the business document,
-      // never the request) outranks the type-based heuristic.
-      const brandKit = readBrandKit(business)
-      const logoAsset = selectLogoAsset(assets, brandKit?.logoAssetId ?? null)
-
-      // 1. Copy: deterministic draft first, fast-tier wording on top.
-      let draft = draftCreativeCopyFromCampaign(campaign)
-      let imageBrief: string | null = null
-      let altText: string | null = null
-      let meta: MessageMeta | null = null
-      // True when the AI wording call failed and the deterministic draft
-      // ships as-is. It is still delivered — never blocked — but announced
-      // as draft copy and stored with status 'draft' so the owner reviews it.
-      let copyFellBack = false
-
       try {
-        const copyResult = await runStructuredTask<unknown>({
-          task: 'creative.generate_copy',
+        const result = await generateCreativeForCampaign({
           uid,
           plan,
-          systemPrompt: CREATIVE_COPY_PROMPT,
-          input: buildCopyInput({
-            businessName: business?.name ?? null,
-            brandVoice: business?.brand?.value.voice ?? null,
-            brandStyle: brandStyleLine(business),
-            campaign,
-            format,
-            directives: [],
-            hasRealImage: productAsset !== null,
-          }),
-          schema: {
-            name: CREATIVE_COPY_SCHEMA_NAME,
-            schema: CREATIVE_COPY_SCHEMA as unknown as Record<string, unknown>,
-          },
+          campaignId,
+          campaign,
+          business,
+          format,
+          setContext: null,
+          avoidAssetIds: [],
         })
-        const copy = validateCreativeCopy(copyResult.data, corpus)
-        draft = mergeCopy(draft, copy)
-        imageBrief = copy.imageBrief
-        altText = copy.altText
-        meta = copyResult.meta
-      } catch (copyError) {
-        // Wording is an improvement, not a dependency. The deterministic
-        // draft says only what the campaign already says, and ships.
-        // HttpsError means the usage guardrail blocked the call before any
-        // OpenAI spend — the unworded draft is the graceful degradation.
-        if (
-          copyError instanceof HttpsError ||
-          copyError instanceof AiNotConfiguredError ||
-          copyError instanceof AiServiceError ||
-          copyError instanceof AiResponseError ||
-          copyError instanceof CreativeValidationError
-        ) {
-          copyFellBack = true
-          logger.warn('Creative copy call skipped', { campaignId, reason: copyError.message })
-        } else {
-          throw copyError
+
+        // Announce it in the thread it came from, if that thread exists.
+        const conversationId = await announceInConversation(
+          uid,
+          result.creative.conversationId,
+          buildCreativePresentation(result.creativeId, result.creative, {
+            fallbackCopy: result.copyFellBack,
+          }),
+          result.meta,
+        )
+
+        return {
+          creativeId: result.creativeId,
+          conversationId,
+          imageReady: result.creative.content.image !== null,
         }
+      } catch (error) {
+        // Guardrail and validation HttpsErrors already carry the message the
+        // owner should read; wrapping them in `internal` would swallow it.
+        if (error instanceof HttpsError) throw error
+        throw internal('creativeGenerateFromCampaign', error)
       }
-
-      // 2. Visual: the owner's own photo first, generated only when none
-      // fits. A selected asset is snapshotted into the creative's own
-      // Storage folder — GCS copy, no HTTP fetch — and the image model is
-      // never called for it.
-      let image: CreativeImageRef | null = null
-      let imageError: string | null = null
-
-      if (productAsset) {
-        try {
-          const snapshotPath = await copyAssetToCreativeStorage(
-            productAsset.asset,
-            campaign.businessId,
-          )
-          image = buildAssetImageRef({
-            assetId: productAsset.id,
-            asset: productAsset.asset,
-            storagePath: snapshotPath,
-            altText,
-          })
-        } catch (copyError) {
-          logger.warn('Asset snapshot failed; falling back to generation', {
-            campaignId,
-            assetId: productAsset.id,
-            reason: copyError instanceof Error ? copyError.message : 'unknown',
-          })
-        }
-      }
-
-      if (!image) {
-        const campaignBrief = [campaign.offer?.description, campaign.keyMessage, campaign.positioning]
-          .filter(Boolean)
-          .join('. ')
-        const brief = imageBrief ?? (campaignBrief || campaign.name)
-        try {
-          const generated = await generateCreativeImage({
-            businessId: campaign.businessId,
-            brief,
-            altText,
-            format,
-            business,
-            uid,
-            plan,
-          })
-          image = generated.image
-          meta = meta ?? generated.meta
-        } catch (imageErrorRaw) {
-          // A guardrail block (HttpsError) carries the sentence the owner
-          // should read — "today's image-generation limit" beats a generic
-          // failure line, and the copy work already done still ships.
-          if (imageErrorRaw instanceof HttpsError) {
-            logger.warn('Creative image generation blocked', { campaignId })
-            imageError = imageErrorRaw.message
-          } else if (
-            imageErrorRaw instanceof AiNotConfiguredError ||
-            imageErrorRaw instanceof AiServiceError ||
-            imageErrorRaw instanceof AiResponseError
-          ) {
-            logger.warn('Creative image generation failed', {
-              campaignId,
-              reason: imageErrorRaw.message,
-            })
-            imageError = IMAGE_ERROR_MESSAGE
-          } else {
-            throw imageErrorRaw
-          }
-        }
-      }
-
-      // 3. Logo: same deterministic path — snapshotted for the client-side
-      // compositor, never sent to (or recreated by) the image model. A logo
-      // failure only costs the logo, never the poster.
-      let logo: { assetId: string; storagePath: string } | null = null
-      if (logoAsset) {
-        try {
-          logo = {
-            assetId: logoAsset.id,
-            storagePath: await copyAssetToCreativeStorage(logoAsset.asset, campaign.businessId),
-          }
-        } catch (logoError) {
-          logger.warn('Logo snapshot failed; poster ships without a logo', {
-            campaignId,
-            assetId: logoAsset.id,
-            reason: logoError instanceof Error ? logoError.message : 'unknown',
-          })
-        }
-      }
-
-      // 4. Persist. Brand Identity first, the discovered brand as fallback —
-      // resolved from the business document, so the client cannot inject
-      // brand values through the request. `brandApplied` records honestly
-      // which parts the owner's kit actually contributed.
-      const brandStyle = resolveBrandStyle(business)
-      const style: CreativeStyle = {
-        palette: brandStyle.palette,
-        headingFont: brandStyle.headingFont,
-        bodyFont: brandStyle.bodyFont,
-        logoStoragePath: logo?.storagePath ?? null,
-        logoAssetId: logo?.assetId ?? null,
-        brandApplied: brandAppliedSummary(business, {
-          logoFromKit: logo !== null && logo.assetId === brandKit?.logoAssetId,
-          kitColors: brandStyle.kitColors,
-          kitTypography: brandStyle.kitTypography,
-        }),
-      }
-      const built = buildStoredCreative({
-        ownerId: uid,
-        businessId: campaign.businessId,
-        campaignId,
-        conversationId: campaign.conversationId,
-        sourceRecommendationId: campaign.sourceRecommendationId,
-        name: draft.name,
-        format,
-        content: { ...draft.content, image, layout: image ? 'image_full_bleed' : 'text_only' },
-        captions: draft.captions,
-        style,
-        assetIds: buildCreativeAssetProvenance({
-          productAssetId: image?.assetId ?? null,
-          logoAssetId: logo?.assetId ?? null,
-        }),
-        imageError,
-        meta,
-      })
-      // Fallback copy is stored as a draft (an existing status, no new
-      // shape): the campaign's own words shipped unworded, so the record
-      // itself says "review me" rather than presenting as finished copy.
-      const stored: StoredCreative = copyFellBack ? { ...built, status: 'draft' } : built
-      const creativeId = await saveCreative(stored)
-
-      // 5. Announce it in the thread it came from, if that thread exists.
-      const conversationId = await announceInConversation(
-        uid,
-        stored.conversationId,
-        buildCreativePresentation(creativeId, stored, { fallbackCopy: copyFellBack }),
-        meta,
-      )
-
-      logger.info('Creative generated from campaign', {
-        creativeId,
-        campaignId,
-        conversationId,
-        imageSource: image?.source ?? null,
-        // Asset-vs-generated origin: an assetId means the image model was
-        // never called for the poster visual.
-        productAssetId: image?.assetId ?? null,
-        logoAssetId: logo?.assetId ?? null,
-        imageReady: image !== null,
-        copied: !copyFellBack,
-      })
-
-      return { creativeId, conversationId, imageReady: image !== null }
-    } catch (error) {
-      // Guardrail and validation HttpsErrors already carry the message the
-      // owner should read; wrapping them in `internal` would swallow it.
-      if (error instanceof HttpsError) throw error
-      throw internal('creativeGenerateFromCampaign', error)
-    }
     }
   },
 )
+
+/** The in-flight lock every creative generation for a campaign runs under. */
+export function creativeGenerateLockKey(uid: string, campaignId: string): string {
+  return `creative.generate_${uid}_${campaignId}`
+}
+
+export const CREATIVE_GENERATE_BUSY_MESSAGE =
+  'Materials for this campaign are already being created. Give it a moment.'
+
+export interface CreativeGenerationParams {
+  uid: string
+  plan: SubscriptionPlan
+  campaignId: string
+  /** Already ownership-checked by the caller. */
+  campaign: StoredCampaign
+  /** Already ownership-checked by the caller; null when the business is gone. */
+  business: StoredBusiness | null
+  format: CreativeFormat
+  /**
+   * Phase 7F: this poster's place in a multi-poster chat request, worded for
+   * the copy call. Null for a single poster.
+   */
+  setContext: string | null
+  /** Phase 7F: photos already used by earlier posters of the same set. */
+  avoidAssetIds: readonly string[]
+}
+
+export interface CreativeGenerationResult {
+  creativeId: string
+  creative: StoredCreative
+  /** True when the AI wording call failed and the deterministic draft shipped. */
+  copyFellBack: boolean
+  meta: MessageMeta | null
+}
+
+/**
+ * The seams a test replaces. Production uses the real Assets, Storage,
+ * orchestrator, image and Firestore functions — there is exactly one
+ * generation path, whichever door the owner came through.
+ */
+export interface CreativeGenerationDeps {
+  listEligibleAssets: (businessId: string, ownerId: string) => Promise<AssetWithId[]>
+  copyAssetToCreativeStorage: typeof copyAssetToCreativeStorage
+  runCopy: (request: StructuredRequest) => Promise<StructuredResult<unknown>>
+  generateImage: (
+    params: Parameters<typeof generateCreativeImage>[0],
+  ) => Promise<GeneratedImage>
+  saveCreative: (creative: StoredCreative) => Promise<string>
+}
+
+const defaultCreativeGenerationDeps: CreativeGenerationDeps = {
+  listEligibleAssets,
+  copyAssetToCreativeStorage,
+  runCopy: (request) => runStructuredTask<unknown>(request),
+  generateImage: generateCreativeImage,
+  saveCreative,
+}
+
+/**
+ * The one creative-generation pipeline: campaign in, persisted creative out.
+ * Shared verbatim by the [Create marketing materials] button
+ * (`creativeGenerateFromCampaign`) and EVA's chat action (Phase 7F) — the
+ * chat path gains no second implementation, only a caller. Ownership, plan
+ * resolution and the per-campaign lock are the caller's job; the usage
+ * guardrail runs inside the orchestrator calls as always.
+ *
+ * Nothing here announces in chat: each caller presents the result its own way.
+ */
+export async function generateCreativeForCampaign(
+  params: CreativeGenerationParams,
+  deps: CreativeGenerationDeps = defaultCreativeGenerationDeps,
+): Promise<CreativeGenerationResult> {
+  const { uid, plan, campaignId, campaign, business, format } = params
+  const corpus = buildGroundingCorpus({ campaign, business })
+
+  // The owner's Assets, resolved server-side and scoped to their own
+  // business: the poster photo and the logo are both chosen
+  // deterministically here — the image model never picks between a real
+  // photo and a generated one.
+  const assets = await deps.listEligibleAssets(campaign.businessId, uid)
+  const productAsset = selectCreativeAsset(assets, campaign, business?.products ?? [], {
+    avoidAssetIds: params.avoidAssetIds,
+  })
+  // The official Brand Identity logo (read from the business document,
+  // never the request) outranks the type-based heuristic.
+  const brandKit = readBrandKit(business)
+  const logoAsset = selectLogoAsset(assets, brandKit?.logoAssetId ?? null)
+
+  // 1. Copy: deterministic draft first, fast-tier wording on top.
+  let draft = draftCreativeCopyFromCampaign(campaign)
+  let imageBrief: string | null = null
+  let altText: string | null = null
+  let meta: MessageMeta | null = null
+  // True when the AI wording call failed and the deterministic draft
+  // ships as-is. It is still delivered — never blocked — but announced
+  // as draft copy and stored with status 'draft' so the owner reviews it.
+  let copyFellBack = false
+
+  try {
+    const copyResult = await deps.runCopy({
+      task: 'creative.generate_copy',
+      uid,
+      plan,
+      systemPrompt: CREATIVE_COPY_PROMPT,
+      input: buildCopyInput({
+        businessName: business?.name ?? null,
+        brandVoice: business?.brand?.value.voice ?? null,
+        brandStyle: brandStyleLine(business),
+        campaign,
+        format,
+        directives: [],
+        hasRealImage: productAsset !== null,
+        setContext: params.setContext,
+      }),
+      schema: {
+        name: CREATIVE_COPY_SCHEMA_NAME,
+        schema: CREATIVE_COPY_SCHEMA as unknown as Record<string, unknown>,
+      },
+    })
+    const copy = validateCreativeCopy(copyResult.data, corpus)
+    draft = mergeCopy(draft, copy)
+    imageBrief = copy.imageBrief
+    altText = copy.altText
+    meta = copyResult.meta
+  } catch (copyError) {
+    // Wording is an improvement, not a dependency. The deterministic
+    // draft says only what the campaign already says, and ships.
+    // HttpsError means the usage guardrail blocked the call before any
+    // OpenAI spend — the unworded draft is the graceful degradation.
+    if (
+      copyError instanceof HttpsError ||
+      copyError instanceof AiNotConfiguredError ||
+      copyError instanceof AiServiceError ||
+      copyError instanceof AiResponseError ||
+      copyError instanceof CreativeValidationError
+    ) {
+      copyFellBack = true
+      logger.warn('Creative copy call skipped', { campaignId, reason: copyError.message })
+    } else {
+      throw copyError
+    }
+  }
+
+  // 2. Visual: the owner's own photo first, generated only when none
+  // fits. A selected asset is snapshotted into the creative's own
+  // Storage folder — GCS copy, no HTTP fetch — and the image model is
+  // never called for it.
+  let image: CreativeImageRef | null = null
+  let imageError: string | null = null
+
+  if (productAsset) {
+    try {
+      const snapshotPath = await deps.copyAssetToCreativeStorage(
+        productAsset.asset,
+        campaign.businessId,
+      )
+      image = buildAssetImageRef({
+        assetId: productAsset.id,
+        asset: productAsset.asset,
+        storagePath: snapshotPath,
+        altText,
+      })
+    } catch (copyError) {
+      logger.warn('Asset snapshot failed; falling back to generation', {
+        campaignId,
+        assetId: productAsset.id,
+        reason: copyError instanceof Error ? copyError.message : 'unknown',
+      })
+    }
+  }
+
+  if (!image) {
+    const campaignBrief = [campaign.offer?.description, campaign.keyMessage, campaign.positioning]
+      .filter(Boolean)
+      .join('. ')
+    const brief = imageBrief ?? (campaignBrief || campaign.name)
+    try {
+      const generated = await deps.generateImage({
+        businessId: campaign.businessId,
+        brief,
+        altText,
+        format,
+        business,
+        uid,
+        plan,
+      })
+      image = generated.image
+      meta = meta ?? generated.meta
+    } catch (imageErrorRaw) {
+      // A guardrail block (HttpsError) carries the sentence the owner
+      // should read — "today's image-generation limit" beats a generic
+      // failure line, and the copy work already done still ships.
+      if (imageErrorRaw instanceof HttpsError) {
+        logger.warn('Creative image generation blocked', { campaignId })
+        imageError = imageErrorRaw.message
+      } else if (
+        imageErrorRaw instanceof AiNotConfiguredError ||
+        imageErrorRaw instanceof AiServiceError ||
+        imageErrorRaw instanceof AiResponseError
+      ) {
+        logger.warn('Creative image generation failed', {
+          campaignId,
+          reason: imageErrorRaw.message,
+        })
+        imageError = IMAGE_ERROR_MESSAGE
+      } else {
+        throw imageErrorRaw
+      }
+    }
+  }
+
+  // 3. Logo: same deterministic path — snapshotted for the client-side
+  // compositor, never sent to (or recreated by) the image model. A logo
+  // failure only costs the logo, never the poster.
+  let logo: { assetId: string; storagePath: string } | null = null
+  if (logoAsset) {
+    try {
+      logo = {
+        assetId: logoAsset.id,
+        storagePath: await deps.copyAssetToCreativeStorage(logoAsset.asset, campaign.businessId),
+      }
+    } catch (logoError) {
+      logger.warn('Logo snapshot failed; poster ships without a logo', {
+        campaignId,
+        assetId: logoAsset.id,
+        reason: logoError instanceof Error ? logoError.message : 'unknown',
+      })
+    }
+  }
+
+  // 4. Persist. Brand Identity first, the discovered brand as fallback —
+  // resolved from the business document, so the client cannot inject
+  // brand values through the request. `brandApplied` records honestly
+  // which parts the owner's kit actually contributed.
+  const brandStyle = resolveBrandStyle(business)
+  const style: CreativeStyle = {
+    palette: brandStyle.palette,
+    headingFont: brandStyle.headingFont,
+    bodyFont: brandStyle.bodyFont,
+    logoStoragePath: logo?.storagePath ?? null,
+    logoAssetId: logo?.assetId ?? null,
+    brandApplied: brandAppliedSummary(business, {
+      logoFromKit: logo !== null && logo.assetId === brandKit?.logoAssetId,
+      kitColors: brandStyle.kitColors,
+      kitTypography: brandStyle.kitTypography,
+    }),
+  }
+  const built = buildStoredCreative({
+    ownerId: uid,
+    businessId: campaign.businessId,
+    campaignId,
+    conversationId: campaign.conversationId,
+    sourceRecommendationId: campaign.sourceRecommendationId,
+    name: draft.name,
+    format,
+    content: { ...draft.content, image, layout: image ? 'image_full_bleed' : 'text_only' },
+    captions: draft.captions,
+    style,
+    assetIds: buildCreativeAssetProvenance({
+      productAssetId: image?.assetId ?? null,
+      logoAssetId: logo?.assetId ?? null,
+    }),
+    imageError,
+    meta,
+  })
+  // Fallback copy is stored as a draft (an existing status, no new
+  // shape): the campaign's own words shipped unworded, so the record
+  // itself says "review me" rather than presenting as finished copy.
+  const stored: StoredCreative = copyFellBack ? { ...built, status: 'draft' } : built
+  const creativeId = await deps.saveCreative(stored)
+
+  logger.info('Creative generated from campaign', {
+    creativeId,
+    campaignId,
+    conversationId: stored.conversationId,
+    imageSource: image?.source ?? null,
+    // Asset-vs-generated origin: an assetId means the image model was
+    // never called for the poster visual.
+    productAssetId: image?.assetId ?? null,
+    logoAssetId: logo?.assetId ?? null,
+    imageReady: image !== null,
+    copied: !copyFellBack,
+    inSet: params.setContext !== null,
+  })
+
+  return { creativeId, creative: stored, copyFellBack, meta }
+}
 
 /**
  * [Try again] on a failed poster image. Refreshes the visual only — the

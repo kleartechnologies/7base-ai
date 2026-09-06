@@ -117,6 +117,108 @@ export interface AttachmentBlock {
   assetId: string | null
 }
 
+/**
+ * What one chat request for posters asks for, in structured form. Built by
+ * the server from the owner's message (or from EVA's own offer) and carried
+ * inside a proposal until it is executed — never re-parsed from a "yes".
+ */
+export interface CreativeRequestSpec {
+  /** Poster shape. */
+  format: 'square_post' | 'portrait_post'
+  /**
+   * The owner's own words for what the posters should be ("1. English —
+   * intro, 2. BM — step by step…"). Passed verbatim to the copy call as set
+   * context so each poster in a set can take its own concept; never parsed
+   * into structure server-side.
+   */
+  brief: string | null
+  /**
+   * Which positions of the set to create (1-based) and the set's full size.
+   * A fresh "3 posters" is positions [1, 2, 3] of 3; retrying one that
+   * failed is positions [3] of 3 — so a retry never recreates the two that
+   * already exist.
+   */
+  positions: number[]
+  size: number
+}
+
+/**
+ * Something EVA can do the moment the owner says yes. Every id here was
+ * resolved server-side from the owner's own data; the client only renders
+ * the proposal and can answer it with an ordinary chat message.
+ */
+export type ProposedAction =
+  | {
+      kind: 'creative.generate'
+      campaignId: string
+      campaignName: string
+      spec: CreativeRequestSpec
+    }
+  | {
+      kind: 'campaign.create'
+      /** The goal the recommendation engine is given, in the owner's words. */
+      goal: string
+      /** Posters to create once the campaign exists; null for a campaign alone. */
+      then: CreativeRequestSpec | null
+    }
+  | {
+      kind: 'campaign.choose'
+      choices: { campaignId: string; name: string }[]
+      then: CreativeRequestSpec
+    }
+
+/**
+ * A pending action in the thread (Phase 7F). EVA writes one whenever she
+ * needs the owner's go-ahead — no campaign yet, two plausible campaigns, a
+ * daily limit that caps the count, one poster of a set that failed — or
+ * when her own conversational reply offered to create materials. It is
+ * *pending* only while it sits on the assistant turn directly before the
+ * owner's next message: an affirmation there executes it, anything else
+ * lets it lapse. Older proposals are inert history.
+ */
+export interface ActionProposalBlock {
+  id: string
+  type: 'action_proposal'
+  action: ProposedAction
+  /** The confirm button's label, in the language of the surrounding reply. */
+  confirmLabel: string
+}
+
+/** One poster of a set, as the compact result card renders it. */
+export interface CreativeSetItem {
+  creativeId: string
+  /** 1-based position in the requested set. */
+  position: number
+  name: string
+  format: 'square_post' | 'portrait_post'
+  headline: string | null
+  subheadline: string | null
+  callToAction: string | null
+  offerText: string | null
+  image: {
+    storagePath: string
+    source: 'upload' | 'generated' | 'stock'
+    altText: string | null
+  } | null
+  /** True when the image failed — the owner retries it from the Creative page or this card. */
+  imageFailed: boolean
+}
+
+/**
+ * Several creatives made from one request, presented together (Phase 7F):
+ * "Done — I created 3 posters." with a thumbnail row. Each item references
+ * its persisted creative; the Creative page stays the canonical view.
+ */
+export interface CreativeSetBlock {
+  id: string
+  type: 'creative_set'
+  campaignId: string
+  campaignName: string
+  /** How many the owner asked for; items.length is how many exist. */
+  requested: number
+  items: CreativeSetItem[]
+}
+
 export type MessageBlock =
   | TextBlock
   | ErrorBlock
@@ -124,6 +226,8 @@ export type MessageBlock =
   | CampaignCardBlock
   | CreativePreviewBlock
   | AttachmentBlock
+  | ActionProposalBlock
+  | CreativeSetBlock
 
 export interface StoredMessage {
   ownerId: string
@@ -156,16 +260,36 @@ export interface AssistantReplyResponse {
 }
 
 /**
- * One chunk of a streamed assistant reply, sent over the callable's own
- * stream while the reply is being generated. Only the conversational path
- * streams; structured replies (recommendations, campaign and creative edits)
- * arrive whole, exactly as before. Mirrored in the frontend's ai.types.ts.
+ * One step of an action EVA is carrying out (Phase 7F), sent as progress
+ * over the reply stream. Keys, not sentences: the client translates them,
+ * and nothing about models, tasks, cost or quota ever rides along.
  */
-export interface AssistantReplyStreamChunk {
-  type: 'delta'
-  /** The next piece of the reply's text, in order. */
-  text: string
+export interface ActionProgressStep {
+  key: 'campaign' | 'campaign_create' | 'brand' | 'assets' | 'concepts' | 'poster'
+  state: 'pending' | 'active' | 'done' | 'failed'
+  /** For `poster`: which one of how many. */
+  index?: number
+  total?: number
 }
+
+/**
+ * One chunk of a streamed assistant reply, sent over the callable's own
+ * stream while the reply is being generated. The conversational path streams
+ * text deltas; an action (Phase 7F) streams its progress steps instead.
+ * Structured replies (recommendations, campaign and creative edits) arrive
+ * whole, exactly as before. Mirrored in the frontend's ai.types.ts.
+ */
+export type AssistantReplyStreamChunk =
+  | {
+      type: 'delta'
+      /** The next piece of the reply's text, in order. */
+      text: string
+    }
+  | {
+      type: 'progress'
+      /** The whole step list, latest state — not a diff. */
+      steps: ActionProgressStep[]
+    }
 
 export interface BuildCampaignRequest {
   recommendationId: string

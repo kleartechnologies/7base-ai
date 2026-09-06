@@ -158,3 +158,30 @@ export async function assertRequestBudgetRemains(args: {
     )
   }
 }
+
+/**
+ * Phase 7F: how many more requests of each category today's budget allows,
+ * read once and reserved never. EVA's chat action uses it to keep a promise
+ * honest before making it — "I can create 2 of the 3 today" — while the
+ * transaction inside reserveAiUsage stays the only authority: a race that
+ * slips past this peek is still blocked there, per poster, and the result
+ * message then says so.
+ */
+export async function peekRemainingRequests(args: {
+  uid: string
+  plan: SubscriptionPlan
+}): Promise<{ aiGeneration: number; imageGeneration: number }> {
+  const limits = GUARDRAIL_LIMITS[args.plan].requests
+  const period = dailyPeriodKeyUtc(Date.now())
+  const snapshot = await db
+    .collection(COLLECTIONS.usage)
+    .doc(usageDocId(args.uid, period))
+    .get()
+  const used = snapshot.exists
+    ? (snapshot.data() as UsageDoc).requests
+    : { aiGeneration: 0, imageGeneration: 0 }
+  return {
+    aiGeneration: Math.max(0, limits.aiGeneration - (used.aiGeneration ?? 0)),
+    imageGeneration: Math.max(0, limits.imageGeneration - (used.imageGeneration ?? 0)),
+  }
+}

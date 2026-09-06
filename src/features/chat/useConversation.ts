@@ -4,7 +4,7 @@ import { t } from '@/i18n/store'
 import { toUserMessage } from '@/lib/firebase/errors'
 import { observeMessages, sendMessage } from '@/services/chat/chat.service'
 import type { AiError } from '@/services/ai/ai.types'
-import type { AttachmentDraft, Message } from '@/types'
+import type { ActionProgressStep, AttachmentDraft, Message } from '@/types'
 import { createStreamBuffer } from './streamBuffer'
 
 interface ThreadState {
@@ -22,6 +22,12 @@ interface ThreadState {
    * through the Firestore subscription, which is when this clears.
    */
   streamingText: string | null
+  /**
+   * The steps of an action EVA is carrying out (campaign selected, poster 1
+   * of 3 generating…), as the backend reports them. Null when no action is
+   * in flight. Display only, and cleared the moment the result lands.
+   */
+  progress: ActionProgressStep[] | null
   error: string | null
 }
 
@@ -39,6 +45,7 @@ function emptyThread(conversationId: string | null): ThreadState {
     loading: Boolean(conversationId),
     awaitingReply: false,
     streamingText: null,
+    progress: null,
     error: null,
   }
 }
@@ -98,6 +105,8 @@ export function useConversation(
             current.conversationId === conversationId && !replyArrived
               ? current.streamingText
               : null,
+          progress:
+            current.conversationId === conversationId && !replyArrived ? current.progress : null,
           error: current.conversationId === conversationId ? current.error : null,
         }))
       },
@@ -108,6 +117,7 @@ export function useConversation(
           loading: false,
           awaitingReply: false,
           streamingText: null,
+          progress: null,
           error: t('chat.loadConversationFailed'),
         }))
       },
@@ -129,6 +139,7 @@ export function useConversation(
           loading: conversationId ? base.loading : true,
           awaitingReply: true,
           streamingText: null,
+          progress: null,
           error: null,
         }
       })
@@ -152,6 +163,17 @@ export function useConversation(
             : current,
         )
       })
+
+      // An action's steps, as EVA reports them. Same guard as the text
+      // mirror: once the stored result (or a failure) has landed, a late
+      // progress frame must not bring the indicator back.
+      const showProgress = (steps: ActionProgressStep[]) => {
+        setState((current) =>
+          current.conversationId === threadId && current.awaitingReply
+            ? { ...current, progress: steps }
+            : current,
+        )
+      }
 
       const adoptCreatedConversation = (createdId: string) => {
         threadId = createdId
@@ -178,6 +200,7 @@ export function useConversation(
             // invisible, and a refresh mid-reply keeps the thread.
             if (!conversationId) adoptCreatedConversation(storedId)
           },
+          showProgress,
         )
         buffer.finish()
         const settledId = outcome.conversationId
@@ -202,6 +225,7 @@ export function useConversation(
                   conversationId: settledId,
                   awaitingReply: false,
                   streamingText: null,
+                  progress: null,
                   error: message,
                 }
               : current,
@@ -219,6 +243,7 @@ export function useConversation(
                 loading: Boolean(threadId) && current.loading,
                 awaitingReply: false,
                 streamingText: null,
+                progress: null,
                 error: toUserMessage(caught, t('chat.sendFailed')),
               }
             : current,
@@ -233,6 +258,7 @@ export function useConversation(
     loading: thread.loading,
     awaitingReply: thread.awaitingReply,
     streamingText: thread.streamingText,
+    progress: thread.progress,
     error: thread.error,
     send,
   }

@@ -20,7 +20,13 @@ import {
 } from '@/lib/firebase/collections'
 import { deleteAsset } from '@/services/storage/storage.service'
 import { fromSnapshot } from '@/lib/firebase/mapper'
-import type { Conversation, Message, MessageBlock, SendMessageInput } from '@/types'
+import type {
+  ActionProgressStep,
+  Conversation,
+  Message,
+  MessageBlock,
+  SendMessageInput,
+} from '@/types'
 import { requestAssistantReply, streamAssistantReply } from '@/services/ai/ai.client'
 import type { AiError } from '@/services/ai/ai.types'
 import {
@@ -171,12 +177,18 @@ export interface SendMessageOutcome {
  * It carries the conversation id (freshly created on a first send), so the
  * UI can attach its subscription and render the stored message immediately
  * instead of waiting out the whole generation.
+ *
+ * `onAssistantProgress` receives the steps of an action EVA is carrying out
+ * (campaign selected, posters generating…) as the backend reports them —
+ * display only; the finished result lands as a stored message like any
+ * other reply.
  */
 export async function sendMessage(
   ownerId: string,
   input: SendMessageInput,
   onAssistantDelta?: (text: string) => void,
   onUserMessageStored?: (conversationId: string) => void,
+  onAssistantProgress?: (steps: ActionProgressStep[]) => void,
 ): Promise<SendMessageOutcome> {
   const text = input.text.trim()
   const drafts = input.attachments ?? []
@@ -260,7 +272,7 @@ export async function sendMessage(
     userMessageId: newMessageRef.id,
   }
   const reply = onAssistantDelta
-    ? await streamAssistantReply(replyRequest, onAssistantDelta)
+    ? await streamAssistantReply(replyRequest, onAssistantDelta, onAssistantProgress)
     : await requestAssistantReply(replyRequest)
 
   return {

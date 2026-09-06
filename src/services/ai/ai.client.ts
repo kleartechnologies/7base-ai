@@ -3,6 +3,7 @@ import { FirebaseError } from 'firebase/app'
 import { t } from '@/i18n/store'
 import type { MessageKey } from '@/i18n/translate'
 import { getFirebaseFunctions } from '@/lib/firebase/app'
+import type { ActionProgressStep } from '@/types'
 import type {
   AiError,
   AnalyseBusinessDnaRequest,
@@ -138,8 +139,9 @@ const ASSISTANT_REPLY_TIMEOUT_MS = 540_000
 
 /**
  * Like {@link requestAssistantReply}, but delivered live: text deltas arrive
- * through `onDelta` while EVA is composing, and the promise resolves with the
- * final response once the reply is complete and stored.
+ * through `onDelta` while EVA is composing, the steps of an action she is
+ * carrying out arrive through `onProgress`, and the promise resolves with
+ * the final response once the reply is complete and stored.
  *
  * Streaming is delivery only. The backend decides the model, enforces plan
  * and usage limits, and writes the assistant message exactly as on the
@@ -153,6 +155,7 @@ const ASSISTANT_REPLY_TIMEOUT_MS = 540_000
 export async function streamAssistantReply(
   request: AssistantReplyRequest,
   onDelta: (text: string) => void,
+  onProgress?: (steps: ActionProgressStep[]) => void,
 ): Promise<AiResult<AssistantReplyResponse>> {
   try {
     const callable = httpsCallable<
@@ -165,6 +168,8 @@ export async function streamAssistantReply(
       for await (const chunk of stream) {
         if (chunk?.type === 'delta' && typeof chunk.text === 'string') {
           onDelta(chunk.text)
+        } else if (chunk?.type === 'progress' && Array.isArray(chunk.steps)) {
+          onProgress?.(chunk.steps)
         }
       }
     } catch {

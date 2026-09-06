@@ -1,4 +1,4 @@
-import type { DnaSourceSummary, EntityId } from '@/types'
+import type { ActionProgressStep, DnaSourceSummary, EntityId } from '@/types'
 
 /**
  * The contract between the browser and the MARKA AI backend.
@@ -39,16 +39,16 @@ export interface AssistantReplyResponse {
 }
 
 /**
- * One chunk of a streamed assistant reply — the next piece of EVA's text, in
- * order. Only conversational replies stream; structured replies
+ * One chunk of a streamed assistant reply: the next piece of EVA's text, in
+ * order, or — while she carries out an action — the current state of its
+ * steps. Only conversational replies stream text; structured replies
  * (recommendations, campaign and creative edits) arrive whole, so a stream
  * with zero chunks followed by the final response is normal. Mirrors
  * functions/src/lib/types.ts.
  */
-export interface AssistantReplyStreamChunk {
-  type: 'delta'
-  text: string
-}
+export type AssistantReplyStreamChunk =
+  | { type: 'delta'; text: string }
+  | { type: 'progress'; steps: ActionProgressStep[] }
 
 /**
  * Website analysis is two calls, not one.

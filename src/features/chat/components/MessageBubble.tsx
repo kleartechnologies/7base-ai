@@ -16,7 +16,14 @@ import { BlockRenderer } from './blocks/BlockRenderer'
  * local streaming text, but the stored messages themselves are unchanged —
  * without memo every settled bubble re-renders per flush.
  */
-export const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {
+export const MessageBubble = memo(function MessageBubble({
+  message,
+  isLatest = false,
+}: {
+  message: Message
+  /** The newest turn in the thread — the only one whose proposals are live. */
+  isLatest?: boolean
+}) {
   const isUser = message.role === 'user'
 
   if (isUser) {
@@ -38,7 +45,13 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
   return (
     <EvaTurn>
       {message.blocks.map((block) => (
-        <BlockRenderer key={block.id} block={block} conversationId={message.conversationId} />
+        <BlockRenderer
+          key={block.id}
+          block={block}
+          conversationId={message.conversationId}
+          markdown
+          isLatest={isLatest}
+        />
       ))}
     </EvaTurn>
   )
