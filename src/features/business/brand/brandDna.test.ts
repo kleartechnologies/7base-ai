@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BrandKit, Business, BusinessDna } from '@/types'
-import { applyDetectedBrand, detectedBrandSuggestion, emptyBrandKit } from './brandKit'
+import { applyDetectedBrand, detectedBrandApplies, detectedBrandSuggestion, emptyBrandKit } from './brandKit'
 import { knownSources } from './sources'
 
 /**
@@ -215,5 +215,36 @@ describe('knownSources', () => {
 
   it('is empty for a business with nothing on file', () => {
     expect(knownSources({ contact: null, sources: [], discovery: null } as unknown as Business)).toEqual([])
+  })
+})
+
+describe('detectedBrandApplies', () => {
+  const base = {
+    colors: [] as string[],
+    logoUrl: null,
+    logoAssetId: null,
+    fontFamily: null,
+    supportedFont: null,
+    visualStyle: null,
+    traits: [],
+    category: 'Education app',
+    sources: [],
+    unknown: [],
+    source: 'sources' as const,
+  }
+
+  it('is false when only hints remain (unsupported font, business type)', () => {
+    expect(detectedBrandApplies({ ...base, fontFamily: 'Plus Jakarta Sans' })).toBe(false)
+  })
+
+  it.each([
+    ['a colour', { colors: ['#22c55e'] }],
+    ['a logo URL', { logoUrl: 'https://www.getmatheasy.com/assets/apple-touch-icon.png' }],
+    ['a logo Asset', { logoAssetId: 'asset_logo' }],
+    ['an approved font', { fontFamily: 'Inter', supportedFont: 'Inter' as const }],
+    ['a style sentence', { visualStyle: 'Clean and green' }],
+    ['a trait', { traits: ['modern' as const] }],
+  ])('is true with %s', (_label, over) => {
+    expect(detectedBrandApplies({ ...base, ...over })).toBe(true)
   })
 })

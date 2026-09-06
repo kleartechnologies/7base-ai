@@ -276,6 +276,23 @@ function suggestionFromDna(dna: BusinessDna, kit: BrandKit | null): DetectedBran
 }
 
 /**
+ * Whether "Use these" would change anything. A card can be left with only a
+ * hint — a font that is not on the approved list, the business type — after
+ * the owner applied the rest; then there is nothing to apply and the button
+ * would write an unchanged kit.
+ */
+export function detectedBrandApplies(suggestion: DetectedBrandSuggestion): boolean {
+  return (
+    suggestion.colors.length > 0 ||
+    Boolean(suggestion.logoUrl) ||
+    Boolean(suggestion.logoAssetId) ||
+    Boolean(suggestion.supportedFont) ||
+    Boolean(suggestion.visualStyle) ||
+    suggestion.traits.length > 0
+  )
+}
+
+/**
  * The kit produced by "Use these": discovered colours seeded in order
  * (primary, secondary, accent), the discovered style description carried into
  * `styleNotes`, style words into the traits when the owner picked none, the

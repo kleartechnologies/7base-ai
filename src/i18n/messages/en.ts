@@ -700,6 +700,7 @@ export const en = {
   'brand.detectedLogoAsset': 'Looks like a logo — set it as your official logo?',
   'brand.detectedUnknown': 'Not known yet — you can tell EVA in chat.',
   'brand.editFirst': 'Edit first',
+  'brand.detectedPickFont': 'Choose a font',
   'brand.sourceWebsite': 'Website',
   'brand.sourceFacebook': 'Facebook',
   'brand.sourceInstagram': 'Instagram',

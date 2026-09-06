@@ -4,7 +4,7 @@ import type { MessageKey } from '@/i18n/translate'
 import { SourceBadge } from '@/features/business/components/SectionCard'
 import type { Business, DnaSourceSummary } from '@/types'
 import { TRAIT_KEYS } from './BrandBoard'
-import type { DetectedBrandSlot, DetectedBrandSuggestion } from './brandKit'
+import { detectedBrandApplies, type DetectedBrandSlot, type DetectedBrandSuggestion } from './brandKit'
 import { useStorageUrl } from './useStorageUrl'
 
 /**
@@ -47,11 +47,18 @@ export function DetectedBrandCard({
   logoAssetPath: string | null
   busy: boolean
   onUse: () => void
-  onChange: () => void
+  /** Opens the section the owner should look at first. */
+  onChange: (section: 'colors' | 'typography') => void
 }) {
   const { t } = useI18n()
   const assetLogoUrl = useStorageUrl(logoAssetPath)
   const logoSrc = suggestion.logoUrl ?? assetLogoUrl
+  // Once everything applicable is in the kit, only hints remain (a font not
+  // on the approved list): "Use these" would change nothing, so it steps
+  // aside and the one button left takes the owner to the font picker.
+  const applies = detectedBrandApplies(suggestion)
+  const editTarget: 'colors' | 'typography' =
+    suggestion.colors.length === 0 && suggestion.fontFamily ? 'typography' : 'colors'
 
   return (
     <section className="rounded-xl border border-eva-tint-border bg-eva-tint px-6 py-5">
@@ -59,7 +66,11 @@ export function DetectedBrandCard({
         <h2 className="text-[15px] font-semibold text-foreground">
           {t(TITLE_KEYS[suggestion.source])}
         </h2>
-        {provenance ? <SourceBadge provenance={provenance} /> : null}
+        {/* The DNA card names its sources on the next line; the brain claim's
+            own badge ("Confirmed by you") describes a different thing. */}
+        {provenance && suggestion.source !== 'sources' ? (
+          <SourceBadge provenance={provenance} />
+        ) : null}
       </header>
 
       {suggestion.sources.length > 0 ? (
@@ -141,11 +152,22 @@ export function DetectedBrandCard({
       ) : null}
 
       <div className="mt-4 flex items-center gap-2">
-        <Button size="sm" disabled={busy} onClick={onUse}>
-          {t('brand.useThese')}
-        </Button>
-        <Button variant="ghost" size="sm" disabled={busy} onClick={onChange}>
-          {t('brand.editFirst')}
+        {applies ? (
+          <Button size="sm" disabled={busy} onClick={onUse}>
+            {t('brand.useThese')}
+          </Button>
+        ) : null}
+        <Button
+          variant={applies ? 'ghost' : 'default'}
+          size="sm"
+          disabled={busy}
+          onClick={() => onChange(editTarget)}
+        >
+          {applies
+            ? t('brand.editFirst')
+            : editTarget === 'typography'
+              ? t('brand.detectedPickFont')
+              : t('brand.editFirst')}
         </Button>
       </div>
     </section>

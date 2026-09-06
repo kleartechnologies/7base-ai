@@ -189,9 +189,9 @@ export function BrandIdentityTab({
           logoAssetPath={suggestedLogoAsset?.storagePath ?? null}
           busy={busy}
           onUse={() => void handleUseDetected()}
-          onChange={() => {
-            setEditing('colors')
-            scrollToSection('colors')
+          onChange={(section) => {
+            setEditing(section)
+            scrollToSection(section)
           }}
         />
       ) : null}

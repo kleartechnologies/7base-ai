@@ -706,6 +706,7 @@ export const ms: Record<MessageKey, string> = {
   'brand.detectedLogoAsset': 'Nampak macam logo — jadikan logo rasmi anda?',
   'brand.detectedUnknown': 'Belum diketahui — anda boleh beritahu EVA dalam chat.',
   'brand.editFirst': 'Edit dulu',
+  'brand.detectedPickFont': 'Pilih fon',
   'brand.sourceWebsite': 'Laman web',
   'brand.sourceFacebook': 'Facebook',
   'brand.sourceInstagram': 'Instagram',
