@@ -9,7 +9,7 @@ import type { Business as ClientBusiness } from '@/types'
 import type { StoredBusiness } from '../lib/business.types'
 import { mergeWebsiteAnalysis } from './brain/merge'
 import type { WebsiteAnalysis } from './brain/validate'
-import { extractBrandVisual } from './website/brandVisual'
+import { extractBrandVisual, type BrandVisual } from './website/brandVisual'
 
 /**
  * Phase 7D.1 end-to-end: one realistic homepage travels the whole road —
@@ -255,7 +255,7 @@ describe('homepage → extraction → merge → suggestion → Use these → Bra
 })
 
 describe('the owner-confirmed brand is never overwritten by re-analysis', () => {
-  it('a confirmed brand claim survives a new crawl with fresh visuals intact', () => {
+  it('a confirmed claim keeps every populated field; only empty visual slots fill (7D.2)', () => {
     const confirmed: StoredBusiness['brand'] = {
       value: {
         voice: 'Friendly, patient, clear and encouraging',
@@ -281,7 +281,27 @@ describe('the owner-confirmed brand is never overwritten by re-analysis', () => 
       source: 'website',
       brandVisual: extractBrandVisual('https://warungmakcik.com/', HOMEPAGE_HTML),
     })
-    expect(patch.brand).toEqual(confirmed)
+    // The claim itself — provenance wrapper and every semantic field — is the
+    // owner's, byte for byte. The fresh analysis text never lands.
+    expect(patch.brand).toMatchObject({
+      source: 'inferred',
+      sourceRef: 'https://warungmakcik.com/',
+      confidence: 0.95,
+      confirmed: true,
+      discoveredAt: 10,
+      confirmedAt: 20,
+    })
+    expect(patch.brand?.value.voice).toBe('Friendly, patient, clear and encouraging')
+    expect(patch.brand?.value.visualStyle).toBe('Clean, modern and visual')
+    // The visual slots the owner never filled take the extracted candidates.
+    expect(patch.brand?.value.colors).toEqual([
+      { label: 'Theme color', hex: '#1a7f5a' },
+      { label: '--brand-accent', hex: '#c0392b' },
+    ])
+    expect(patch.brand?.value.logoUrl).toBe(
+      'https://warungmakcik.com/icons/apple-touch-icon.png',
+    )
+    expect(patch.brand?.value.fontFamily).toBe('Poppins')
   })
 
   it('an unconfirmed prior claim is refreshed by a run that found visuals', () => {
@@ -372,5 +392,129 @@ describe('the stranded-visualStyle case (the production Matheasy shape)', () => 
       styleNotes: 'Owner wrote their own style notes',
     }
     expect(detectedBrandSuggestion(asClientBusiness(brand, fullKit))).toBeNull()
+  })
+})
+
+describe('confirmed brand + deterministic visuals (Phase 7D.2 regression)', () => {
+  // The production Matheasy failure: a confirmed brand claim with empty visual
+  // slots blocked the extracted colour and icon because the section merge is
+  // atomic. Field-level fill lets discovery add candidates to empty slots
+  // while everything populated — semantic or visual — stays the owner's.
+  const MATHEASY_VISUAL: BrandVisual = {
+    colors: [{ label: 'Theme color', hex: '#22c55e' }],
+    logoUrl: 'https://www.getmatheasy.com/assets/apple-touch-icon.png',
+    fontFamily: null,
+  }
+
+  function matheasyBrand(
+    value: Partial<NonNullable<StoredBusiness['brand']>['value']> = {},
+  ): NonNullable<StoredBusiness['brand']> {
+    return {
+      value: {
+        voice: 'Friendly, patient, clear and encouraging',
+        personalityTraits: ['Friendly', 'Patient', 'Supportive'],
+        colors: [],
+        logoUrl: null,
+        fontFamily: null,
+        visualStyle:
+          'Clean, modern and visual, using animated mathematical examples, graphs, shapes and typeset equations.',
+        keyMessages: ['Scan. Solve. Understand.'],
+        valuePropositions: ['Instant step-by-step solutions'],
+        ...value,
+      },
+      source: 'inferred',
+      sourceRef: 'https://www.getmatheasy.com/',
+      confidence: 0.95,
+      confirmed: true,
+      discoveredAt: 1788626928081,
+      confirmedAt: 1788626986095,
+    }
+  }
+
+  function merge(brand: StoredBusiness['brand'], visual = MATHEASY_VISUAL) {
+    return mergeWebsiteAnalysis(emptyBrain({ brand }), analysis(), {
+      websiteUrl: 'https://www.getmatheasy.com/',
+      pagesAnalysed: 4,
+      now: NOW,
+      source: 'website',
+      brandVisual: visual,
+    })
+  }
+
+  it('A: empty colour and logo slots take the extracted values; style stays', () => {
+    const patch = merge(matheasyBrand())
+    expect(patch.brand?.value.colors).toEqual([{ label: 'Theme color', hex: '#22c55e' }])
+    expect(patch.brand?.value.logoUrl).toBe(
+      'https://www.getmatheasy.com/assets/apple-touch-icon.png',
+    )
+    expect(patch.brand?.value.fontFamily).toBeNull()
+    expect(patch.brand?.value.visualStyle).toBe(matheasyBrand().value.visualStyle)
+  })
+
+  it('B: existing colours are never overwritten by discovery', () => {
+    const patch = merge(matheasyBrand({ colors: [{ label: 'Owner', hex: '#123456' }] }))
+    expect(patch.brand?.value.colors).toEqual([{ label: 'Owner', hex: '#123456' }])
+  })
+
+  it('C: an existing logo URL is never overwritten by discovery', () => {
+    const patch = merge(matheasyBrand({ logoUrl: 'https://www.getmatheasy.com/owner-logo.png' }))
+    expect(patch.brand?.value.logoUrl).toBe('https://www.getmatheasy.com/owner-logo.png')
+  })
+
+  it('D: an existing font is never overwritten by discovery', () => {
+    const patch = merge(matheasyBrand({ fontFamily: 'Nunito' }), {
+      ...MATHEASY_VISUAL,
+      fontFamily: 'Poppins',
+    })
+    expect(patch.brand?.value.fontFamily).toBe('Nunito')
+  })
+
+  it('E: mixed partial state fills only the empty slots', () => {
+    const patch = merge(
+      matheasyBrand({ logoUrl: 'https://www.getmatheasy.com/owner-logo.png' }),
+      { ...MATHEASY_VISUAL, fontFamily: 'Poppins' },
+    )
+    expect(patch.brand?.value.colors).toEqual([{ label: 'Theme color', hex: '#22c55e' }])
+    expect(patch.brand?.value.logoUrl).toBe('https://www.getmatheasy.com/owner-logo.png')
+    expect(patch.brand?.value.fontFamily).toBe('Poppins')
+  })
+
+  it('F: every confirmed semantic field and the claim wrapper stay byte-for-byte', () => {
+    const before = matheasyBrand()
+    const after = merge(matheasyBrand()).brand!
+    expect(after.value.voice).toEqual(before.value.voice)
+    expect(after.value.personalityTraits).toEqual(before.value.personalityTraits)
+    expect(after.value.visualStyle).toEqual(before.value.visualStyle)
+    expect(after.value.keyMessages).toEqual(before.value.keyMessages)
+    expect(after.value.valuePropositions).toEqual(before.value.valuePropositions)
+    // The provenance wrapper is untouched: the fill is not a re-confirmation
+    // and not a fresh claim — timestamps, source and confidence all hold.
+    const { value: _a, ...afterWrapper } = after
+    const { value: _b, ...beforeWrapper } = before
+    expect(afterWrapper).toEqual(beforeWrapper)
+  })
+
+  it('G: the filled claim reaches the card, and only "Use these" touches the kit', () => {
+    const patch = merge(matheasyBrand())
+    // Discovery still writes the brand claim only — never the Brand Kit.
+    expect('brandKit' in patch).toBe(false)
+
+    // Matheasy's real kit state: a manually uploaded logo, nothing else.
+    const kit = { ...emptyBrandKit(1), logoAssetId: 'vGgldbI7TIO3tp54Ya1S' }
+    const suggestion = detectedBrandSuggestion(asClientBusiness(patch.brand ?? null, kit))
+    expect(suggestion?.colors).toEqual(['#22c55e'])
+    // The owner's kit logo suppresses the discovered logo candidate.
+    expect(suggestion?.logoUrl).toBeNull()
+    expect(suggestion?.visualStyle).toBe(matheasyBrand().value.visualStyle)
+
+    const next = applyDetectedBrand(kit, suggestion!, NOW)
+    expect(next.colors.primary).toBe('#22c55e')
+    expect(next.logoAssetId).toBe('vGgldbI7TIO3tp54Ya1S')
+  })
+
+  it('no visuals found means the confirmed claim is returned untouched', () => {
+    const before = matheasyBrand()
+    const patch = merge(matheasyBrand(), { colors: [], logoUrl: null, fontFamily: null })
+    expect(patch.brand).toEqual(before)
   })
 })

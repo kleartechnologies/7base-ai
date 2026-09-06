@@ -236,20 +236,23 @@ export function mergeWebsiteAnalysis(
         }
       : null
 
-  const brand = mergeSection<BrandProfile>(
-    existing.brand,
-    brandValue,
-    INFERRED_SECTIONS.brand,
-    analysis.brand.sourceUrl ?? context.websiteUrl,
-    // Extracted visuals must be able to land on a brain that already holds an
-    // unconfirmed brand claim: matching the stored confidence lets the newer
-    // claim win the inferred-vs-inferred tie. Authority is untouched, so a
-    // CONFIRMED brand section still outranks this and stays exactly as the
-    // owner left it.
-    visual
-      ? Math.max(analysis.brand.confidence, existing.brand?.confidence ?? 0)
-      : analysis.brand.confidence,
-    now,
+  const brand = fillEmptyBrandVisuals(
+    mergeSection<BrandProfile>(
+      existing.brand,
+      brandValue,
+      INFERRED_SECTIONS.brand,
+      analysis.brand.sourceUrl ?? context.websiteUrl,
+      // Extracted visuals must be able to land on a brain that already holds
+      // an unconfirmed brand claim: matching the stored confidence lets the
+      // newer claim win the inferred-vs-inferred tie. Authority is untouched,
+      // so a CONFIRMED brand section still outranks this and its populated
+      // fields stay exactly as the owner left them.
+      visual
+        ? Math.max(analysis.brand.confidence, existing.brand?.confidence ?? 0)
+        : analysis.brand.confidence,
+      now,
+    ),
+    visual,
   )
 
   const marketing = mergeSection<MarketingProfile>(
@@ -307,6 +310,34 @@ export function mergeWebsiteAnalysis(
     brainVersion: BRAIN_VERSION,
     updatedAt: now,
   }
+}
+
+/**
+ * Phase 7D.2: visual discovery is field-level, not atomic. A brand claim the
+ * section merge preserved (typically because the owner confirmed it) can still
+ * have its *empty* visual slots — `colors: []`, `logoUrl: null`,
+ * `fontFamily: null` — filled by deterministic extraction. Populated fields,
+ * visual or semantic, are never touched, and neither is the claim's wrapper
+ * (source, confidence, confirmed, timestamps): the fill adds candidates for
+ * the detected-brand card, it does not re-author the owner's confirmation.
+ * "Use these" remains the only path from any of this into the Brand Kit.
+ */
+export function fillEmptyBrandVisuals(
+  claim: Discovered<BrandProfile> | null,
+  visual: BrandVisual | null,
+): Discovered<BrandProfile> | null {
+  if (!claim || !visual) return claim
+  const value = claim.value
+
+  const colors =
+    value.colors.length === 0 && visual.colors.length > 0 ? visual.colors : value.colors
+  const logoUrl = value.logoUrl ? value.logoUrl : visual.logoUrl
+  const fontFamily = value.fontFamily ? value.fontFamily : visual.fontFamily
+
+  if (colors === value.colors && logoUrl === value.logoUrl && fontFamily === value.fontFamily) {
+    return claim
+  }
+  return { ...claim, value: { ...value, colors, logoUrl, fontFamily } }
 }
 
 /**
