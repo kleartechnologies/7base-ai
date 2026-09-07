@@ -187,6 +187,41 @@ describe('creative edit instructions are recognised', () => {
   })
 })
 
+describe('asking for a different picture is an edit, not a conversation', () => {
+  // An owner looking at a poster and asking for a different image is editing
+  // the creative in front of them. These went unrecognised, so the message
+  // routed nowhere and EVA answered each one with another acknowledgement
+  // while nothing was ever made.
+  const imageEdits = [
+    'regenerate the poster with a student using Matheasy on a phone',
+    'Regenerate the image please.',
+    'redo it',
+    'Can you redesign the poster?',
+    'remake the visual',
+    'change the image to a student on a phone',
+    'update the photo',
+    'replace the picture with something brighter',
+    'swap the background',
+    'add a student using Matheasy on a phone to the poster',
+    'include our logo in the poster',
+    'buat semula poster tu',
+    'tukar gambar dalam poster',
+    'masukkan pelajar dalam poster',
+  ]
+
+  for (const text of imageEdits) {
+    it(`"${text}" → creative edit`, () => {
+      expect(detectCreativeEdit(text)).toBe(true)
+    })
+  }
+
+  it('a plain request for posters is untouched by the image-edit patterns', () => {
+    expect(detectCreativeEdit('put together 3 posters for the launch')).toBe(false)
+    expect(detectCreativeEdit('buat 3 poster untuk launch Matheasy')).toBe(false)
+    expect(detectCreativeEdit('show me the poster')).toBe(false)
+  })
+})
+
 describe('routing between artifacts: creative nouns vs campaign concepts', () => {
   // Once a thread holds both a campaign and a creative, a generic edit lands
   // on the most recent artifact (the creative) — unless the message names a

@@ -444,8 +444,13 @@ export function positionsFor(count: number): number[] {
 const OFFER_OPENERS =
   "i can|i could|i'll|i will|i'd be happy to|i'm happy to|happy to|shall i|should i|want me to|would you like me to|do you want me to|let me|ready to|i can go ahead and|say the word and i'll|just say (?:go|the word)|saya boleh|boleh saya|nak saya|mahu saya|biar saya|saya akan"
 
+/**
+ * The regeneration family is here for the same reason the creation verbs are:
+ * "I'll regenerate 1 poster with a student on a phone" is a promise of work,
+ * and a promise nothing arms leaves the owner saying "yes" into silence.
+ */
 const OFFER_VERBS =
-  'create|make|design|generate|prepare|produce|put together|draft|build|mock up|whip up|get started on|start on|go ahead and (?:create|make|design)|buat|buatkan|sediakan|reka|hasilkan|cipta|jana|mulakan'
+  'create|make|design|generate|regenerate|re-generate|redo|redesign|remake|recreate|redraw|prepare|produce|put together|draft|build|mock up|whip up|get started on|start on|go ahead and (?:create|make|design|regenerate)|buat|buatkan|buat semula|sediakan|reka|hasilkan|cipta|jana|mulakan'
 
 const ASSISTANT_OFFER = new RegExp(
   `\\b(?:${OFFER_OPENERS})\\b[^.?!]{0,40}?\\b(?:${OFFER_VERBS})\\b[^.?!]{0,80}?\\b(?:${CREATIVE_NOUNS})\\b`,

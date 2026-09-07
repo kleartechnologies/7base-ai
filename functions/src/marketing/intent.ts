@@ -156,9 +156,27 @@ const CAMPAIGN_CONCEPT_WORDS =
   /\b(?:campaign|kempen|audience|duration|channels?|objective|positioning|days?|weeks?|budget)\b/i
 
 /**
- * Phrasings that are edit instructions for copy specifically — "make the
- * caption shorter", "rewrite the headline" — which the campaign edit
- * patterns (built around strategy words) do not all catch.
+ * The visual side of a creative: what an instruction names when it wants a
+ * different *picture*, not different words.
+ */
+const VISUAL_NOUNS =
+  'posters?|images?|photos?|pictures?|visuals?|creatives?|designs?|artworks?|graphics?|backgrounds?|scenes?|gambar|reka bentuk|latar'
+
+/** "the", "our", "that" — the small words that sit between a verb and its noun. */
+const NOUN_LEAD = '(?:the|a|an|our|my|that|this|its)?\\s*'
+
+/**
+ * Phrasings that are edit instructions for a creative — "make the caption
+ * shorter", "rewrite the headline", "regenerate the poster with a student on
+ * a phone" — which the campaign edit patterns (built around strategy words)
+ * do not all catch.
+ *
+ * The image-change phrasings matter as much as the copy ones: an owner who
+ * asks for a different picture is editing the creative they are looking at,
+ * and without these the message routes nowhere and the conversation loops on
+ * acknowledgements. Asking for *another* creative is a different thing, and
+ * stays a creation request — the caller lifts this veto when the message
+ * carries a new/another/more marker.
  */
 const CREATIVE_EDIT_PATTERNS: RegExp[] = [
   // "Make the caption shorter.", "make the headline punchier"
@@ -166,6 +184,26 @@ const CREATIVE_EDIT_PATTERNS: RegExp[] = [
   /\b(?:rewrite|reword|rephrase)\b/i,
   // "remove the hashtags", "add an emoji to the caption"
   /\b(?:remove|add|drop)\b[^.?!]{0,40}\b(?:hashtags?|emojis?|caption|headline|tagline)\b/i,
+  // "Regenerate the poster.", "redo it", "redesign this", "buat semula"
+  /\b(?:re-?generate|re-?do|re-?design|re-?make|re-?create|re-?draw)\b/i,
+  /\bbuat semula\b|\bulang\b/i,
+  // "change the image to a student on a phone", "swap the photo", "tukar gambar"
+  new RegExp(
+    `\\b(?:change|update|replace|swap|switch|fix|improve)\\b[^.?!]{0,50}\\b(?:${VISUAL_NOUNS})\\b`,
+    'i',
+  ),
+  new RegExp(`\\b(?:tukar|ubah|ganti|betulkan)\\b[^.?!]{0,50}\\b(?:${VISUAL_NOUNS})\\b`, 'i'),
+  // "add a student using the app to the poster", "put our logo on the image".
+  // The preposition is required so that "put together 3 posters" stays what it
+  // plainly is — a request for three new posters, not an edit of one.
+  new RegExp(
+    `\\b(?:add|put|include)\\b[^.?!]{0,60}\\b(?:to|on|in|into|onto)\\s+${NOUN_LEAD}(?:${VISUAL_NOUNS})\\b`,
+    'i',
+  ),
+  new RegExp(
+    `\\b(?:masukkan|letak|tambah)\\b[^.?!]{0,60}\\b(?:dalam|pada|kat|ke)\\s+${NOUN_LEAD}(?:${VISUAL_NOUNS})\\b`,
+    'i',
+  ),
 ]
 
 /**

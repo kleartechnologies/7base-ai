@@ -199,6 +199,21 @@ describe('explicit requests', () => {
     expect(parseCreativeRequest('make 2 more posters')).not.toBeNull()
   })
 
+  it('broadening the edit patterns did not swallow plain requests', () => {
+    // The image-change phrasings now route to the edit path. A request for
+    // *new* material must survive that, in both languages.
+    expect(parseCreativeRequest('put together 3 posters for the launch')).not.toBeNull()
+    expect(parseCreativeRequest('buat 3 poster untuk launch Matheasy')).not.toBeNull()
+    expect(parseCreativeRequest('design a poster with our logo on it')).not.toBeNull()
+    expect(parseCreativeRequest('buat 3 poster baru')).not.toBeNull()
+  })
+
+  it('asking for a different image is an edit, left to the edit route', () => {
+    expect(parseCreativeRequest('regenerate the poster with a student on a phone')).toBeNull()
+    expect(parseCreativeRequest('change the image to something brighter')).toBeNull()
+    expect(parseCreativeRequest('add a student using Matheasy on a phone to the poster')).toBeNull()
+  })
+
   it('a request is executed even when a proposal is pending, if it is not a plain yes', () => {
     const decision = decideChatAction({
       text: 'actually create 1 portrait poster about the free trial',
@@ -289,6 +304,18 @@ describe("EVA's own offers", () => {
   it('ignores replies that merely talk about posters', () => {
     expect(detectAssistantOffer('Green works well for a maths brand; a poster in that green would feel calm.')).toBeNull()
     expect(detectAssistantOffer('Your target customers are parents of primary-school children.')).toBeNull()
+  })
+
+  it('a promise to redo the poster arms a real proposal', () => {
+    // The loop this closes: EVA said "I'll regenerate 1 poster with a student
+    // on a phone", the owner said yes, and there was nothing armed to run.
+    expect(
+      detectAssistantOffer(
+        "I'll regenerate 1 poster with a student using Matheasy on a phone, keeping the green and the logo",
+      ),
+    ).toMatchObject({ count: 1 })
+    expect(detectAssistantOffer('Want me to redo the poster image?')).toMatchObject({ count: 1 })
+    expect(detectAssistantOffer('Saya boleh buat semula poster tu')).toMatchObject({ count: 1 })
   })
 })
 
