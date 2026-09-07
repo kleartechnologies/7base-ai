@@ -6,6 +6,7 @@ import type { StoredBusiness } from '../lib/business.types'
 import { storageBucket } from '../lib/firebase'
 import type { MessageMeta } from '../lib/types'
 import { resolveBrandStyle, resolveVisualStyle } from './brand'
+import type { CreativeDirection } from './direction'
 import { buildImagePrompt } from './prompt'
 import { CREATIVE_LIMITS, type CreativeFormat, type CreativeImageRef } from './validate'
 
@@ -36,6 +37,13 @@ export async function generateCreativeImage(params: {
   brief: string
   altText: string | null
   format: CreativeFormat
+  /**
+   * The creative direction this poster is being designed in, chosen
+   * deterministically in `direction.ts`. It art-directs the brief and is
+   * persisted on the creative, so a retry regenerates in the same direction
+   * the client is laying the poster out in.
+   */
+  direction: CreativeDirection
   business: StoredBusiness | null
   /** The authenticated owner — the account whose image quota this consumes. */
   uid: string
@@ -51,8 +59,10 @@ export async function generateCreativeImage(params: {
   const prompt = buildImagePrompt({
     brief: params.brief,
     format: params.format,
+    direction: params.direction,
     paletteHexes: (brandStyle.palette ?? []).slice(0, 3),
     visualStyle: resolveVisualStyle(params.business, CREATIVE_LIMITS.imageBrief),
+    businessType: businessTypeLine(params.business),
   })
 
   const result = await runImageTask({
@@ -70,6 +80,19 @@ export async function generateCreativeImage(params: {
     image: { storagePath, prompt, altText: params.altText, source: 'generated' },
     meta: result.meta,
   }
+}
+
+/**
+ * What the business calls itself, in a few words, so the brief is about a
+ * bakery or a tuition centre rather than a generic "small business". Clamped
+ * and stripped of line breaks — recorded business text, but text all the
+ * same, and it is going into a prompt.
+ */
+function businessTypeLine(business: StoredBusiness | null): string | null {
+  const raw = business?.identity.businessType ?? business?.identity.category ?? null
+  if (!raw) return null
+  const clean = raw.replace(/\s+/g, ' ').trim().slice(0, 60)
+  return clean.length > 0 ? clean : null
 }
 
 /**

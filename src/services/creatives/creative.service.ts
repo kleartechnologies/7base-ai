@@ -28,6 +28,19 @@ export async function getCreative(creativeId: string): Promise<Creative | null> 
   return fromDocSnapshot<Creative>(snapshot)
 }
 
+/** One creative, live; null once it no longer exists. */
+export function observeCreative(
+  creativeId: string,
+  onChange: (creative: Creative | null) => void,
+  onError?: (error: unknown) => void,
+): () => void {
+  return onSnapshot(
+    creativeDoc(creativeId),
+    (snapshot) => onChange(fromDocSnapshot<Creative>(snapshot)),
+    (error) => onError?.(error),
+  )
+}
+
 /** The owner's creatives, most recently touched first. */
 export function observeCreatives(
   ownerId: string,

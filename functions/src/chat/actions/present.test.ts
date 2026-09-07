@@ -222,13 +222,13 @@ describe('proposals', () => {
       { kind: 'no_campaign' },
     )
     expect(plainText).toBe('You don’t have a campaign for this yet. I can create one for you. Want me to go ahead?')
-    expect((blocks[1] as ActionProposalBlock).confirmLabel).toBe('Yes, create the campaign')
+    expect((blocks[1] as ActionProposalBlock).confirmLabel).toBe('Create the campaign')
   })
 
   it('labels the go-ahead with the number, and retries by position', () => {
-    expect(confirmLabelFor(three, 'en')).toBe('Yes, create the 3 posters')
-    expect(confirmLabelFor({ ...three, spec: { ...three.spec, positions: [1], size: 1 } }, 'en')).toBe('Yes, create it')
-    expect(confirmLabelFor(three, 'ms')).toBe('Ya, buat 3 poster')
+    expect(confirmLabelFor(three, 'en')).toBe('Make 3 posters')
+    expect(confirmLabelFor({ ...three, spec: { ...three.spec, positions: [1], size: 1 } }, 'en')).toBe('Make the poster')
+    expect(confirmLabelFor(three, 'ms')).toBe('Buat 3 poster')
     expect(retryLabelFor([2], 'en')).toBe('Try the second one again')
     expect(retryLabelFor([2, 3], 'ms')).toBe('Cuba yang tinggal sekali lagi')
   })

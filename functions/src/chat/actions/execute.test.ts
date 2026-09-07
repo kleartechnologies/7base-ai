@@ -370,7 +370,7 @@ describe('runChatAction — quota honesty, before anything is made', () => {
       'I can create 2 of the 3 today — you’ve reached today’s limit for the rest. Want me to go ahead with 2?',
     )
     expect(proposalBlock(outcome.blocks)?.action).toMatchObject({ spec: { positions: [1, 2], size: 3 } })
-    expect(proposalBlock(outcome.blocks)?.confirmLabel).toBe('Yes, create the 2 posters')
+    expect(proposalBlock(outcome.blocks)?.confirmLabel).toBe('Make 2 posters')
   })
 
   it('counts image budget only when no photo asset could carry the poster', async () => {
@@ -430,7 +430,12 @@ describe('runChatAction — ownership and scope', () => {
 })
 
 describe('runChatAction — explicit requests resolve the campaign server-side', () => {
-  const request = { type: 'creative_request' as const, spec: { ...THREE, brief: 'make 3 posters' } }
+  // "make 3 posters" — the owner named the number, so EVA acts on it.
+  const request = {
+    type: 'creative_request' as const,
+    spec: { ...THREE, brief: 'make 3 posters' },
+    countStated: true,
+  }
 
   it("uses this thread's campaign when it has one", async () => {
     const h = harness()
@@ -505,6 +510,105 @@ describe('runChatAction — explicit requests resolve the campaign server-side',
     const outcome = await runChatAction(request, h.ctx, h.deps)
     expect(proposalBlock(outcome.blocks)).toBeUndefined()
     expect(outcome.log).toMatchObject({ blocked: 'missing_brain' })
+  })
+})
+
+/**
+ * Phase 7G §10/§11 — action-first. "Buat 3 poster" is a decision already
+ * made and EVA carries it out. "Buat poster untuk promo saya" names no
+ * number, so she makes one offer — one sentence, one plain summary line,
+ * one button — instead of silently making a single poster or asking a list
+ * of technical questions.
+ */
+describe('runChatAction — a request with no number becomes one offer, not a question list', () => {
+  const unstated = {
+    type: 'creative_request' as const,
+    spec: { ...THREE, brief: 'buat poster untuk promo saya', positions: [1], size: 1 },
+    countStated: false,
+  }
+
+  it('offers a set of 3 in one sentence and one summary line, and creates nothing yet', async () => {
+    const h = harness()
+    h.ctx.text = 'buat poster untuk promo saya'
+    const outcome = await runChatAction(unstated, h.ctx, h.deps)
+
+    expect(h.calls).toHaveLength(0)
+    expect(outcome.plainText).toBe(
+      'Sure. I can make you 3 posters for this, each with a different look.',
+    )
+    const proposal = proposalBlock(outcome.blocks)
+    expect(proposal?.summary).toBe('3 posters · Instagram & Facebook · Square')
+    expect(proposal?.confirmLabel).toBe('Make 3 posters')
+    expect(proposal?.action).toMatchObject({
+      kind: 'creative.generate',
+      campaignId: 'camp1',
+      spec: { positions: [1, 2, 3], size: 3, format: 'square_post' },
+    })
+    // One sentence, one proposal — no follow-up questions stacked behind it.
+    expect(outcome.blocks.filter((b) => b.type === 'text')).toHaveLength(1)
+    expect(outcome.log).toMatchObject({
+      action: 'creative.generate',
+      proposed: true,
+      reason: 'count_unstated',
+    })
+  })
+
+  it('says it in the owner’s language', async () => {
+    const h = harness()
+    h.ctx.language = 'ms'
+    const outcome = await runChatAction(unstated, h.ctx, h.deps)
+    expect(outcome.plainText).toBe(
+      'Boleh. Saya boleh buatkan 3 poster untuk ini, setiap satu dengan gaya berbeza.',
+    )
+    expect(proposalBlock(outcome.blocks)?.summary).toBe(
+      '3 poster · Instagram & Facebook · Segi empat',
+    )
+  })
+
+  it('confirming that offer makes all 3 through the same guarded pipeline', async () => {
+    const h = harness()
+    const offer = await runChatAction(unstated, h.ctx, h.deps)
+    const action = proposalBlock(offer.blocks)?.action
+    expect(action).toBeDefined()
+
+    const done = await runChatAction({ type: 'confirm', action: action! }, h.ctx, h.deps)
+    expect(h.calls).toHaveLength(3)
+    expect(h.locks).toEqual(['creative.generate_user1_camp1'])
+    expect(setBlock(done.blocks)?.items.map((i) => i.creativeId)).toEqual(['cr1', 'cr2', 'cr3'])
+  })
+
+  it('still acts immediately when the owner named the number', async () => {
+    const stated = { ...unstated, spec: THREE, countStated: true }
+    const h = harness()
+    const outcome = await runChatAction(stated, h.ctx, h.deps)
+    expect(h.calls).toHaveLength(3)
+    expect(proposalBlock(outcome.blocks)).toBeUndefined()
+    expect(outcome.log).toMatchObject({ created: 3, fromProposal: false })
+  })
+
+  it('carries the offered set through the create-a-campaign-first path', async () => {
+    const h = harness({ inThread: null, campaigns: [] })
+    h.ctx.text = 'buat poster untuk promo saya'
+    const outcome = await runChatAction(unstated, h.ctx, h.deps)
+    expect(h.calls).toHaveLength(0)
+    expect(outcome.plainText).toContain('then make the 3 posters')
+    expect(proposalBlock(outcome.blocks)?.action).toMatchObject({
+      kind: 'campaign.create',
+      then: { positions: [1, 2, 3], size: 3 },
+    })
+  })
+
+  it('a missing number does not skip the campaign question when several could be meant', async () => {
+    const h = harness({
+      inThread: null,
+      campaigns: [
+        { id: 'camp1', campaign },
+        { id: 'camp2', campaign: { ...campaign, name: 'Raya Promo' } },
+      ],
+    })
+    const outcome = await runChatAction(unstated, h.ctx, h.deps)
+    expect(h.calls).toHaveLength(0)
+    expect(proposalBlock(outcome.blocks)?.action).toMatchObject({ kind: 'campaign.choose' })
   })
 })
 
@@ -591,7 +695,9 @@ describe('proposeFromOffer — EVA’s prose offer becomes a real proposal', () 
     expect(block).toEqual({
       id: 'b1',
       type: 'action_proposal',
-      confirmLabel: 'Yes, create the 3 posters',
+      confirmLabel: 'Make 3 posters',
+      // One line the owner can read at a glance — no mechanics.
+      summary: '3 posters · Instagram & Facebook · Square',
       action: {
         kind: 'creative.generate',
         campaignId: 'camp1',

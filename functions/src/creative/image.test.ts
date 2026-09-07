@@ -46,6 +46,7 @@ describe('generateCreativeImage', () => {
       brief: 'A plate of nasi lemak on a wooden table',
       altText: 'A plate of nasi lemak',
       format: 'square_post',
+      direction: 'hero_product',
       business: null,
       uid: 'user-1',
       plan: 'basic' as never,
@@ -62,11 +63,27 @@ describe('generateCreativeImage', () => {
       brief: 'A plate of nasi lemak',
       altText: null,
       format: 'square_post',
+      direction: 'hero_product',
       business: null,
       uid: 'user-1',
       plan: 'basic' as never,
     })
     expect(h.prompts[0]).toMatch(/no text/i)
-    expect(h.prompts[0]).toMatch(/no logos/i)
+    expect(h.prompts[0]).toMatch(/logos or brand marks/i)
+  })
+
+  it('art-directs the brief with the direction it was given', async () => {
+    await generateCreativeImage({
+      businessId: 'biz1',
+      brief: 'The Numi app helping a student',
+      altText: null,
+      format: 'square_post',
+      direction: 'app_showcase',
+      business: null,
+      uid: 'user-1',
+      plan: 'basic' as never,
+    })
+    expect(h.prompts[0]).toContain('The Numi app helping a student')
+    expect(h.prompts[0]).toContain('never readable interface text')
   })
 })

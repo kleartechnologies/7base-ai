@@ -15,6 +15,7 @@ import {
   workspaceSuggestion,
 } from '@/features/campaigns/workspace'
 import { useAuth } from '@/hooks/useAuth'
+import { PosterCanvas } from '@/features/creative/PosterCanvas'
 import { useI18n } from '@/hooks/useI18n'
 import type { MessageKey } from '@/i18n/translate'
 import { generateCreativeMaterials } from '@/services/ai/ai.client'
@@ -25,7 +26,6 @@ import {
   type CampaignContentPatch,
 } from '@/services/campaigns/campaign.service'
 import { observeCreatives } from '@/services/creatives/creative.service'
-import { getAssetUrl } from '@/services/storage/storage.service'
 import type { Campaign, CampaignChannel, CampaignStatus, Creative } from '@/types'
 
 // Proper nouns read the same in every language; only in-store and website
@@ -698,26 +698,6 @@ export default function CampaignDetailPage() {
  */
 function WorkbenchCreativeCard({ creative }: { creative: Creative }) {
   const { t, language } = useI18n()
-  // Keyed by storage path so a changed image stops matching instead of
-  // needing a state reset inside the effect.
-  const [resolved, setResolved] = useState<{ path: string; url: string } | null>(null)
-  const storagePath = creative.content.image?.storagePath ?? null
-  const imageUrl = resolved && resolved.path === storagePath ? resolved.url : null
-
-  useEffect(() => {
-    if (!storagePath) return
-    let cancelled = false
-    getAssetUrl(storagePath)
-      .then((url) => {
-        if (!cancelled) setResolved({ path: storagePath, url })
-      })
-      .catch(() => {
-        // Card renders text-only; the gallery still has the full view.
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [storagePath])
 
   const statusKey: MessageKey | null =
     creative.status === 'generating'
@@ -733,18 +713,9 @@ function WorkbenchCreativeCard({ creative }: { creative: Creative }) {
       to={ROUTES.creative}
       className="block overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-foreground/30"
     >
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-poster-surface">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={creative.content.image?.altText ?? creative.content.headline ?? creative.name}
-            className="absolute inset-0 size-full object-cover"
-          />
-        ) : creative.content.headline ? (
-          <p className="absolute inset-x-0 bottom-0 p-3 text-[14px] font-semibold leading-snug text-foreground">
-            {creative.content.headline}
-          </p>
-        ) : null}
+      {/* The same poster the Creative page and the download produce. */}
+      <div className="w-full bg-poster-surface">
+        <PosterCanvas creative={creative} className="block w-full" />
       </div>
       <div className="px-4 py-3">
         <div className="flex items-center gap-2">

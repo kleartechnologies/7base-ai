@@ -21,8 +21,9 @@
  *
  * Image generation costs real money per run, so it is opt-in:
  *   SMOKE_IMAGE=1 node test/smoke/creative.smoke.mjs
- *   (generates one square poster visual and reports its size — nothing is
- *   uploaded to Storage; the byte count is the assertion)
+ *   (generates one square poster visual per creative direction and writes it
+ *   to SMOKE_IMAGE_DIR so it can be looked at; nothing is uploaded to Storage)
+ *   SMOKE_DIRECTIONS=hero_product,clean_editorial  # which directions to draw
  */
 import { createRequire } from 'node:module'
 
@@ -189,14 +190,27 @@ void premiumHeadline
 
 if (process.env.SMOKE_IMAGE === '1') {
   console.log('\n-- 4. creative.generate_image (image tier, live) --')
-  const prompt = buildImagePrompt({
-    brief: 'A nasi lemak lunch set on a marble kopitiam table, morning light through a window',
-    format: 'square_post', paletteHexes: [], visualStyle: null,
-  })
-  const t1 = Date.now()
-  const image = await runImageTask({ task: 'creative.generate_image', uid: 'smoke', plan: SMOKE_PLAN, prompt, size: '1024x1024' })
-  console.log(`  model=${image.meta.model} latency=${Date.now() - t1}ms`)
-  check('image bytes returned', image.imageBytes.length > 10_000, `${image.imageBytes.length} bytes`)
+  // Phase 7G §3/§4 — the prompt is an art-direction brief, and the direction
+  // is what makes two posters in a set look different. Every image is written
+  // to SMOKE_IMAGE_DIR so the result can be *looked at*, not just counted.
+  const { writeFileSync, mkdirSync } = require('node:fs')
+  const outDir = process.env.SMOKE_IMAGE_DIR ?? '.'
+  mkdirSync(outDir, { recursive: true })
+  const directions = (process.env.SMOKE_DIRECTIONS ?? 'hero_product').split(',')
+  for (const direction of directions) {
+    const prompt = buildImagePrompt({
+      brief: 'A nasi lemak lunch set on a marble kopitiam table, morning light through a window',
+      format: 'square_post', direction, paletteHexes: ['#C2410C'], visualStyle: null,
+      businessType: 'kopitiam serving weekday lunch sets',
+    })
+    console.log(`\n  [${direction}] ${prompt}`)
+    const t1 = Date.now()
+    const image = await runImageTask({ task: 'creative.generate_image', uid: 'smoke', plan: SMOKE_PLAN, prompt, size: '1024x1024' })
+    const file = `${outDir}/poster-${direction}.png`
+    writeFileSync(file, image.imageBytes)
+    console.log(`  model=${image.meta.model} latency=${Date.now() - t1}ms -> ${file}`)
+    check(`image bytes returned for ${direction}`, image.imageBytes.length > 10_000, `${image.imageBytes.length} bytes`)
+  }
 } else {
   console.log('\n-- 4. image generation skipped (set SMOKE_IMAGE=1 to run it) --')
 }
@@ -215,7 +229,10 @@ if (process.env.FIRESTORE_EMULATOR_HOST) {
   check('usage document exists for the smoke user-day', snapshot.exists)
   if (snapshot.exists) {
     const usage = snapshot.data()
-    const imageRuns = process.env.SMOKE_IMAGE === '1' ? 1 : 0
+    const imageRuns =
+      process.env.SMOKE_IMAGE === '1'
+        ? (process.env.SMOKE_DIRECTIONS ?? 'hero_product').split(',').length
+        : 0
     console.log('  ledger:', JSON.stringify({
       requests: usage.requests, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
       imageInputTokens: usage.imageInputTokens, imageOutputTokens: usage.imageOutputTokens,
@@ -231,7 +248,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST) {
     check('all reservations released', usage.reservedInputTokens === 0 && usage.reservedOutputTokens === 0 && usage.reservedCostUsd === 0)
     if (imageRuns) {
       check('image tokens on the image counters', usage.imageOutputTokens > 0)
-      check('delivered image counted', usage.imagesGenerated === 1)
+      check('delivered images counted', usage.imagesGenerated === imageRuns)
     }
   }
 }

@@ -294,6 +294,13 @@ export interface ActionProposalBlock extends BlockBase {
   action: ProposedAction
   /** The go-ahead button's label, in the reply's language. */
   confirmLabel: string
+  /**
+   * The whole plan in one line, in plain words — "3 posters · Instagram &
+   * Facebook · Square" (Phase 7G §10). One confirmation, no mechanics:
+   * the owner reads this and presses the button. Absent on blocks written
+   * before Phase 7G.
+   */
+  summary?: string | null
 }
 
 /** One poster of a set — the same render fields as a creative preview. */

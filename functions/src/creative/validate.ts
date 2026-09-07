@@ -15,6 +15,8 @@
  * prompt alone.
  */
 
+import type { CreativeDirection } from './direction'
+
 const LIMITS = {
   name: 80,
   headline: 80,
@@ -90,6 +92,13 @@ export interface CreativeStyle {
    * the poster client-side and is never sent to the image model.
    */
   logoAssetId?: string | null
+  /**
+   * The creative direction this poster was designed in (Phase 7G) — chosen
+   * deterministically at generation time, never by the client and never by a
+   * model. The renderer lays the poster out from it. Absent on creatives
+   * made before Phase 7G, which lay out as plain editorial posters.
+   */
+  direction?: CreativeDirection | null
   /**
    * Which parts of the owner's Brand Identity fed this creative. Server-set
    * at generation time; absent on creatives made before Phase 7D.

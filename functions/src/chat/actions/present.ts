@@ -68,13 +68,15 @@ function ordinal(position: number, language: ReplyLanguage): string {
 
 export function confirmLabelFor(action: ProposedAction, language: ReplyLanguage): string {
   switch (action.kind) {
+    // Phase 7G §10/§11 — the button says the doing, not "yes". The summary
+    // line right above it already carries what and where.
     case 'creative.generate': {
       const count = action.spec.positions.length
-      if (language === 'ms') return count === 1 ? 'Ya, buatkan' : `Ya, buat ${count} poster`
-      return count === 1 ? 'Yes, create it' : `Yes, create the ${count} posters`
+      if (language === 'ms') return count === 1 ? 'Buat poster' : `Buat ${count} poster`
+      return count === 1 ? 'Make the poster' : `Make ${count} posters`
     }
     case 'campaign.create':
-      return language === 'ms' ? 'Ya, buat kempen' : 'Yes, create the campaign'
+      return language === 'ms' ? 'Buat kempen' : 'Create the campaign'
     case 'campaign.choose':
       // The choices themselves are the buttons.
       return ''
@@ -92,13 +94,42 @@ export function retryLabelFor(positions: number[], language: ReplyLanguage): str
   return language === 'ms' ? 'Cuba yang tinggal sekali lagi' : 'Try the missing ones again'
 }
 
+/**
+ * The whole plan in one line: what gets made, where it is for, what shape it
+ * is. This is the *only* confirmation an owner should ever need to read —
+ * no campaign mechanics, no format codes, no options to configure. Null when
+ * the proposal is a choice between campaigns, where the buttons say it.
+ */
+export function proposalSummary(
+  action: ProposedAction,
+  language: ReplyLanguage,
+): string | null {
+  const spec =
+    action.kind === 'creative.generate'
+      ? action.spec
+      : action.kind === 'campaign.create'
+        ? action.then
+        : null
+  if (!spec) return null
+  const ms = language === 'ms'
+  const shape =
+    spec.format === 'portrait_post' ? (ms ? 'Menegak' : 'Portrait') : ms ? 'Segi empat' : 'Square'
+  return [posters(spec.positions.length, language), 'Instagram & Facebook', shape].join(' · ')
+}
+
 export function buildProposalBlock(
   id: string,
   action: ProposedAction,
   language: ReplyLanguage,
   confirmLabel: string = confirmLabelFor(action, language),
 ): ActionProposalBlock {
-  return { id, type: 'action_proposal', action, confirmLabel }
+  return {
+    id,
+    type: 'action_proposal',
+    action,
+    confirmLabel,
+    summary: proposalSummary(action, language),
+  }
 }
 
 /** The proposal's own sentence, for the situations that need one. */
@@ -112,6 +143,7 @@ export function proposalLead(
     | { kind: 'size_cap'; requested: number }
     | { kind: 'campaign_ready' }
     | { kind: 'repeat' }
+    | { kind: 'offer_set' }
     | { kind: 'reask' },
 ): string {
   const ms = language === 'ms'
@@ -157,6 +189,12 @@ export function proposalLead(
       return ms
         ? 'Saya baru sahaja buat poster itu — ada di atas. Nak satu set lagi?'
         : 'I just created those — they’re above. Want another set?'
+    // The owner asked for posters without saying how many. EVA answers with
+    // a plan, not a form: one sentence, one summary line, one button.
+    case 'offer_set':
+      return ms
+        ? `Boleh. Saya boleh buatkan ${posters(count ?? 1, 'ms')} untuk ini, setiap satu dengan gaya berbeza.`
+        : `Sure. I can make you ${posters(count ?? 1, 'en')} for this, each with a different look.`
   }
 }
 

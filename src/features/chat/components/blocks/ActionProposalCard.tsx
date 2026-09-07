@@ -50,7 +50,18 @@ export function ActionProposalCard({
   }
 
   return (
-    <div>
+    <div className="flex flex-wrap items-center gap-2.5">
+      {/*
+        The whole plan in one line — "3 posters · Instagram & Facebook ·
+        Square" — written server-side in the owner's language. It is the
+        only thing to read before pressing the button: no formats to pick,
+        no campaign to understand, no options to configure.
+      */}
+      {block.summary ? (
+        <span className="rounded-full border border-border px-2.5 py-1 text-[12px] text-muted-foreground">
+          {block.summary}
+        </span>
+      ) : null}
       <Button size="sm" disabled={busy} onClick={() => actions.sendQuickReply(t('chat.quickYes'))}>
         {block.confirmLabel}
         <ArrowRight className="size-3.5" aria-hidden />

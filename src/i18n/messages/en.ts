@@ -345,8 +345,9 @@ export const en = {
 
   /* --- creative preview (poster + captions in chat) ------------------------ */
   'creative.marketingMaterials': 'Marketing materials',
-  'creative.aiGeneratedImage': 'AI-generated image',
+  'creative.aiGeneratedImage': 'EVA-designed visual',
   'creative.yourPhoto': 'Your photo',
+  'creative.missing': 'This creative is no longer available.',
   'creative.imageFailed':
     'The poster image couldn’t be created — your marketing copy below is ready to use.',
   'creative.retryImage': 'Try the image again',
@@ -365,13 +366,14 @@ export const en = {
   'creative.editHint': 'Tell me what to change — the headline, the captions, or the image.',
 
   /* --- creative gallery page ------------------------------------------------ */
-  'creative.pageTitle': 'Creative',
-  'creative.pageIntro':
-    'Posters and captions EVA has made from your campaigns — structured and editable, never flattened.',
+  'creative.pageTitle': 'Creatives',
+  'creative.pageIntro': 'Everything EVA has made for you — ready to download, or to change with EVA.',
   'creative.listLoadFailed':
     'Your creatives could not be loaded. Please check your connection and refresh.',
-  'creative.listEmpty':
-    'Nothing here yet. Open a campaign and choose “{createMaterials}” — the poster and captions EVA makes will be collected here.',
+  'creative.emptyTitle': 'Your creatives will appear here.',
+  'creative.emptyBody': 'Ask EVA to create a poster, social post or campaign creative.',
+  'creative.createWithEva': 'Create with EVA',
+  'creative.forCampaign': 'For {campaign}',
   'creative.formatPortrait': 'Portrait post',
   'creative.formatSquare': 'Square post',
   'creative.updatedOn': 'Updated {date}',
@@ -815,16 +817,14 @@ export const en = {
   'brand.boardSampleBody': 'A taste of how your creatives will read.',
 
   // Applied panel on a creative.
-  'brand.appliedTitle': 'Brand Identity — applied',
-  'brand.appliedPartialTitle': 'Brand Identity — partly applied',
-  'brand.appliedBody':
-    'EVA used your approved logo, colours, typography and visual style for this creative.',
-  'brand.appliedPartialBody': 'EVA used what you’ve set so far. Complete it for full coverage.',
-  'brand.appliedLogo': 'Logo',
-  'brand.appliedColors': 'Colours',
-  'brand.appliedTypography': 'Typography',
-  'brand.appliedStyle': 'Style',
-  'brand.appliedNotSet': 'not set',
+  'brand.usedFull': 'Used your logo, colours, typography and visual style.',
+  'brand.usedNone': 'EVA didn’t have your brand yet.',
+  'brand.setUpBrand': 'Set up your Brand Identity',
+  'brand.partLogo': 'Logo',
+  'brand.partColors': 'Colours',
+  'brand.partTypography': 'Typography',
+  'brand.partStyle': 'Style',
+  'brand.partNotSet': 'not set yet',
   'brand.editBrand': 'Edit Brand Identity',
   'brand.completeBrand': 'Complete it',
 

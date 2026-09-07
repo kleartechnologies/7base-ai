@@ -155,7 +155,7 @@ export async function runChatAction(
 ): Promise<ActionOutcome> {
   switch (decision.type) {
     case 'creative_request':
-      return runCreativeRequest(decision.spec, ctx, deps)
+      return runCreativeRequest(decision.spec, ctx, deps, decision.countStated)
     case 'choose':
       return runCreativeGeneration(decision.action, ctx, deps, { fromProposal: true })
     case 'reask_choice':
@@ -192,28 +192,44 @@ async function runCreativeRequest(
   spec: CreativeRequestSpec,
   ctx: ActionContext,
   deps: ActionDeps,
+  countStated = true,
 ): Promise<ActionOutcome> {
+  // Phase 7G §10 — "buat 3 poster" is a decision already made and EVA acts
+  // on it. "buat poster untuk promo saya" names no number, so the offer is
+  // a set of ${MAX_CREATIVES_PER_REQUEST} with different looks — said once,
+  // in one line with one button, rather than silently making a single
+  // poster or asking a list of questions.
+  const wanted: CreativeRequestSpec = countStated
+    ? spec
+    : {
+        ...spec,
+        positions: positionsFor(MAX_CREATIVES_PER_REQUEST),
+        size: MAX_CREATIVES_PER_REQUEST,
+      }
   const resolved = await resolveCampaign(ctx, deps)
 
   if (resolved.kind === 'one') {
-    return runCreativeGeneration(
-      {
-        kind: 'creative.generate',
-        campaignId: resolved.id,
-        campaignName: resolved.campaign.name,
-        spec,
-      },
-      ctx,
-      deps,
-      { fromProposal: false },
-    )
+    const generate: CreativeGenerateAction = {
+      kind: 'creative.generate',
+      campaignId: resolved.id,
+      campaignName: resolved.campaign.name,
+      spec: wanted,
+    }
+    if (!countStated) {
+      return outcome(presentProposal(generate, ctx.language, { kind: 'offer_set' }), null, {
+        action: 'creative.generate',
+        proposed: true,
+        reason: 'count_unstated',
+      })
+    }
+    return runCreativeGeneration(generate, ctx, deps, { fromProposal: false })
   }
 
   if (resolved.kind === 'many') {
     const choose: CampaignChooseAction = {
       kind: 'campaign.choose',
       choices: resolved.choices.map((c) => ({ campaignId: c.id, name: c.campaign.name })),
-      then: spec,
+      then: wanted,
     }
     return outcome(presentProposal(choose, ctx.language, { kind: 'choose' }), null, {
       action: 'campaign.choose',
@@ -229,7 +245,7 @@ async function runCreativeRequest(
       blocked: 'missing_brain',
     })
   }
-  const create: ProposedAction = { kind: 'campaign.create', goal: ctx.text, then: spec }
+  const create: ProposedAction = { kind: 'campaign.create', goal: ctx.text, then: wanted }
   return outcome(presentProposal(create, ctx.language, { kind: 'no_campaign' }), null, {
     action: 'campaign.create',
     proposed: true,
@@ -474,6 +490,9 @@ async function runCreativeGeneration(
             format: action.spec.format,
             setContext: buildSetContext(position, action.spec),
             avoidAssetIds: created.flatMap((p) => p.creative.assetIds ?? []),
+            // Each poster of a set takes the next creative direction, so
+            // three posters are three designs, not one design three times.
+            setPosition: index,
           })
           created.push({
             position,

@@ -17,7 +17,7 @@ interface PlaceholderPageProps {
 export function PlaceholderPage({ title, description, icon: Icon, hint }: PlaceholderPageProps) {
   const { t } = useI18n()
   return (
-    <div className="h-full overflow-y-auto">
+    <div>
       <div className="mx-auto w-full max-w-3xl px-8 py-12">
         <header className="mb-10">
           <h1 className="text-[22px] font-semibold tracking-[-0.015em] text-foreground">{title}</h1>

@@ -74,7 +74,18 @@ export function AppShell() {
           </Button>
         </header>
 
-        <main className="min-h-0 flex-1">
+        {/*
+          The one scroll container for every page. The shell is a fixed
+          viewport-height flex column with overflow hidden, so a page that
+          simply grows (Creative, Assets, Campaigns, Library, Overview) was
+          clipped at the bottom with no way to reach the rest. Scrolling lives
+          here, once: pages render their content and never provide their own
+          scroller. The chat page fills this height (h-full) and scrolls its
+          message list internally, which is the only intentional inner
+          scroller. `relative` keeps absolutely positioned descendants inside
+          this box, so they cannot grow the document behind the shell.
+        */}
+        <main className="relative min-h-0 flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

@@ -383,6 +383,9 @@ export async function resolveRetryImage(
     brief: image?.prompt ?? (fallbackBrief || creative.name),
     altText: image?.altText ?? null,
     format: creative.format,
+    // The direction this poster was designed in, so the retry comes back in
+    // the same one the client is laying it out in.
+    direction: creative.style.direction ?? 'clean_editorial',
     business: params.business,
     uid: params.ownerId,
     plan: params.plan,
@@ -443,6 +446,9 @@ export async function resolveVisualEditImage(
     brief: params.visualChange,
     altText: image?.altText ?? null,
     format: creative.format,
+    // Same direction as before: the owner asked for a different picture,
+    // not a different kind of poster.
+    direction: creative.style.direction ?? 'clean_editorial',
     business: params.business,
     uid: params.ownerId,
     plan: params.plan,

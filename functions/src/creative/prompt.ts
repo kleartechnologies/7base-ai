@@ -1,4 +1,6 @@
 import type { StoredCampaign } from '../campaign/store'
+import type { CreativeDirection } from './direction'
+import { POSTER_COPY_LIMITS } from './posterCopy'
 import type { StoredCreative } from './store'
 import type { CreativeFormat } from './validate'
 
@@ -10,21 +12,23 @@ import type { CreativeFormat } from './validate'
  * is an invented fact printed in 72pt.
  */
 
-export const CREATIVE_COPY_PROMPT = `You write the marketing materials for one campaign belonging to a small Malaysian business, usually a restaurant or food business: the text of a social-media poster plus the captions that go with it.
+export const CREATIVE_COPY_PROMPT = `You write the marketing materials for one campaign belonging to a small Malaysian business — a restaurant, a shop, a service, an app, a class, anything: the text of a social-media poster plus the captions that go with it.
 
 The campaign's strategy — audience, offer, message, call to action — is already decided and is not yours to change. You are giving it words a customer will actually read.
 
+A poster and a caption do different jobs, and mixing them is the mistake to avoid. The poster carries attention, one message and one action; it is read from a phone at arm's length, in about a second. The caption carries the explanation, the details, the link and the hashtags. Anything that needs a second sentence belongs in the caption.
+
 Fields:
 - name: a short internal name for this creative, e.g. "Weekday Lunch Poster".
-- headline: the poster's main line. Short, concrete, at most eight words.
-- subheadline: one supporting line, or null if the headline stands alone.
-- callToAction: a short imperative consistent with the campaign's ("Order on WhatsApp", "Visit us this week").
-- offerText: the offer as short displayable poster text, or null when the campaign has no concrete offer. Never sharpen a suggestion into a claim — if the offer says "consider a lunch set", there is no price and no named set to print.
-- facebookCaption: 2-4 short sentences in the business's voice, ending with the call to action. Hashtags optional, at most three.
+- headline: the poster's main line. At most six words and ${POSTER_COPY_LIMITS.headline} characters. Concrete, human, no full stop. Not a sentence, not a summary of the campaign.
+- subheadline: one short supporting line of about ten words, or null if the headline stands alone. Never a second paragraph.
+- callToAction: the button. Two or three words, an action ("Order on WhatsApp", "Cuba Percuma", "Book a class"). Never a link, phone number, address or sentence — those go in the captions.
+- offerText: the offer as short displayable poster text (at most ${POSTER_COPY_LIMITS.offerText} characters), or null when the campaign has no concrete offer. Never sharpen a suggestion into a claim — if the offer says "consider a lunch set", there is no price and no named set to print.
+- facebookCaption: 2-4 short sentences in the business's voice, ending with the call to action. This is where a link belongs, if the campaign has one. Hashtags optional, at most three.
 - instagramCaption: shorter and lighter than Facebook, at most three hashtags.
 - shortCopy: one or two sentences usable anywhere.
 - whatsappCopy: a friendly broadcast message, or null if WhatsApp is not one of the campaign's channels.
-- imageBrief: 1-3 sentences describing the supporting visual as a photographed scene — subject, setting, mood, lighting. Describe things, never words: no text, signs, prices or logos in the scene.
+- imageBrief: 1-3 sentences describing the supporting visual — subject, setting, mood, lighting. Describe things, never words: no text, signs, prices or logos in the scene, because the poster's words are set over this image afterwards.
 - altText: a plain accessibility description of that visual.
 
 Rules:
@@ -156,35 +160,133 @@ export function buildCreativeEditInput(params: CreativeEditInputParams): string 
 }
 
 /**
- * The image prompt, assembled from structured data only — the validated
- * brief, the brand's recorded style, the format. Raw user text never reaches
- * this string; an owner's visual request arrives as a validated
- * `visualChange` brief, not verbatim.
+ * The art-direction brief for the poster's visual.
  *
- * The generated image deliberately contains no text. Headline, offer and CTA
- * are overlaid by the renderer from the structured fields, which is what lets
- * a wording edit skip regeneration entirely — and image models still garble
- * type anyway.
+ * The image model is treated as a visual designer, not a stock-photo search:
+ * the brief states the intent, the focal point, the composition, the
+ * treatment and where the frame must stay quiet — and then leaves the model
+ * free to design within it. What it must never do is *write*. Every word on
+ * the finished poster (headline, offer, call to action) is set by the
+ * renderer from the structured fields, and the logo is composited from the
+ * owner's real file, because a generated logo is a forgery and generated
+ * type is a garble. That division is also what lets a wording edit skip
+ * regeneration entirely.
+ *
+ * The brief is assembled from structured data only — the validated visual
+ * brief, the deterministic creative direction, the brand's recorded style,
+ * the format. Raw user text never reaches this string; an owner's visual
+ * request arrives as a validated `visualChange` brief, not verbatim.
  */
+
+/**
+ * What each creative direction asks the image to be, and where it must leave
+ * room. `reserve` mirrors how `posterDesign.ts` lays that direction out on
+ * the client — the two are a pair: a visual whose subject sits where the
+ * headline goes is a visual fighting its own poster.
+ */
+const ART_DIRECTION: Record<CreativeDirection, { intent: string; reserve: string }> = {
+  hero_product: {
+    intent:
+      'One hero shot of the product itself, styled like a premium product advertisement: the subject lit deliberately, materials and texture readable, a simple complementary background that flatters it. Real depth, soft directional light, a believable surface underneath.',
+    reserve:
+      'Centre the subject with even breathing room on all four sides and keep the outer tenth of the frame free of important detail.',
+  },
+  clean_editorial: {
+    intent:
+      'A modern editorial photograph with an advertising sensibility: one clear subject, an uncluttered environment, natural directional light, a restrained colour story. Magazine quality, not stock-library generic.',
+    reserve:
+      'Place the subject in the upper or right two-thirds, and let the lower-left quarter fall away into plain, evenly lit surface or soft shadow with nothing of interest in it.',
+  },
+  bold_promotional: {
+    intent:
+      'A high-energy advertising photograph with strong contrast and saturated, confident lighting — the kind of frame that stops a scroll. Bold, but composed: one subject, no clutter.',
+    reserve:
+      'Compose for the top half: the subject sits in the upper middle, and the bottom third of the photograph is plain, quiet surface with nothing of interest in it.',
+  },
+  lifestyle: {
+    intent:
+      'A candid lifestyle moment: real people or real hands using, enjoying or sharing the thing, in a believable Malaysian setting. Warm, natural, unposed, documentary light.',
+    reserve:
+      'Place the action in the upper or right two-thirds, and let the lower-left quarter fall away into plain, evenly lit surface or soft shadow with nothing of interest in it.',
+  },
+  educational: {
+    intent:
+      'A calm, credible image about learning and understanding: a focused person, a workspace, materials in use. Clean, bright, uncluttered, encouraging rather than clinical.',
+    reserve:
+      'Centre the subject with generous even space around it and a quiet, plain background.',
+  },
+  app_showcase: {
+    intent:
+      'A product-technology composition: a modern device or a clean abstract representation of the product on a simple studio ground, with soft graphic shapes and gentle depth. If a screen is visible, render it as abstract colour blocks and shapes only — never readable interface text, numbers or icons that spell words.',
+    reserve:
+      'Centre the composition with even margins and keep the outer tenth of the frame free of important detail.',
+  },
+  minimal_premium: {
+    intent:
+      'A quiet, premium still life: one subject, restrained palette, soft gradient light, a lot of empty space. Considered and expensive-looking, closer to a fashion or fragrance advertisement than a catalogue photo.',
+    reserve:
+      'Centre the subject small in the frame with generous, genuinely empty negative space around it.',
+  },
+  feature_highlight: {
+    intent:
+      'A clean arrangement of the things on offer: several related items or moments composed as one deliberate group on a simple ground, evenly lit, each readable.',
+    reserve:
+      'Keep the group centred with even margins and the outer tenth of the frame free of important detail.',
+  },
+}
+
+/** The quality bar, stated once and applied to every direction. */
+const QUALITY_BAR =
+  'Advertising quality: one clear focal point, an intentional composition, real depth and directional light, strong separation between subject and background, deliberate negative space. Nothing flat, nothing clip-art, no collage, no busy backdrop, no template look, no borders or frames.'
+
+const NO_TEXT_RULE =
+  'Strictly no text of any kind: no words, letters, numbers, captions, labels, signage, packaging copy, watermarks, logos or brand marks anywhere in the image.'
+
+/**
+ * The model draws the *photograph*; the renderer lays the headline, the
+ * colour panel and the real logo over it afterwards. Saying "a panel goes
+ * here" invites the model to paint one — and then the poster carries two,
+ * in two different colours. So the reserve lines above describe the picture
+ * only, and this rule closes the door explicitly.
+ */
+const PHOTOGRAPH_ONLY_RULE =
+  'This is a photograph, not a finished poster: no flat colour panels, bars, banners, ribbons, stickers, badges, buttons, price tags, speech bubbles, arrows or graphic overlays of any kind, and no empty boxes or placeholder shapes waiting to be filled.'
+
 export function buildImagePrompt(params: {
   brief: string
   format: CreativeFormat
+  direction: CreativeDirection
   paletteHexes: string[]
   visualStyle: string | null
+  /** The owner's own words for what the business is. Null when unknown. */
+  businessType: string | null
 }): string {
+  const art = ART_DIRECTION[params.direction]
+  const shape = params.format === 'portrait_post' ? 'portrait 4:5' : 'square 1:1'
   const lines = [
-    `A ${
-      params.format === 'portrait_post' ? 'portrait' : 'square'
-    } social-media marketing photograph for a small Malaysian food business.`,
-    params.brief,
-    'Warm, appetising, natural light, shallow depth of field, professional food photography. Composition leaves clear space for a headline overlay.',
+    `A ${shape} advertising visual for a small Malaysian business${
+      params.businessType ? ` — ${params.businessType}` : ''
+    }.`,
+    // The brief is one sentence in a paragraph of them; the deterministic
+    // fallback brief (campaign fields joined together) often has no full stop.
+    sentence(params.brief),
+    art.intent,
+    art.reserve,
+    QUALITY_BAR,
   ]
   if (params.visualStyle) lines.push(`Visual style: ${params.visualStyle}.`)
   if (params.paletteHexes.length > 0) {
-    lines.push(`Subtle colour accents drawn from: ${params.paletteHexes.join(', ')}.`)
+    lines.push(
+      `Brand colours ${params.paletteHexes.join(', ')} appear as accents — a prop, a surface, a lighting cast or one graphic shape. Never flood the frame with them; most of the image stays neutral.`,
+    )
   }
-  lines.push(
-    'Strictly no text, no words, no letters, no numbers, no signage, no watermarks, no logos, no brand marks anywhere in the image.',
-  )
+  lines.push(PHOTOGRAPH_ONLY_RULE, NO_TEXT_RULE)
   return lines.join(' ')
+}
+
+/** One sentence, ending like one. */
+function sentence(value: string): string {
+  const text = value.replace(/\s+/g, ' ').trim()
+  if (!text) return text
+  return /[.!?]$/.test(text) ? text : `${text}.`
 }

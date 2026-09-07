@@ -349,8 +349,9 @@ export const ms: Record<MessageKey, string> = {
 
   /* --- creative preview (poster + captions in chat) ------------------------ */
   'creative.marketingMaterials': 'Bahan pemasaran',
-  'creative.aiGeneratedImage': 'Imej dijana AI',
+  'creative.aiGeneratedImage': 'Visual reka EVA',
   'creative.yourPhoto': 'Foto anda',
+  'creative.missing': 'Kreatif ini sudah tiada.',
   'creative.imageFailed':
     'Imej poster tidak dapat dihasilkan — teks pemasaran anda di bawah sedia untuk digunakan.',
   'creative.retryImage': 'Cuba imej sekali lagi',
@@ -370,12 +371,13 @@ export const ms: Record<MessageKey, string> = {
 
   /* --- creative gallery page ------------------------------------------------ */
   'creative.pageTitle': 'Kreatif',
-  'creative.pageIntro':
-    'Poster dan kapsyen yang EVA hasilkan daripada kempen anda — tersusun dan boleh diedit, bukan sekadar imej pegun.',
+  'creative.pageIntro': 'Semua yang EVA dah buat untuk anda — sedia dimuat turun, atau diubah dengan EVA.',
   'creative.listLoadFailed':
     'Kreatif anda tidak dapat dimuatkan. Sila semak sambungan internet anda dan muat semula.',
-  'creative.listEmpty':
-    'Belum ada apa-apa di sini. Buka satu kempen dan pilih “{createMaterials}” — poster dan kapsyen yang EVA hasilkan akan dikumpulkan di sini.',
+  'creative.emptyTitle': 'Kreatif anda akan muncul di sini.',
+  'creative.emptyBody': 'Minta EVA buatkan poster, siaran sosial atau kreatif kempen.',
+  'creative.createWithEva': 'Buat dengan EVA',
+  'creative.forCampaign': 'Untuk {campaign}',
   'creative.formatPortrait': 'Post potret',
   'creative.formatSquare': 'Post segi empat',
   'creative.updatedOn': 'Dikemas kini {date}',
@@ -814,17 +816,14 @@ export const ms: Record<MessageKey, string> = {
   'brand.boardTitle': 'Pratonton',
   'brand.boardSampleBody': 'Gambaran bagaimana kreatif anda akan kelihatan.',
 
-  'brand.appliedTitle': 'Identiti Jenama — digunakan',
-  'brand.appliedPartialTitle': 'Identiti Jenama — digunakan sebahagian',
-  'brand.appliedBody':
-    'EVA menggunakan logo, warna, tipografi dan gaya visual yang anda luluskan untuk kreatif ini.',
-  'brand.appliedPartialBody':
-    'EVA menggunakan apa yang anda tetapkan setakat ini. Lengkapkan untuk liputan penuh.',
-  'brand.appliedLogo': 'Logo',
-  'brand.appliedColors': 'Warna',
-  'brand.appliedTypography': 'Tipografi',
-  'brand.appliedStyle': 'Gaya',
-  'brand.appliedNotSet': 'belum ditetapkan',
+  'brand.usedFull': 'Menggunakan logo, warna, tipografi dan gaya visual anda.',
+  'brand.usedNone': 'EVA belum ada jenama anda.',
+  'brand.setUpBrand': 'Sediakan Identiti Jenama anda',
+  'brand.partLogo': 'Logo',
+  'brand.partColors': 'Warna',
+  'brand.partTypography': 'Tipografi',
+  'brand.partStyle': 'Gaya',
+  'brand.partNotSet': 'belum ditetapkan',
   'brand.editBrand': 'Edit Identiti Jenama',
   'brand.completeBrand': 'Lengkapkan',
 

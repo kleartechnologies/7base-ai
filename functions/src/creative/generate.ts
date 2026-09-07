@@ -36,8 +36,10 @@ import {
   type AssetWithId,
 } from './assets'
 import { brandAppliedSummary, brandStyleLine, readBrandKit, resolveBrandStyle } from './brand'
+import { directionForPosition, type CreativeDirection } from './direction'
 import { buildGroundingCorpus, draftCreativeCopyFromCampaign, mergeCopy } from './draft'
 import { generateCreativeImage, type GeneratedImage } from './image'
+import { disciplinePosterCopy } from './posterCopy'
 import {
   buildCreativePresentation,
   buildCreativeRetryPresentation,
@@ -136,6 +138,7 @@ export const creativeGenerateFromCampaign = onCall(
           format,
           setContext: null,
           avoidAssetIds: [],
+          setPosition: 0,
         })
 
         // Announce it in the thread it came from, if that thread exists.
@@ -187,6 +190,13 @@ export interface CreativeGenerationParams {
   setContext: string | null
   /** Phase 7F: photos already used by earlier posters of the same set. */
   avoidAssetIds: readonly string[]
+  /**
+   * Phase 7G: this poster's index within a set (0 for a single poster). It
+   * chooses the creative direction from the rotation, so three posters in
+   * one request are three different designs rather than one design three
+   * times. Deterministic — no classifier, no model call, no owner setting.
+   */
+  setPosition?: number
 }
 
 export interface CreativeGenerationResult {
@@ -249,6 +259,25 @@ export async function generateCreativeForCampaign(
   // never the request) outranks the type-based heuristic.
   const brandKit = readBrandKit(business)
   const logoAsset = selectLogoAsset(assets, brandKit?.logoAssetId ?? null)
+
+  // What kind of poster this is, decided in code from what the campaign and
+  // the chosen photo already say. It art-directs the image brief and is
+  // persisted, so the renderer lays the poster out the same way everywhere.
+  const direction: CreativeDirection = directionForPosition(
+    {
+      campaign,
+      business,
+      photo: productAsset
+        ? {
+            type: productAsset.asset.type,
+            name: productAsset.asset.name,
+            description: productAsset.asset.description,
+            tags: productAsset.asset.tags,
+          }
+        : null,
+    },
+    params.setPosition ?? 0,
+  )
 
   // 1. Copy: deterministic draft first, fast-tier wording on top.
   let draft = draftCreativeCopyFromCampaign(campaign)
@@ -344,6 +373,7 @@ export async function generateCreativeForCampaign(
         brief,
         altText,
         format,
+        direction,
         business,
         uid,
         plan,
@@ -403,6 +433,7 @@ export async function generateCreativeForCampaign(
     bodyFont: brandStyle.bodyFont,
     logoStoragePath: logo?.storagePath ?? null,
     logoAssetId: logo?.assetId ?? null,
+    direction,
     brandApplied: brandAppliedSummary(business, {
       logoFromKit: logo !== null && logo.assetId === brandKit?.logoAssetId,
       kitColors: brandStyle.kitColors,
@@ -417,7 +448,14 @@ export async function generateCreativeForCampaign(
     sourceRecommendationId: campaign.sourceRecommendationId,
     name: draft.name,
     format,
-    content: { ...draft.content, image, layout: image ? 'image_full_bleed' : 'text_only' },
+    // The poster's own lines are shortened deterministically here: a
+    // headline someone reads in a second, one supporting line, a button
+    // rather than a URL. The captions keep the full sentence and the link.
+    content: {
+      ...disciplinePosterCopy(draft.content),
+      image,
+      layout: image ? 'image_full_bleed' : 'text_only',
+    },
     captions: draft.captions,
     style,
     assetIds: buildCreativeAssetProvenance({
@@ -445,6 +483,7 @@ export async function generateCreativeForCampaign(
     imageReady: image !== null,
     copied: !copyFellBack,
     inSet: params.setContext !== null,
+    direction,
   })
 
   return { creativeId, creative: stored, copyFellBack, meta }

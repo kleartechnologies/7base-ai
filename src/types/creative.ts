@@ -92,6 +92,21 @@ export interface CreativeImage {
   assetId?: EntityId
 }
 
+/**
+ * The creative direction EVA chose for a poster (Phase 7G) — deterministic,
+ * from the campaign's intent and the assets on hand, never a classifier.
+ * Drives the art-direction brief server-side and the layout client-side.
+ */
+export type CreativeDirection =
+  | 'hero_product'
+  | 'clean_editorial'
+  | 'bold_promotional'
+  | 'lifestyle'
+  | 'educational'
+  | 'app_showcase'
+  | 'minimal_premium'
+  | 'feature_highlight'
+
 /** Named arrangements rather than free-form coordinates, so layouts stay sane. */
 export type CreativeLayout =
   | 'image_top'
@@ -116,6 +131,8 @@ export interface CreativeStyle {
    * panel simply does not render for those).
    */
   brandApplied?: BrandAppliedSummary | null
+  /** The creative direction the poster was made in. Absent before Phase 7G. */
+  direction?: CreativeDirection | null
 }
 
 /** What the read-only "Brand Identity — applied" panel renders from. */

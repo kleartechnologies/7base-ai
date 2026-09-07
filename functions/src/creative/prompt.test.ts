@@ -109,26 +109,63 @@ describe('buildImagePrompt', () => {
     const prompt = buildImagePrompt({
       brief: 'A plate of nasi lemak on a kopitiam table',
       format: 'square_post',
+      direction: 'hero_product',
       paletteHexes: [],
       visualStyle: null,
+      businessType: null,
     })
     expect(prompt).toContain('A plate of nasi lemak')
     expect(
       prompt.endsWith(
-        'Strictly no text, no words, no letters, no numbers, no signage, no watermarks, no logos, no brand marks anywhere in the image.',
+        'Strictly no text of any kind: no words, letters, numbers, captions, labels, signage, packaging copy, watermarks, logos or brand marks anywhere in the image.',
       ),
     ).toBe(true)
   })
 
-  it('weaves in format and brand palette when present', () => {
+  it('weaves in format, business type and brand palette when present', () => {
     const prompt = buildImagePrompt({
       brief: 'A laksa bowl, steam rising',
       format: 'portrait_post',
+      direction: 'clean_editorial',
       paletteHexes: ['#C2410C', '#F59E0B'],
       visualStyle: 'warm and rustic',
+      businessType: 'a kopitiam in Ipoh',
     })
-    expect(prompt).toContain('portrait')
+    expect(prompt).toContain('portrait 4:5')
+    expect(prompt).toContain('a kopitiam in Ipoh')
     expect(prompt).toContain('#C2410C, #F59E0B')
     expect(prompt).toContain('Visual style: warm and rustic.')
+    // The brand colour accents the frame; it never becomes the frame.
+    expect(prompt).toContain('Never flood the frame with them')
+  })
+
+  it('art-directs each creative direction differently, and never as a template', () => {
+    const at = (direction: Parameters<typeof buildImagePrompt>[0]['direction']) =>
+      buildImagePrompt({
+        brief: 'the same brief',
+        format: 'square_post',
+        direction,
+        paletteHexes: [],
+        visualStyle: null,
+        businessType: null,
+      })
+    const promo = at('bold_promotional')
+    const minimal = at('minimal_premium')
+    const app = at('app_showcase')
+    expect(new Set([promo, minimal, app]).size).toBe(3)
+    // Each brief reserves the space its own poster layout draws over.
+    expect(promo).toContain('bottom third')
+    expect(minimal).toContain('genuinely empty negative space')
+    expect(app).toContain('never readable interface text')
+    // The quality bar is stated for every direction, not just some.
+    for (const prompt of [promo, minimal, app]) {
+      expect(prompt).toContain('one clear focal point')
+      expect(prompt).toContain('no template look')
+      // §7 honesty: the renderer draws the panel, the type and the real
+      // logo. A brief that says "a panel goes here" gets one painted in,
+      // and the poster then carries two in two different colours.
+      expect(prompt).toContain('This is a photograph, not a finished poster')
+      expect(prompt).not.toMatch(/is laid over it|is set over it|inset card|type beneath/)
+    }
   })
 })

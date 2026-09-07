@@ -3,28 +3,30 @@ import { Link } from 'react-router-dom'
 import { Download, Image as ImageIcon } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { EvaSpark } from '@/components/EvaMark'
+import { Button } from '@/components/ui/button'
 import { BrandAppliedPanel } from '@/features/creative/BrandAppliedPanel'
+import { PosterCanvas } from '@/features/creative/PosterCanvas'
 import { downloadCreativePoster } from '@/features/creative/poster'
-import { firstUsableColor, readableTextOn } from '@/features/creative/posterSpec'
 import { useAuth } from '@/hooks/useAuth'
 import { useI18n } from '@/hooks/useI18n'
+import { observeCampaigns } from '@/services/campaigns/campaign.service'
 import { observeCreatives } from '@/services/creatives/creative.service'
-import { getAssetUrl } from '@/services/storage/storage.service'
-import { Button } from '@/components/ui/button'
 import type { Creative } from '@/types'
 
 /**
- * Every creative MARKA has made for this owner, newest first.
+ * The owner's creative library: everything EVA has made, newest first.
  *
- * A reading (and downloading) gallery, not an editor: creatives are edited
- * conversationally in the chat where the authority model lives, so each card
- * links back to its conversation. The poster preview is composed live from
- * the structured fields — the same layout the export draws.
+ * A place to see, download and pick up a creative — not where work starts.
+ * Work starts by asking EVA; each card links back into the conversation so
+ * changes go through the same authority model as creation. Every poster is
+ * drawn by the shared renderer from its persisted document, so the card
+ * here, the card in chat and the downloaded file are one picture.
  */
 export default function CreativePage() {
   const { t } = useI18n()
   const { user } = useAuth()
   const [creatives, setCreatives] = useState<Creative[] | null>(null)
+  const [campaignNames, setCampaignNames] = useState<Record<string, string>>({})
   const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
@@ -40,8 +42,20 @@ export default function CreativePage() {
     )
   }, [user])
 
+  useEffect(() => {
+    if (!user) return
+    // Campaign names answer "what was this for?"; a failure here only
+    // drops that label, never the library.
+    return observeCampaigns(
+      user.uid,
+      (campaigns) =>
+        setCampaignNames(Object.fromEntries(campaigns.map((c) => [c.id, c.name]))),
+      () => {},
+    )
+  }, [user])
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-8 py-12">
+    <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
       <header>
         <h1 className="flex items-center gap-2.5 text-[22px] font-semibold tracking-[-0.01em] text-foreground">
           <ImageIcon className="size-5 text-muted-foreground" aria-hidden />
@@ -59,16 +73,23 @@ export default function CreativePage() {
       ) : creatives === null ? (
         <p className="mt-10 text-[14px] text-muted-foreground">{t('common.loadingEllipsis')}</p>
       ) : creatives.length === 0 ? (
-        <p className="mt-10 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          {/* The quoted button name comes from the same dictionary as the
-              button itself, so the two can never drift apart. */}
-          {t('creative.listEmpty', { createMaterials: t('campaign.createMaterials') })}
-        </p>
+        <div className="mx-auto mt-16 max-w-sm text-center">
+          <EvaSpark className="mx-auto size-5 text-eva" aria-hidden />
+          <h2 className="mt-4 text-[17px] font-semibold text-foreground">
+            {t('creative.emptyTitle')}
+          </h2>
+          <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+            {t('creative.emptyBody')}
+          </p>
+          <Button asChild size="lg" className="mt-6">
+            <Link to={ROUTES.chat}>{t('creative.createWithEva')}</Link>
+          </Button>
+        </div>
       ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="mt-8 grid gap-6 sm:grid-cols-2">
           {creatives.map((creative) => (
             <li key={creative.id}>
-              <CreativeCard creative={creative} />
+              <CreativeCard creative={creative} campaignName={campaignNames[creative.campaignId ?? '']} />
             </li>
           ))}
           <li>
@@ -91,68 +112,16 @@ export default function CreativePage() {
   )
 }
 
-function CreativeCard({ creative }: { creative: Creative }) {
+function CreativeCard({ creative, campaignName }: { creative: Creative; campaignName?: string }) {
   const { t, language } = useI18n()
-  // Keyed by storage path so a changed image stops matching instead of
-  // needing a state reset inside the effect.
-  const [resolved, setResolved] = useState<{ path: string; url: string } | null>(null)
-  const [resolvedLogo, setResolvedLogo] = useState<{ path: string; url: string } | null>(null)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState(false)
-
-  const storagePath = creative.content.image?.storagePath ?? null
-  const imageUrl = resolved && resolved.path === storagePath ? resolved.url : null
-  const logoPath = creative.style.logoStoragePath ?? null
-  const logoUrl = resolvedLogo && resolvedLogo.path === logoPath ? resolvedLogo.url : null
-
-  useEffect(() => {
-    if (!storagePath) return
-    let cancelled = false
-    getAssetUrl(storagePath)
-      .then((url) => {
-        if (!cancelled) setResolved({ path: storagePath, url })
-      })
-      .catch(() => {
-        // Card renders text-only; download still works without the visual.
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [storagePath])
-
-  useEffect(() => {
-    if (!logoPath) return
-    let cancelled = false
-    getAssetUrl(logoPath)
-      .then((url) => {
-        if (!cancelled) setResolvedLogo({ path: logoPath, url })
-      })
-      .catch(() => {
-        // Poster renders without the logo; nothing else is lost.
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [logoPath])
 
   const handleDownload = async () => {
     setDownloading(true)
     setDownloadError(false)
     try {
-      await downloadCreativePoster({
-        creativeId: creative.id,
-        content: {
-          name: creative.name,
-          format: creative.format === 'portrait_post' ? 'portrait_post' : 'square_post',
-          headline: creative.content.headline,
-          subheadline: creative.content.subheadline,
-          callToAction: creative.content.callToAction,
-          offerText: creative.content.offerText,
-        },
-        style: creative.style,
-        imageUrl,
-        logoUrl,
-      })
+      await downloadCreativePoster(creative)
     } catch {
       setDownloadError(true)
     } finally {
@@ -160,99 +129,52 @@ function CreativeCard({ creative }: { creative: Creative }) {
     }
   }
 
-  const accent = firstUsableColor(creative.style.palette) ?? '#C2410C'
-  const accentText = readableTextOn(accent)
+  const source = creative.content.image?.source
+  const format =
+    creative.format === 'portrait_post' ? t('creative.formatPortrait') : t('creative.formatSquare')
+  const date = new Date(creative.updatedAt).toLocaleDateString(
+    language === 'ms' ? 'ms-MY' : 'en-MY',
+  )
+  const context = [campaignName ? t('creative.forCampaign', { campaign: campaignName }) : null, format, date]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <div
-        className={`relative w-full overflow-hidden bg-poster-surface ${
-          creative.format === 'portrait_post' ? 'aspect-[4/5]' : 'aspect-square'
-        }`}
-      >
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={creative.content.image?.altText ?? creative.content.headline ?? creative.name}
-            className="absolute inset-0 size-full object-cover"
-          />
-        ) : null}
-
-        <div
-          className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
-          aria-hidden
-        />
-
-        {creative.content.offerText ? (
-          <span
-            className="absolute left-3 top-3 rounded-md px-2 py-0.5 text-[11px] font-semibold"
-            style={{ backgroundColor: accent, color: accentText }}
-          >
-            {creative.content.offerText}
-          </span>
-        ) : null}
-
-        {logoUrl ? (
-          // The real uploaded logo, same corner the canvas export draws it in.
-          <img src={logoUrl} alt="" className="absolute right-3 top-3 max-h-8 max-w-16 object-contain" />
-        ) : null}
-
-        <div className="absolute inset-x-0 bottom-0 p-3.5">
-          {creative.content.headline ? (
-            <p className="text-[17px] font-bold leading-tight text-white">
-              {creative.content.headline}
-            </p>
-          ) : null}
-          {creative.content.callToAction ? (
-            <span
-              className="mt-2 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-              style={{ backgroundColor: accent, color: accentText }}
-            >
-              {creative.content.callToAction}
-            </span>
-          ) : null}
-        </div>
+      <div className="w-full bg-poster-surface">
+        <PosterCanvas creative={creative} className="block w-full" />
       </div>
 
-      <div className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <h2 className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
+      <div className="px-4 py-3.5">
+        <div className="flex items-start gap-2">
+          <h2 className="min-w-0 flex-1 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
             {creative.name}
           </h2>
-          {creative.content.image?.source === 'generated' ? (
-            <span className="ml-auto shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
+          {source === 'generated' ? (
+            <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
               {t('creative.aiGeneratedImage')}
             </span>
-          ) : creative.content.image?.source === 'upload' ? (
-            <span className="ml-auto shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
+          ) : source === 'upload' ? (
+            <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
               {t('creative.yourPhoto')}
             </span>
           ) : null}
         </div>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
-          {creative.format === 'portrait_post'
-            ? t('creative.formatPortrait')
-            : t('creative.formatSquare')}{' '}
-          ·{' '}
-          {t('creative.updatedOn', {
-            date: new Date(creative.updatedAt).toLocaleDateString(
-              language === 'ms' ? 'ms-MY' : 'en-MY',
-            ),
-          })}
-        </p>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">{context}</p>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => void handleDownload()} disabled={downloading}>
             <Download className="size-3.5" aria-hidden />
             {downloading ? t('creative.preparingDownload') : t('creative.downloadPoster')}
           </Button>
-          {creative.conversationId ? (
-            <Button size="sm" variant="outline" asChild>
-              <Link to={ROUTES.conversation(creative.conversationId)}>
-                {t('creative.editInChat')}
-              </Link>
-            </Button>
-          ) : null}
+          <Button size="sm" variant="outline" asChild>
+            <Link
+              to={creative.conversationId ? ROUTES.conversation(creative.conversationId) : ROUTES.chat}
+            >
+              <EvaSpark className="size-3.5 text-eva" aria-hidden />
+              {t('creative.editInChat')}
+            </Link>
+          </Button>
         </div>
         {downloadError ? (
           <p className="mt-2 text-[12px] text-destructive">{t('creative.downloadFailed')}</p>

@@ -125,17 +125,19 @@ describe('Brand Identity stays a normal scrolling page (Phase 7E layout regressi
     read('./BrandBoard.tsx'),
   ]
 
-  it('the page scroller is the containing block for positioned descendants', () => {
+  it('the page is positioned so its sr-only file input stays inside the shell scroller', () => {
     // The logo section hides its file input with `sr-only`, which is
-    // `position: absolute`. Without a positioned scroller the input's
-    // containing block is the document: it escapes the shell's overflow
-    // clip, and once Business sources + the detected card push it below the
-    // fold the document grows behind the shell and the wheel drags the whole
-    // app up. `relative` on the scroller keeps it inside the page.
+    // `position: absolute`. Without a positioned ancestor inside the shell
+    // scroller the input's containing block is the document: it escapes the
+    // shell's overflow clip and a tall page grows the document behind the
+    // shell. Since Phase 7G the shell's main region is the one scroller and
+    // is itself `relative`; the page keeps its own `relative` wrapper and
+    // opens no scroller of its own.
     expect(logoSection).toMatch(/<input[\s\S]*?className="sr-only"/)
-    const scrollers = businessPage.match(/className="[^"]*overflow-y-auto[^"]*"/g) ?? []
-    expect(scrollers.length).toBeGreaterThan(0)
-    for (const scroller of scrollers) expect(scroller).toContain('relative')
+    expect(businessPage).not.toContain('overflow-y-auto')
+    expect(businessPage).toContain('<div className="relative">')
+    const shell = read('../../shell/AppShell.tsx')
+    expect(shell).toMatch(/<main className="[^"]*relative[^"]*overflow-y-auto[^"]*">/)
   })
 
   it('renders every section, the preview and the sources card in one flow', () => {

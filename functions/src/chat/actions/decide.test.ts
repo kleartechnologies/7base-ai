@@ -206,6 +206,23 @@ describe('explicit requests', () => {
     })
     expect(decision.type).toBe('creative_request')
   })
+
+  // Phase 7G §10/§11 — a number the owner said is a decision already made;
+  // a request without one is EVA's to propose.
+  it('records whether the owner said how many', () => {
+    expect(decideChatAction({ text: 'buat 3 poster untuk launch Matheasy', previousAssistant: null })).toMatchObject({
+      type: 'creative_request',
+      countStated: true,
+    })
+    expect(decideChatAction({ text: 'make a poster for the free trial', previousAssistant: null })).toMatchObject({
+      type: 'creative_request',
+      countStated: true,
+    })
+    expect(decideChatAction({ text: 'buat poster untuk promo saya', previousAssistant: null })).toMatchObject({
+      type: 'creative_request',
+      countStated: false,
+    })
+  })
 })
 
 describe('choosing a campaign', () => {

@@ -46,8 +46,13 @@ export type CampaignChooseAction = Extract<ProposedAction, { kind: 'campaign.cho
 export type ChatActionDecision =
   /** Not an action. The existing routes decide what happens. */
   | { type: 'none' }
-  /** The owner asked for posters outright; the caller resolves the campaign. */
-  | { type: 'creative_request'; spec: CreativeRequestSpec }
+  /**
+   * The owner asked for posters outright; the caller resolves the campaign.
+   * `countStated` is false when they said "buat poster untuk promo saya"
+   * without a number — the caller then offers a set rather than quietly
+   * deciding one poster was meant.
+   */
+  | { type: 'creative_request'; spec: CreativeRequestSpec; countStated: boolean }
   /** The owner affirmed the pending proposal — act on it as proposed. */
   | { type: 'confirm'; action: ProposedAction }
   /** The owner picked one of the offered campaigns. */
@@ -88,7 +93,7 @@ export function decideChatAction(input: DecisionInput): ChatActionDecision {
   }
 
   const spec = parseCreativeRequest(text)
-  if (spec) return { type: 'creative_request', spec }
+  if (spec) return { type: 'creative_request', spec, countStated: readExplicitCount(text) !== null }
 
   return { type: 'none' }
 }
