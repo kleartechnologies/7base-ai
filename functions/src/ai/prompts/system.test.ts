@@ -140,6 +140,15 @@ describe('Phase 7F — action-first honesty', () => {
     expect(CURRENT_CAPABILITIES).toContain('You never need to ask them to confirm twice')
   })
 
+  it('forbids the empty promise, the false limit and the handed-back brief', () => {
+    // Three ways EVA left an owner with nothing: promising work in the future
+    // tense, claiming she could not render a poster here, and answering with a
+    // design brief for someone else to build.
+    expect(CURRENT_CAPABILITIES).toContain('Never promise work in the future tense')
+    expect(CURRENT_CAPABILITIES).toContain('Never say you cannot make, render or change a poster here')
+    expect(CURRENT_CAPABILITIES).toContain('Never hand the owner a design brief')
+  })
+
   it('appends the pending-offer note only while an offer is open, after the capability block', () => {
     const note = buildPendingOfferNote('to create 3 poster(s) for the campaign "Raya Promo"')
     expect(note).toContain('to create 3 poster(s) for the campaign "Raya Promo"')

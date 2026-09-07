@@ -87,6 +87,12 @@ describe('natural-language go-aheads (§21)', () => {
     'ok proceed',
     'sure, go for it 👍',
     'yes please create all three',
+    // An owner told "I'll update the poster" answers the way anyone would.
+    'continue',
+    'continue please',
+    'keep going',
+    'carry on',
+    'sambung',
   ]
   for (const text of variations) {
     it(`"${text}" confirms the pending proposal`, () => {

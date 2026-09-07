@@ -168,7 +168,7 @@ const NEGATION =
 
 /** Single-word or short-phrase go-aheads, in the languages owners type. */
 const AFFIRMATIONS =
-  /\b(?:go ahead|go for it|do it|let'?s do it|lets do it|let'?s go|lets go|sounds good|looks good|all good|why not|of course|please do|yes please|sure thing|carry on|go on|okay lah|ok lah|boleh lah|jom lah|buat je|buat jer|buat saja|buat sahaja|teruskan|ya boleh|proceed|confirm|confirmed|approved|agreed|absolutely|definitely|yup|yep|yeah|yes|ya|yah|ye|yer|ok|okay|okey|oke|okeh|okie|k|kk|alright|aight|fine|sure|go|boleh|jom|setuju|sila|silakan|onz|on|great|perfect)\b/
+  /\b(?:go ahead|go for it|do it|let'?s do it|lets do it|let'?s go|lets go|sounds good|looks good|all good|why not|of course|please do|yes please|sure thing|carry on|carry on then|go on|continue|keep going|keep it going|sambung|okay lah|ok lah|boleh lah|jom lah|buat je|buat jer|buat saja|buat sahaja|teruskan|ya boleh|proceed|confirm|confirmed|approved|agreed|absolutely|definitely|yup|yep|yeah|yes|ya|yah|ye|yer|ok|okay|okey|oke|okeh|okie|k|kk|alright|aight|fine|sure|go|boleh|jom|setuju|sila|silakan|onz|on|great|perfect)\b/
 
 /**
  * "Make them", "create the posters", "design all three", "buatkan" — an
@@ -183,7 +183,7 @@ const IMPERATIVE_GO =
  * particles, the things being referred to, the numbers already offered.
  */
 const FILLER =
-  /\b(?:please|pls|plz|thanks|thank|thx|you|now|then|it|them|that|those|the|these|this|all|but|just|only|three|two|one|1|2|3|posters?|poster|creatives?|materials?|designs?|design|designing|create|make|go|ahead|lah|la|je|jer|saja|sahaja|dah|and|start|begin|eva|sounds|semua|kesemua|tolong|terus|ni|tu|itu|ini|kan|dulu|sekarang|of|course|right|away|with|plan|idea|for|me|us|my|our|a|an|so|let'?s|lets|us|we|i|can|could|should|would|will|do|just|nice|cool|awesome|love|good|great|perfect|okay|ok|yes|ya|sure|on|ye|yer|yah|square|portrait|ones|them all|both|first|second|third|pertama|kedua|ketiga|dengan|untuk|saya|kami|kita|boleh|jom|sila|yang|tadi|itu|pun|juga|je|pls)\b/g
+  /\b(?:please|pls|plz|thanks|thank|thx|you|now|then|it|them|that|those|the|these|this|all|but|just|only|three|two|one|1|2|3|posters?|poster|creatives?|materials?|designs?|design|designing|create|make|go|ahead|lah|la|je|jer|saja|sahaja|dah|and|start|begin|continue|sambung|eva|sounds|semua|kesemua|tolong|terus|ni|tu|itu|ini|kan|dulu|sekarang|of|course|right|away|with|plan|idea|for|me|us|my|our|a|an|so|let'?s|lets|us|we|i|can|could|should|would|will|do|just|nice|cool|awesome|love|good|great|perfect|okay|ok|yes|ya|sure|on|ye|yer|yah|square|portrait|ones|them all|both|first|second|third|pertama|kedua|ketiga|dengan|untuk|saya|kami|kita|boleh|jom|sila|yang|tadi|itu|pun|juga|je|pls)\b/g
 
 /** How long a go-ahead can be. Longer messages are saying something else. */
 const AFFIRMATION_MAX_WORDS = 12
