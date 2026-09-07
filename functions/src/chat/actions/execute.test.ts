@@ -173,6 +173,7 @@ function harness(options: {
         creative: makeCreative({ name: `Poster ${index + 1}` }),
         copyFellBack: false,
         meta: { model: 'gpt-test', task: 'creative.generate_copy', latencyMs: 5, usage: null },
+        imageBrief: null,
       }
     },
     recommend: vi.fn(),
@@ -267,6 +268,7 @@ describe('runChatAction — the confirmed 3-poster set (the "okay go design" bug
         creative: makeCreative({ assetIds: [`asset${index + 1}`] }),
         copyFellBack: false,
         meta: null,
+        imageBrief: null,
       }),
     })
     await runChatAction(confirmThree, h.ctx, h.deps)
@@ -284,6 +286,7 @@ describe('runChatAction — partial failure', () => {
           creative: makeCreative(),
           copyFellBack: false,
           meta: null,
+          imageBrief: null,
         }
       },
     })
@@ -323,7 +326,7 @@ describe('runChatAction — partial failure', () => {
     const h = harness({
       generate: async (_params, index) => {
         if (index === 1) throw new HttpsError('resource-exhausted', limit)
-        return { creativeId: `cr${index + 1}`, creative: makeCreative(), copyFellBack: false, meta: null }
+        return { creativeId: `cr${index + 1}`, creative: makeCreative(), copyFellBack: false, meta: null, imageBrief: null }
       },
     })
     const outcome = await runChatAction(confirmThree, h.ctx, h.deps)
@@ -337,7 +340,7 @@ describe('runChatAction — partial failure', () => {
     const h = harness({
       generate: async (_params, index) => {
         if (index === 0) throw new TypeError('boom')
-        return { creativeId: `cr${index + 1}`, creative: makeCreative(), copyFellBack: false, meta: null }
+        return { creativeId: `cr${index + 1}`, creative: makeCreative(), copyFellBack: false, meta: null, imageBrief: null }
       },
     })
     const outcome = await runChatAction(confirmThree, h.ctx, h.deps)
@@ -352,7 +355,7 @@ describe('runChatAction — partial failure', () => {
       now: () => clock,
       generate: async (_params, index) => {
         clock += 200_000
-        return { creativeId: `cr${index + 1}`, creative: makeCreative(), copyFellBack: false, meta: null }
+        return { creativeId: `cr${index + 1}`, creative: makeCreative(), copyFellBack: false, meta: null, imageBrief: null }
       },
     })
     const outcome = await runChatAction(confirmThree, h.ctx, h.deps)

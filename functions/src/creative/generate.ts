@@ -203,6 +203,13 @@ export interface CreativeGenerationParams {
    * times. Deterministic — no classifier, no model call, no owner setting.
    */
   setPosition?: number
+  /**
+   * Phase 7G.2: the posters of this set already made, oldest first. Each
+   * poster is its own copy call, so "give it a different angle" is an
+   * instruction the model cannot follow unless it is told what the other
+   * angles were.
+   */
+  alreadyInSet?: readonly { headline: string | null; imageBrief: string | null }[]
 }
 
 export interface CreativeGenerationResult {
@@ -211,6 +218,8 @@ export interface CreativeGenerationResult {
   /** True when the AI wording call failed and the deterministic draft shipped. */
   copyFellBack: boolean
   meta: MessageMeta | null
+  /** The picture this poster asked for, so the next of a set can avoid it. */
+  imageBrief: string | null
 }
 
 /**
@@ -330,6 +339,10 @@ export async function generateCreativeForCampaign(
         directives: [],
         hasRealImage: productAsset !== null && screenshotAsset === null,
         setContext: params.setContext,
+        // The composition is already chosen, so the brief can describe the
+        // picture that composition needs rather than a general one.
+        visual: { direction, composition: art.composition },
+        alreadyInSet: params.alreadyInSet ?? [],
       }),
       schema: {
         name: CREATIVE_COPY_SCHEMA_NAME,
@@ -548,7 +561,7 @@ export async function generateCreativeForCampaign(
     deviceAssetId: deviceImage?.assetId ?? null,
   })
 
-  return { creativeId, creative: stored, copyFellBack, meta }
+  return { creativeId, creative: stored, copyFellBack, meta, imageBrief }
 }
 
 /**

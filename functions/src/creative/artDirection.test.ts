@@ -149,4 +149,13 @@ describe('the image brief', () => {
       expect(brief.quiet.toLowerCase(), composition).not.toContain('nothing of interest')
     }
   })
+
+  it('keeps card_overlay’s subject clear of the card that will cover the bottom', () => {
+    // The renderer lays a near-full-width card over the lower half of this
+    // composition. A brief that does not say so gets a subject centred on the
+    // midline and then buried under the card (§5, one focal point).
+    const brief = compositionBrief('card_overlay')
+    expect(brief.subject.toLowerCase()).toContain('upper half')
+    expect(brief.quiet.toLowerCase()).toContain('lower half')
+  })
 })

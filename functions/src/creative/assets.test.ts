@@ -253,6 +253,56 @@ describe('selectCreativeAsset', () => {
   it('returns null when nothing usable exists, so the AI path runs instead', () => {
     expect(selectCreativeAsset([], campaign, products)).toBeNull()
   })
+
+  /* §11: within the same fit tier, the strongest picture wins — the poster
+     gets the owner's best shot, not whichever they uploaded first. */
+
+  it('prefers the photo the owner described over an unlabelled one', () => {
+    const plain = withId('plain', { type: 'photo', name: 'IMG_1' })
+    const described = withId('described', {
+      type: 'photo',
+      name: 'IMG_2',
+      description: 'Morning light over the counter',
+    })
+    expect(selectCreativeAsset([plain, described], campaign, products)?.id).toBe(
+      'described',
+    )
+  })
+
+  it('prefers the full-resolution file over a thumbnail of the same subject', () => {
+    const thumb = withId('thumb', { type: 'photo', sizeBytes: 18_000 })
+    const full = withId('full', { type: 'photo', sizeBytes: 900_000 })
+    expect(selectCreativeAsset([thumb, full], campaign, products)?.id).toBe('full')
+  })
+
+  it('still uses a weak photo when it is the only one — never falls to AI instead', () => {
+    const thumb = withId('thumb', { type: 'photo', sizeBytes: 8_000 })
+    expect(selectCreativeAsset([thumb], campaign, products)?.id).toBe('thumb')
+  })
+
+  it('fit outranks strength — a big generic shot loses to the campaign’s product', () => {
+    const bigGeneric = withId('big', { type: 'photo', name: 'IMG_7', sizeBytes: 4_000_000 })
+    const onSubject = withId('subject', { name: 'IMG_8', productId: 'p1', sizeBytes: 30_000 })
+    expect(selectCreativeAsset([bigGeneric, onSubject], campaign, products)?.id).toBe(
+      'subject',
+    )
+  })
+
+  it('a set rotates rather than printing the same screenshot three times', () => {
+    const shots = [
+      withId('shot1', { type: 'photo', sizeBytes: 900_000 }),
+      withId('shot2', { type: 'photo', sizeBytes: 800_000 }),
+      withId('shot3', { type: 'photo', sizeBytes: 700_000 }),
+    ]
+    const picked: string[] = []
+    for (let position = 0; position < 3; position += 1) {
+      const asset = selectCreativeAsset(shots, campaign, products, {
+        avoidAssetIds: picked,
+      })
+      picked.push(asset?.id ?? 'none')
+    }
+    expect(new Set(picked).size).toBe(3)
+  })
 })
 
 describe('selectLogoAsset', () => {

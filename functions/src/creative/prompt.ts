@@ -29,13 +29,14 @@ Fields:
 - instagramCaption: shorter and lighter than Facebook, at most three hashtags.
 - shortCopy: one or two sentences usable anywhere.
 - whatsappCopy: a friendly broadcast message, or null if WhatsApp is not one of the campaign's channels.
-- imageBrief: 1-3 sentences describing the supporting visual — subject, setting, mood, lighting. Describe things, never words: no text, signs, prices or logos in the scene, because the poster's words are set over this image afterwards.
+- imageBrief: 1-3 sentences describing the supporting visual — who or what is in it, where, what they are doing, the light, and the feeling. Name a specific moment, not a category: "a hawker lifting a ladle out of the pot, steam catching the morning light" rather than "food at a stall". VISUAL DIRECTION in the input, when present, says what kind of picture this poster is; write the brief as that kind of picture. Describe things, never words: no text, signs, prices or logos in the scene, because the poster's words are set over this image afterwards.
 - altText: a plain accessibility description of that visual.
 
 Rules:
 - Never invent facts: no prices, discounts, percentages, product names, opening hours, addresses or links that are not in the input. The server rejects fields that break this rule, so a made-up "RM9.90" costs you the whole field.
 - OWNER RULES in the input are standing instructions from the owner. They outrank everything else here.
-- SET CONTEXT in the input, when present, places this poster in a set the owner asked for in one go, with the owner's request quoted. Give this poster its own angle within that request: when the request lists distinct concepts or languages, this poster takes the one at its position, in the language named for it; otherwise vary the angle from the other posters. The campaign's facts still bound every claim.
+- ALREADY WRITTEN IN THIS SET lists the posters of this set that exist already, with their headline and the picture they use. Yours must not repeat them. A different message, said differently, over a genuinely different picture — another subject, another moment, another place, another distance. Rewording one of them is the failure this list exists to prevent.
+- SET CONTEXT in the input, when present, places this poster in a set the owner asked for in one go, with the owner's request quoted. Give this poster its own angle within that request: when the request lists distinct concepts or languages, this poster takes the one at its position, in the language named for it; otherwise vary the angle from the other posters. This applies to the picture as much as the words — a set whose three imageBriefs describe the same person at the same table in the same light is one poster printed three times, which is a failure. Change the subject, the moment, the place or the distance. The campaign's facts still bound every claim.
 - Plain, warm, jargon-free language. Malaysian context. Write in the language the campaign's core message and offer are written in — Bahasa Melayu campaigns get Bahasa Melayu poster text and captions; do not translate the owner's wording into English. No hype, no ALL CAPS, no emoji walls (one or two emoji in captions are fine).
 - Return null for any field you cannot write honestly.`
 
@@ -59,6 +60,21 @@ export interface CopyInputParams {
    * for the button path and single posters.
    */
   setContext?: string | null
+  /**
+   * Phase 7G.2: the creative direction and composition already chosen for
+   * this poster, so the image brief describes the same idea the renderer is
+   * about to lay out — and, within a set, a different idea from its siblings.
+   * The alternative is what the baseline did: three different compositions
+   * over three copies of one photograph.
+   */
+  visual?: { direction: CreativeDirection; composition: PosterComposition } | null
+  /**
+   * Phase 7G.2: the posters of this set already written, oldest first. Each
+   * copy call is its own request, so without this the model cannot know what
+   * its siblings said and converges on the same answer — three posters of one
+   * student at one desk, which is what the live run showed.
+   */
+  alreadyInSet?: readonly { headline: string | null; imageBrief: string | null }[]
 }
 
 export function buildCopyInput(params: CopyInputParams): string {
@@ -89,6 +105,26 @@ export function buildCopyInput(params: CopyInputParams): string {
   ]
   if (params.directives.length > 0) {
     lines.push(`OWNER RULES (always follow):\n${params.directives.map((d) => `- ${d}`).join('\n')}`)
+  }
+  if (params.visual && !params.hasRealImage) {
+    const shape = compositionBrief(params.visual.composition)
+    lines.push(
+      `VISUAL DIRECTION (the kind of picture this poster is — write imageBrief as this): ${
+        SUBJECT_DIRECTION[params.visual.direction]
+      }`,
+      `COPY SPACE (where this poster's words will sit over that picture): ${shape.quiet}`,
+    )
+  }
+  const already = params.alreadyInSet ?? []
+  if (already.length > 0) {
+    lines.push(
+      `ALREADY WRITTEN IN THIS SET (do not repeat or reword these):\n${already
+        .map((poster, index) => {
+          const picture = poster.imageBrief ? ` — its picture: ${poster.imageBrief}` : ''
+          return `${index + 1}. "${poster.headline ?? 'untitled'}"${picture}`
+        })
+        .join('\n')}`,
+    )
   }
   if (params.setContext) {
     lines.push(`SET CONTEXT: ${params.setContext}`)

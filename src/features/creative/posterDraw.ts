@@ -48,6 +48,7 @@ interface TextStyle {
 type StackItem =
   | {
       kind: 'text'
+      role: 'headline' | 'supporting'
       lines: string[]
       /** False when wrapping ran out of lines and lost words. */
       complete: boolean
@@ -158,10 +159,16 @@ function drawEditorial(
     // A directional wash into the empty half. It follows the composition, so
     // the subject stays as the photographer framed it and only the type side
     // is darkened enough to write on.
+    //
+    // It has to hold across the whole type column, not taper through it: at
+    // 0.42 by mid-frame the headline was landing on a lit face at half
+    // strength. The column runs to roughly 0.56 of the width, so the wash
+    // stays dense that far and releases just outside it.
     const fromLeft = anchor === 'left'
     horizontalGradient(ctx, width, height, fromLeft, [
-      [0, 'rgba(0,0,0,0.82)'],
-      [0.52, 'rgba(0,0,0,0.42)'],
+      [0, 'rgba(0,0,0,0.86)'],
+      [0.5, 'rgba(0,0,0,0.7)'],
+      [0.78, 'rgba(0,0,0,0.2)'],
       [1, 'rgba(0,0,0,0)'],
     ])
     const x = fromLeft ? margin : width - margin - columnWidth
@@ -217,7 +224,7 @@ function drawSplit(
     // would break it, over two lines, rather than running the full measure as
     // one thin line.
     maxWidth: (width - margin * 2) * 0.88,
-    available: height * 0.62 - top,
+    available: height * 0.54 - top,
     eyebrow: { color: palette.accentInk, fill: null, rule: palette.accent, uppercase: true },
     headline: palette.ink,
     emphasis: palette.accentInk,
@@ -228,11 +235,13 @@ function drawSplit(
   // The edge falls where the message ends, not at a fixed fraction. Fixing it
   // at half the poster left the type stranded at the top of an empty band and
   // forced the headline down two size steps to fit a budget it never needed.
+  // Capped at just over half: past that the photograph becomes a letterbox
+  // strip under a colour field, which is the template look §5 rules out.
   const textHeight = Math.round(
-    Math.min(height * 0.6, Math.max(height * 0.36, top + stackHeight(items) + margin)),
+    Math.min(height * 0.54, Math.max(height * 0.36, top + stackHeight(items) + margin)),
   )
   fillRect(ctx, 0, 0, width, textHeight, palette.paperTint)
-  if (images.image) drawCover(ctx, images.image, 0, textHeight, width, height - textHeight, 'center')
+  if (images.image) drawCover(ctx, images.image, 0, textHeight, width, height - textHeight, 'upper')
   else fillRect(ctx, 0, textHeight, width, height - textHeight, palette.dark)
 
   drawLogo(ctx, images.logo, margin, margin, 'light', palette)
@@ -320,7 +329,9 @@ function drawBand(
   const bandTop = height - bandHeight
   const rise = Math.round(height * 0.06)
 
-  if (images.image) drawCover(ctx, images.image, 0, 0, width, bandTop + rise, 'center')
+  // Same reason as the split: this pane is shorter than the frame it is cut
+  // from, and a centred cut takes the face off the top of it.
+  if (images.image) drawCover(ctx, images.image, 0, 0, width, bandTop + rise, 'upper')
   else fillRect(ctx, 0, 0, width, bandTop + rise, palette.dark)
   fillGradient(ctx, 0, 0, width, height * 0.22, [
     [0, 'rgba(0,0,0,0.3)'],
@@ -502,9 +513,42 @@ function fitStack(
     // and silently returns what it had, so type that is too large for its
     // column loses its last words — a poster went out reading "Fresh bread,
     // every". A wrap that dropped a word has not fitted; step down instead.
-    if (stackHeight(items) <= options.available && items.every(isComplete)) return items
+    if (stackHeight(items) <= options.available && items.every(isComplete)) {
+      return scale === 1 ? grown(ctx, design, input, options, items) : items
+    }
   }
   return items
+}
+
+/**
+ * A three-word headline set at the same size as a nine-word one leaves the
+ * poster looking timid: the type sits in the middle of its column with the
+ * rest of the space unspent, which reads as a template filling a slot rather
+ * than a headline that was set. So when the headline came out on a single
+ * line and a good third of the room is unused, step the whole stack up.
+ *
+ * Bounded on purpose. It only ever runs from the natural size, it stops at
+ * the first size that fits, and it will not push the headline past two lines
+ * — growth that costs a third line is a smaller headline, not a bigger one.
+ */
+function grown(
+  ctx: CanvasRenderingContext2D,
+  design: PosterDesign,
+  input: PosterInput,
+  options: StackOptions,
+  base: StackItem[],
+): StackItem[] {
+  const headline = base.find((item) => item.kind === 'text' && item.role === 'headline')
+  if (!headline || headline.kind !== 'text' || headline.lines.length !== 1) return base
+  if (stackHeight(base) > options.available * 0.82) return base
+
+  for (const scale of [1.26, 1.18, 1.1]) {
+    const items = buildStack(ctx, design, input, options, scale)
+    const grownHeadline = items.find((item) => item.kind === 'text' && item.role === 'headline')
+    if (!grownHeadline || grownHeadline.kind !== 'text' || grownHeadline.lines.length > 2) continue
+    if (stackHeight(items) <= options.available && items.every(isComplete)) return items
+  }
+  return base
 }
 
 function isComplete(item: StackItem): boolean {
@@ -570,6 +614,7 @@ function buildStack(
     const lines = balancedLines(input.headline, options.maxWidth, measure, 3)
     items.push({
       kind: 'text',
+      role: 'headline',
       lines,
       complete: keptEveryWord(input.headline, lines),
       style,
@@ -595,6 +640,7 @@ function buildStack(
     const lines = wrapLines(input.subheadline, options.maxWidth * 0.92, measure, 2)
     items.push({
       kind: 'text',
+      role: 'supporting',
       lines,
       complete: keptEveryWord(input.subheadline, lines),
       style,
@@ -830,14 +876,18 @@ function drawCover(
   y: number,
   w: number,
   h: number,
-  focus: 'center' | 'top',
+  focus: 'center' | 'top' | 'upper',
 ) {
   if (image.width <= 0 || image.height <= 0) return
   const scale = Math.max(w / image.width, h / image.height)
   const drawWidth = image.width * scale
   const drawHeight = image.height * scale
   const dx = x + (w - drawWidth) / 2
-  const dy = focus === 'top' ? y : y + (h - drawHeight) / 2
+  // A letterbox pane cut from a square frame loses whatever a centred crop
+  // does not reach, and in advertising photography that is the face: subjects
+  // sit above the middle. 'upper' keeps the overflow mostly below the crop.
+  const bias = focus === 'top' ? 0 : focus === 'upper' ? 0.28 : 0.5
+  const dy = y + (h - drawHeight) * bias
   ctx.save()
   ctx.beginPath()
   ctx.rect(x, y, w, h)

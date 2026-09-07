@@ -152,9 +152,13 @@ const COMPOSITION_BRIEFS: Record<PosterComposition, CompositionBrief> = {
   },
   card_overlay: {
     subject:
-      'One quiet, considered subject, small in a generous frame, lit softly from one side — the restraint of a fragrance or fashion advertisement rather than a catalogue photograph.',
+      'One quiet, considered subject in the upper half of the frame, lit softly from one side — the restraint of a fragrance or fashion advertisement rather than a catalogue photograph. Whatever the picture is about must read entirely above the midline: hands, faces, the thing being used.',
+    // A near-full-width card is laid over the bottom of this frame, so unlike
+    // the other briefs this one has to name the region it will cover.
+    // Without that the model centres its subject at the midline and the card
+    // lands on the phone the whole photograph was about (§5, one focal point).
     quiet:
-      'Most of the frame is atmosphere: gentle gradient, soft shadow, a suggestion of the room. Expensive-looking emptiness with tone in it, never a flat backdrop.',
+      'The lower half of the frame is atmosphere and nothing else — a table running out of focus, a floor in shadow, gentle gradient with tone in it. Nothing there that would be missed if it were covered, and never a flat backdrop.',
   },
   device_beside: {
     subject:
@@ -201,7 +205,11 @@ const PHOTO_COMPOSITIONS: Record<CreativeDirection, readonly PosterComposition[]
   bold_promotional: ['bottom_band', 'hero_left', 'full_bleed'],
   lifestyle: ['hero_right', 'full_bleed', 'card_overlay'],
   educational: ['editorial_split', 'hero_right', 'full_bleed'],
-  app_showcase: ['device_beside', 'device_hero', 'device_stack'],
+  // Only reached when there is no screenshot to composite — `isScreenshot`
+  // routes to DEVICE_COMPOSITIONS above. A device composition without a
+  // device draws as an ordinary photo layout under a device's name, which is
+  // how a set ended up with two posters of the same design (§13).
+  app_showcase: ['center_hero', 'hero_left', 'bottom_band'],
   minimal_premium: ['card_overlay', 'center_hero', 'hero_left'],
   feature_highlight: ['hero_left', 'center_hero', 'editorial_split'],
 }

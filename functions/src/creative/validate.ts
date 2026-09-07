@@ -29,7 +29,10 @@ const LIMITS = {
   instagramCaption: 500,
   shortCopy: 240,
   whatsappCopy: 400,
-  imageBrief: 400,
+  // Never printed anywhere — it is briefing text for the image model, and
+  // 7G.2 asks it to name a subject, a place, the light and the moment. At 400
+  // that arrived clipped mid-word.
+  imageBrief: 700,
   altText: 160,
   reply: 400,
   directive: 200,

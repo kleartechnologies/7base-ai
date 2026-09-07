@@ -517,3 +517,44 @@ describe('drawPoster — a logo that carries its own ground (§7)', () => {
     })
   })
 })
+
+describe('drawPoster — a short headline is set larger, not left timid (§5)', () => {
+  /** The size the headline was drawn at, which is the largest text on a poster. */
+  function headlineSize(composition: (typeof COMPOSITIONS)[number], headline: string) {
+    const { ctx, ops } = recorder()
+    const posterInput = input({ headline, composition, accentTreatment: 'field', ctaStyle: 'outline' })
+    drawPoster(ctx, posterDesign(posterInput), posterInput, IMAGES)
+    const line = ops.find((op) => op.op === 'text' && op.text?.startsWith(headline.split(' ')[0]!))
+    return line?.size ?? 0
+  }
+
+  it('gives a three-word headline more type than a twelve-word one', () => {
+    for (const composition of COMPOSITIONS) {
+      const short = headlineSize(composition, 'Faham setiap langkah')
+      const long = headlineSize(
+        composition,
+        'Faham setiap langkah penyelesaian matematik anda tanpa perlu menghafal jawapan lagi',
+      )
+      expect.soft(short, `${composition} short vs long`).toBeGreaterThan(long)
+    }
+  })
+
+  it('never grows a headline past the room it was given', () => {
+    for (const composition of COMPOSITIONS) {
+      const { ctx, ops } = recorder()
+      const posterInput = input({
+        headline: 'Faham',
+        composition,
+        accentTreatment: 'field',
+        ctaStyle: 'outline',
+      })
+      drawPoster(ctx, posterDesign(posterInput), posterInput, IMAGES)
+      for (const op of ops) {
+        if (op.op !== 'text') continue
+        expect.soft(op.y, `${composition} text below the poster`).toBeLessThanOrEqual(1080)
+        expect.soft(op.x + op.width, `${composition} text past the right edge`).toBeLessThanOrEqual(1080)
+      }
+    }
+  })
+})
+

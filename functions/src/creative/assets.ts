@@ -122,10 +122,15 @@ export async function listEligibleAssets(
 /**
  * The uploaded photo that best fits this campaign, or null when generation
  * should run instead. Deterministic, like `selectBusinessImage` before it:
- * only product and photo assets qualify (never menus, logos or documents),
- * and the preference order is — an asset explicitly linked to a product the
- * campaign mentions, then one whose own name/description/tags mention such a
- * product, then the signature product's asset, then the first product photo.
+ * only product and photo assets qualify (never menus, logos or documents).
+ *
+ * Every candidate is scored rather than walked in order, so the strongest
+ * photo wins instead of the oldest upload that happens to match first. Fit
+ * decides the tier — an asset explicitly linked to a product the campaign
+ * mentions, then one whose own name/description/tags mention such a product,
+ * then the signature product's asset, then any product shot, then any photo
+ * — and within a tier the tie is broken on how well the picture will hold up
+ * on a 1080px poster. No model is asked to rank them.
  */
 export function selectCreativeAsset(
   assets: AssetWithId[],
@@ -162,28 +167,55 @@ export function selectCreativeAsset(
   const mentioned = products.filter(
     (product) => product.name && campaignText.includes(product.name.toLowerCase()),
   )
-
-  // A. Explicitly linked to a product the campaign talks about.
-  for (const product of mentioned) {
-    const linked = candidates.find(({ asset }) => asset.productId === product.id)
-    if (linked) return linked
-  }
-
-  // B. The asset's own metadata names a product the campaign talks about.
-  for (const product of mentioned) {
-    const needle = product.name.toLowerCase()
-    const match = candidates.find(({ asset }) => assetMentions(asset, needle))
-    if (match) return match
-  }
-
-  // C. Generic fallback, mirroring the old product-image order: the
-  // signature product's asset, else the first product shot, else any photo.
   const signature = products.find((product) => product.isSignature)
-  if (signature) {
-    const linked = candidates.find(({ asset }) => asset.productId === signature.id)
-    if (linked) return linked
+
+  const ranked = candidates
+    .map((entry) => ({
+      entry,
+      score: fitTier(entry.asset, mentioned, signature) * 100 + strength(entry.asset),
+    }))
+    // `candidates` is already in stable order (createdAt, then id), and a
+    // stable sort keeps that as the final tie-break, so the same library
+    // always answers with the same photo.
+    .sort((a, b) => b.score - a.score)
+
+  return ranked[0]?.entry ?? null
+}
+
+/** How well the asset fits *this* campaign. Higher wins, ties fall through. */
+function fitTier(
+  asset: StoredAsset,
+  mentioned: Product[],
+  signature: Product | undefined,
+): number {
+  if (mentioned.some((product) => asset.productId === product.id)) return 5
+  if (mentioned.some((product) => assetMentions(asset, product.name.toLowerCase()))) {
+    return 4
   }
-  return candidates.find(({ asset }) => asset.type === 'product') ?? candidates[0] ?? null
+  if (signature && asset.productId === signature.id) return 3
+  return asset.type === 'product' ? 2 : 1
+}
+
+/**
+ * How well the picture itself will carry a poster (§11). Two honest signals,
+ * both already stored — nothing is inferred from the pixels:
+ *
+ * - The owner wrote a description or tagged it. They only bother for the
+ *   shots they think of as *the* shot, and it is also the only text we have
+ *   to write alt text from.
+ * - Its file size, as the one proxy for resolution we hold. A poster crops
+ *   to 1080px and often full-bleeds; a 20KB file is a thumbnail or an icon
+ *   and goes soft the moment it fills the frame, so it is actively demoted
+ *   rather than merely not preferred.
+ */
+function strength(asset: StoredAsset): number {
+  let score = 0
+  if ((asset.description ?? '').trim().length > 0) score += 2
+  if (asset.tags.length > 0) score += 1
+  if (asset.sizeBytes >= 500_000) score += 2
+  else if (asset.sizeBytes >= 120_000) score += 1
+  else if (asset.sizeBytes < 40_000) score -= 3
+  return score
 }
 
 function assetMentions(asset: StoredAsset, needle: string): boolean {

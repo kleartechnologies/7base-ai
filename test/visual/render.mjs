@@ -10,6 +10,14 @@
  *
  *   node test/visual/render.mjs [--out DIR]
  *
+ * Phase 7G.2 §3 adds live mode, which is the one that settles arguments:
+ *
+ *   node test/visual/render.mjs --manifest <smoke-out>/manifest.json
+ *
+ * It renders the posters from a real smoke run and lays each one out as
+ * generated photograph | finished poster | the decisions behind it, so a
+ * defect can be pinned to the image, the art direction or the composition.
+ *
  * It needs Google Chrome (or CHROME_PATH) and nothing else — no emulator, no
  * API key, no network. The scene images are synthetic stand-ins with the
  * luminance distribution of real advertising photography (bright sky side,
@@ -26,6 +34,9 @@ import { FIXTURES } from './fixtures.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '../..')
+
+const manifestFlag = process.argv.indexOf('--manifest')
+const manifestPath = manifestFlag > -1 ? resolve(process.argv[manifestFlag + 1]) : null
 
 const outFlag = process.argv.indexOf('--out')
 const outDir = outFlag > -1 ? resolve(process.argv[outFlag + 1]) : join(here, 'out')
@@ -101,45 +112,123 @@ const bundle = await build({
 })
 const script = bundle.outputFiles[0].text
 
+/* --- what goes on the sheet ------------------------------------------------ */
+
+const escape = (value) =>
+  String(value ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+
+/**
+ * Live mode (§3): posters built from a real smoke run — the manifest carries
+ * the copy the model wrote, the art direction the pipeline chose, the prompt
+ * that was sent and the photograph that came back.
+ */
+function liveEntries() {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  const dir = dirname(manifestPath)
+  return manifest.map((entry) => {
+    const key = `gen:${entry.file}`
+    images[key] = dataUrl(join(dir, entry.file))
+    const meta = [
+      `<h2>${escape(entry.position + 1)}. ${escape(entry.direction)}</h2>`,
+      `<dl>`,
+      `<dt>B — art direction</dt><dd>composition <b>${escape(entry.art.composition)}</b> · accent ${escape(entry.art.accent)} · cta ${escape(entry.art.cta)} · device ${entry.art.device ? 'yes' : 'no'}</dd>`,
+      `<dt>D — copy</dt><dd><b>${escape(entry.content.headline)}</b><br>${escape(entry.content.subheadline)}<br>cta: ${escape(entry.content.callToAction)} · offer: ${escape(entry.content.offerText)}</dd>`,
+      `<dt>A — prompt</dt><dd class="prompt">${escape(entry.prompt)}</dd>`,
+      `</dl>`,
+    ].join('')
+    return {
+      imageKey: key,
+      meta,
+      creative: {
+        id: `live-${entry.position}`,
+        ownerId: 'visual-harness', businessId: 'biz', campaignId: 'camp',
+        conversationId: null, sourceRecommendationId: null,
+        name: entry.name, format: 'square_post', status: 'ready',
+        captions: { facebook: null, instagram: null, short: null, whatsapp: null },
+        render: null, userEdited: [], ownerDirectives: [], imageError: null,
+        content: {
+          ...entry.content,
+          layout: 'image_full_bleed',
+          deviceImage: null,
+          image: { storagePath: key, prompt: entry.prompt, altText: null, source: 'generated' },
+        },
+        style: {
+          palette: entry.style.palette,
+          headingFont: entry.style.headingFont,
+          bodyFont: entry.style.bodyFont,
+          logoStoragePath: images['logo:matheasy'] ? 'logo:matheasy' : null,
+          brandApplied: null,
+          artDirection: entry.art,
+        },
+      },
+    }
+  })
+}
+
+const live = manifestPath !== null
+const entries = live ? liveEntries() : FIXTURES
+
 /* --- the contact sheet ------------------------------------------------------ */
 
 const COLUMNS = 3
-const CELL = 520
-const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+const CELL = live ? 460 : 520
+const STYLE = `
   body { margin: 0; background: #e9e9ea; font: 13px -apple-system, sans-serif; }
   #sheet { display: grid; grid-template-columns: repeat(${COLUMNS}, ${CELL}px); gap: 28px; padding: 28px; align-items: start; }
+  .row { display: contents; }
   .cell { margin: 0; }
-  canvas { width: ${CELL}px; height: auto; display: block; box-shadow: 0 6px 22px rgba(0,0,0,0.18); border-radius: 4px; background: #fff; }
+  canvas, .cell img { width: ${CELL}px; height: auto; display: block; box-shadow: 0 6px 22px rgba(0,0,0,0.18); border-radius: 4px; background: #fff; }
   figcaption { padding-top: 8px; color: #444; font-size: 12px; }
-</style></head><body><div id="sheet"></div>
+  .meta { background: #fff; border-radius: 4px; padding: 16px 18px; color: #222; line-height: 1.45; box-shadow: 0 6px 22px rgba(0,0,0,0.10); }
+  .meta h2 { margin: 0 0 10px; font-size: 15px; }
+  .meta dt { font-weight: 600; margin-top: 10px; color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .meta dd { margin: 4px 0 0; }
+  .meta .prompt { font: 10px/1.35 ui-monospace, monospace; color: #555; white-space: pre-wrap; }
+`
+
+function page(payload, fn) {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${STYLE}</style></head>
+<body><div id="sheet"></div>
 <script>${script}</script>
 <script>
-  window.__renderPosters(${JSON.stringify(FIXTURES)}, ${JSON.stringify(images)})
+  window.${fn}(${JSON.stringify(payload)}, ${JSON.stringify(images)})
     .then(() => { document.title = 'ready' })
     .catch((error) => { document.title = 'error: ' + error.message })
 </script></body></html>`
+}
 
-const pagePath = join(outDir, 'sheet.html')
-writeFileSync(pagePath, html)
+function shoot(html, name, windowSize) {
+  const pagePath = join(outDir, `${name}.html`)
+  writeFileSync(pagePath, html)
+  const shot = join(outDir, `${name}.png`)
+  execFileSync(
+    CHROME,
+    [
+      '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
+      `--window-size=${windowSize}`, '--virtual-time-budget=8000',
+      `--screenshot=${shot}`, `file://${pagePath}`,
+    ],
+    { stdio: 'ignore' },
+  )
+  return shot
+}
 
-const rows = Math.ceil(FIXTURES.length / COLUMNS)
-// Portrait cells are the tallest, so size the window for those plus captions.
-const windowSize = `${COLUMNS * (CELL + 28) + 28},${rows * (CELL * 1.25 + 60) + 56}`
-const shot = join(outDir, 'posters.png')
+const width = COLUMNS * (CELL + 28) + 28
 
-execFileSync(
-  CHROME,
-  [
-    '--headless=new',
-    '--disable-gpu',
-    '--hide-scrollbars',
-    '--force-device-scale-factor=1',
-    `--window-size=${windowSize}`,
-    '--virtual-time-budget=8000',
-    `--screenshot=${shot}`,
-    `file://${pagePath}`,
-  ],
-  { stdio: 'ignore' },
-)
-
-console.log(`[visual] ${FIXTURES.length} posters → ${shot}`)
+if (live) {
+  // One screenshot per poster: the metadata column is long, and a poster that
+  // has to be judged on craft has to be looked at large.
+  entries.forEach((entry, index) => {
+    const shot = shoot(page([entry], '__renderLive'), `live-${index + 1}`, `${width},${CELL * 1.25 + 900}`)
+    console.log(`[visual] poster ${index + 1} \u2192 ${shot}`)
+  })
+} else {
+  const rows = Math.ceil(entries.length / COLUMNS)
+  const shot = shoot(
+    page(entries, '__renderPosters'),
+    'posters',
+    // Portrait cells are the tallest, so size the window for those plus captions.
+    `${width},${rows * (CELL * 1.25 + 60) + 56}`,
+  )
+  console.log(`[visual] ${entries.length} posters \u2192 ${shot}`)
+}

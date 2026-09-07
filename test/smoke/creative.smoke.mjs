@@ -46,6 +46,7 @@ const { buildStoredCreative } = require('../../functions/lib/creative/store.js')
 const {
   generateCreativeEdit, applyCreativePatch, extractDirective, withDirective,
 } = require('../../functions/lib/creative/edit.js')
+const { buildSetContext } = require('../../functions/lib/chat/actions/execute.js')
 
 /* --- fixtures: the spec's own scenario ---------------------------------- */
 
@@ -93,6 +94,20 @@ const allowedMoney = new Set(moneyTokens(corpus))
 // Which subscription plan's models to exercise. 'pro' is the pre-plan
 // behaviour (mid-tier copy); SMOKE_PLAN=basic smokes the low-cost route.
 const SMOKE_PLAN = process.env.SMOKE_PLAN === 'basic' ? 'basic' : 'pro'
+
+// The usage ledger is one document per user-day, so a second run on the same
+// day adds to the first. Section 5 asserts what *this* run spent, which means
+// reading where the day stood before anything was called.
+const usageRef = process.env.FIRESTORE_EMULATOR_HOST
+  ? require('../../functions/lib/lib/firebase.js')
+      .db.collection('usage')
+      .doc(`smoke_${new Date().toISOString().slice(0, 10)}`)
+  : null
+const usageBefore = usageRef ? ((await usageRef.get()).data() ?? null) : null
+const spent = (usage, path) => {
+  const read = (doc) => path.split('.').reduce((value, key) => value?.[key], doc) ?? 0
+  return read(usage) - read(usageBefore)
+}
 
 console.log(`\n-- 1. creative.generate_copy (fast tier, plan=${SMOKE_PLAN}, live) --`)
 const t0 = Date.now()
@@ -187,57 +202,150 @@ check('no caption mentions a discount now',
     .filter(Boolean).some((t) => /discount|% off/i.test(t)))
 void premiumHeadline
 
-/* --- 4. image generation (opt-in — costs money) -------------------------- */
+/* --- 4. a real poster set (opt-in — costs money) -------------------------- */
+
+/**
+ * Phase 7G.2 §3/§4/§13 — the whole poster, not the photograph alone.
+ *
+ * This walks the production modules exactly as `generate.ts` walks them, for
+ * a real brand with a real palette and a real product: copy (live), the
+ * deterministic art direction for each set position, the image brief the copy
+ * model wrote, and the image itself. What comes out is a manifest that
+ * `test/visual/render.mjs --manifest` renders *posters* from, so the thing
+ * judged is the finished creative rather than a raw generation.
+ */
+const LIVE_DIRECTIONS = (process.env.SMOKE_DIRECTIONS ?? 'educational,app_showcase,lifestyle').split(',')
+const LIVE_SET_SIZE = LIVE_DIRECTIONS.length
 
 if (process.env.SMOKE_IMAGE === '1') {
-  console.log('\n-- 4. creative.generate_image (image tier, live) --')
-  // Phase 7G §3/§4 — the prompt is an art-direction brief, and the direction
-  // is what makes two posters in a set look different. Every image is written
-  // to SMOKE_IMAGE_DIR so the result can be *looked at*, not just counted.
+  console.log(`\n-- 4. a live ${LIVE_SET_SIZE}-poster set (image tier, live) --`)
   const { writeFileSync, mkdirSync } = require('node:fs')
   const outDir = process.env.SMOKE_IMAGE_DIR ?? '.'
   mkdirSync(outDir, { recursive: true })
-  const directions = (process.env.SMOKE_DIRECTIONS ?? 'hero_product').split(',')
 
-  // The set is walked the way `generate.ts` walks it, so the brief the model
-  // receives is the brief a real poster would receive: position N's art
-  // direction, replayed from position 0 so the three are three arrangements
-  // (§11). The manifest that comes out is what `test/visual` renders posters
-  // from, which is how a live image ends up under real typesetting rather
-  // than only in an image viewer.
+  // A real Malaysian SME with a confirmed Brand Identity: green palette, an
+  // app, a stated audience. Fixture data, not production logic — the pipeline
+  // under test must not know which brand this is.
+  const setBusiness = {
+    ownerId: 'smoke',
+    name: 'Matheasy',
+    industry: 'education',
+    contact: { website: 'https://matheasy.my', whatsapp: null },
+    identity: {
+      tagline: 'Daripada soalan kepada faham',
+      description:
+        'A mathematics learning app for Malaysian secondary school students: scan a question, get the full step-by-step solution, and ask Numi when a step is unclear.',
+      category: 'education technology',
+      subIndustry: 'exam preparation',
+      businessType: 'mathematics learning app for Malaysian secondary school students',
+    },
+    products: [
+      { name: 'Step-by-step solver', description: 'Scan any maths question and see every step', priceMinor: null, imageUrl: null, isSignature: true },
+      { name: 'Numi AI tutor', description: 'Asks back, explains the step you are stuck on', priceMinor: null, imageUrl: null, isSignature: false },
+    ],
+    marketing: null,
+    brand: {
+      palette: ['#22c55e', '#0f172a', '#f8fafc'],
+      headingFont: 'Poppins',
+      bodyFont: 'Inter',
+      logoStoragePath: 'businesses/smokeBiz/assets/logo.png',
+      visualStyle:
+        'Bright, encouraging and modern. Clean daylight, real Malaysian secondary-school students, green as the colour of progress rather than decoration.',
+    },
+  }
+
+  const setCampaign = {
+    ...campaign,
+    name: 'Faham, bukan hafal',
+    objective: 'Get more Form 4 and Form 5 students to try the app before SPM',
+    targetAudience: { description: 'Malaysian secondary school students sitting SPM, and their parents', basis: 'known' },
+    offer: { description: 'Free for 7 days', basis: 'existing' },
+    positioning: 'The app that explains the step you are stuck on',
+    keyMessage: 'Understanding beats memorising',
+    callToAction: 'Muat turun percuma',
+    channels: ['instagram', 'facebook'],
+  }
+
+  const setCorpus = buildGroundingCorpus({ campaign: setCampaign, business: setBusiness })
+  const directions = LIVE_DIRECTIONS
   const manifest = []
+
   for (const [position, direction] of directions.entries()) {
+    // The art direction, replayed from position 0 exactly as generate.ts does,
+    // so poster three cannot repeat poster one's arrangement (§13).
     const art = artDirectionForPosition(
       { direction, format: 'square_post', hasVisual: true, isScreenshot: false, position },
       (i) => directions[i % directions.length],
     )
-    const prompt = buildImagePrompt({
-      brief: 'A nasi lemak lunch set on a marble kopitiam table, morning light through a window',
-      format: 'square_post', direction, composition: art.composition,
-      paletteHexes: ['#C2410C'], visualStyle: null,
-      businessType: 'kopitiam serving weekday lunch sets',
+
+    const tCopy = Date.now()
+    const { data: setData, meta: setMeta } = await runStructuredTask({
+      task: 'creative.generate_copy',
+      uid: 'smoke',
+      plan: SMOKE_PLAN,
+      systemPrompt: CREATIVE_COPY_PROMPT,
+      input: buildCopyInput({
+        businessName: setBusiness.name, brandVoice: null, campaign: setCampaign,
+        format: 'square_post', directives: [], hasRealImage: false,
+        // The same wording chat sends, so poster three argues a different
+        // angle from poster one rather than paraphrasing it.
+        setContext: buildSetContext(position + 1, { size: directions.length, brief: null }),
+        visual: { direction, composition: art.composition },
+        // What the earlier posters of this set already said and photographed.
+        alreadyInSet: manifest.map((entry) => ({
+          headline: entry.content.headline,
+          imageBrief: entry.imageBrief,
+        })),
+      }),
+      schema: { name: CREATIVE_COPY_SCHEMA_NAME, schema: CREATIVE_COPY_SCHEMA },
     })
-    console.log(`\n  [${direction} · ${art.composition}] ${prompt}`)
+    const setCopy = validateCreativeCopy(setData, setCorpus)
+    const setMerged = mergeCopy(draftCreativeCopyFromCampaign(setCampaign), setCopy)
+    console.log(`\n  [${position}] ${direction} · ${art.composition} · ${art.accent} · cta=${art.cta}`)
+    console.log(`  copy model=${setMeta.model} latency=${Date.now() - tCopy}ms`)
+    console.log('  headline:', JSON.stringify(setMerged.content.headline))
+    console.log('  imageBrief:', JSON.stringify(setCopy.imageBrief))
+
+    const campaignBrief = [setCampaign.offer?.description, setCampaign.keyMessage, setCampaign.positioning]
+      .filter(Boolean).join('. ')
+    const prompt = buildImagePrompt({
+      brief: setCopy.imageBrief ?? campaignBrief,
+      format: 'square_post',
+      direction,
+      composition: art.composition,
+      paletteHexes: setBusiness.brand.palette.slice(0, 3),
+      visualStyle: setBusiness.brand.visualStyle,
+      businessType: setBusiness.identity.businessType,
+    })
+    console.log(`  prompt: ${prompt}`)
+
     const t1 = Date.now()
-    const image = await runImageTask({ task: 'creative.generate_image', uid: 'smoke', plan: SMOKE_PLAN, prompt, size: '1024x1024' })
-    const file = `${outDir}/poster-${direction}.png`
-    writeFileSync(file, image.imageBytes)
-    console.log(`  model=${image.meta.model} latency=${Date.now() - t1}ms -> ${file}`)
+    const image = await runImageTask({
+      task: 'creative.generate_image', uid: 'smoke', plan: SMOKE_PLAN, prompt, size: '1024x1024',
+    })
+    const file = `poster-${position}-${direction}.png`
+    writeFileSync(`${outDir}/${file}`, image.imageBytes)
+    console.log(`  image model=${image.meta.model} latency=${Date.now() - t1}ms -> ${outDir}/${file}`)
     check(`image bytes returned for ${direction}`, image.imageBytes.length > 10_000, `${image.imageBytes.length} bytes`)
-    check(
-      `the brief for ${direction} names its composition`,
-      prompt.includes(art.composition) || prompt.length > 400,
-      art.composition,
-    )
-    manifest.push({ position, direction, art, file })
+
+    manifest.push({
+      position, direction, art, file, prompt, imageBrief: setCopy.imageBrief,
+      name: setMerged.name,
+      content: setMerged.content,
+      style: {
+        palette: setBusiness.brand.palette,
+        headingFont: setBusiness.brand.headingFont,
+        bodyFont: setBusiness.brand.bodyFont,
+      },
+    })
   }
+
   writeFileSync(`${outDir}/manifest.json`, JSON.stringify(manifest, null, 2))
+  console.log(`\n  manifest -> ${outDir}/manifest.json`)
   const compositions = new Set(manifest.map((entry) => entry.art.composition))
-  check(
-    'a set of three is three arrangements',
-    compositions.size === manifest.length,
-    [...compositions].join(', '),
-  )
+  check('a set of three is three arrangements', compositions.size === manifest.length, [...compositions].join(', '))
+  const headlines = new Set(manifest.map((entry) => entry.content.headline))
+  check('the posters do not all carry the same headline', headlines.size > 1, [...headlines].join(' | '))
 } else {
   console.log('\n-- 4. image generation skipped (set SMOKE_IMAGE=1 to run it) --')
 }
@@ -250,16 +358,11 @@ if (process.env.SMOKE_IMAGE === '1') {
  */
 if (process.env.FIRESTORE_EMULATOR_HOST) {
   console.log('\n-- 5. usage ledger (guardrail settlement, via emulator) --')
-  const { db } = require('../../functions/lib/lib/firebase.js')
-  const period = new Date().toISOString().slice(0, 10)
-  const snapshot = await db.collection('usage').doc(`smoke_${period}`).get()
+  const snapshot = await usageRef.get()
   check('usage document exists for the smoke user-day', snapshot.exists)
   if (snapshot.exists) {
     const usage = snapshot.data()
-    const imageRuns =
-      process.env.SMOKE_IMAGE === '1'
-        ? (process.env.SMOKE_DIRECTIONS ?? 'hero_product').split(',').length
-        : 0
+    const imageRuns = process.env.SMOKE_IMAGE === '1' ? LIVE_SET_SIZE : 0
     console.log('  ledger:', JSON.stringify({
       requests: usage.requests, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
       imageInputTokens: usage.imageInputTokens, imageOutputTokens: usage.imageOutputTokens,
@@ -267,15 +370,33 @@ if (process.env.FIRESTORE_EMULATOR_HOST) {
       inflight: usage.inflight, reservedInputTokens: usage.reservedInputTokens,
       reservedOutputTokens: usage.reservedOutputTokens, reservedCostUsd: usage.reservedCostUsd,
     }))
-    check('three aiGeneration attempts counted', usage.requests.aiGeneration === 3)
-    check('image attempts counted separately', usage.requests.imageGeneration === imageRuns)
-    check('text tokens settled from provider actuals', usage.inputTokens > 0 && usage.outputTokens > 0)
-    check('estimated cost settled and positive', usage.estimatedCostUsd > 0)
+    // Three copy/edit calls above, plus one copy call per poster of the live
+    // set when the image tier ran.
+    const expectedText = 3 + (process.env.SMOKE_IMAGE === '1' ? LIVE_SET_SIZE : 0)
+    check(
+      `${expectedText} aiGeneration attempts counted`,
+      spent(usage, 'requests.aiGeneration') === expectedText,
+      `this run: ${spent(usage, 'requests.aiGeneration')}`,
+    )
+    check(
+      'image attempts counted separately',
+      spent(usage, 'requests.imageGeneration') === imageRuns,
+      `this run: ${spent(usage, 'requests.imageGeneration')}`,
+    )
+    check(
+      'text tokens settled from provider actuals',
+      spent(usage, 'inputTokens') > 0 && spent(usage, 'outputTokens') > 0,
+    )
+    check('estimated cost settled and positive', spent(usage, 'estimatedCostUsd') > 0)
     check('nothing left in flight', usage.inflight === 0)
     check('all reservations released', usage.reservedInputTokens === 0 && usage.reservedOutputTokens === 0 && usage.reservedCostUsd === 0)
     if (imageRuns) {
-      check('image tokens on the image counters', usage.imageOutputTokens > 0)
-      check('delivered images counted', usage.imagesGenerated === imageRuns)
+      check('image tokens on the image counters', spent(usage, 'imageOutputTokens') > 0)
+      check(
+        'delivered images counted',
+        spent(usage, 'imagesGenerated') === imageRuns,
+        `this run: ${spent(usage, 'imagesGenerated')}`,
+      )
     }
   }
 }

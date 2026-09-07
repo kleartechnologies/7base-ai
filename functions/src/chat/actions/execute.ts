@@ -493,12 +493,19 @@ async function runCreativeGeneration(
             // Each poster of a set takes the next creative direction, so
             // three posters are three designs, not one design three times.
             setPosition: index,
+            // …and knows what the earlier ones already said and photographed,
+            // which is the only way "give it a different angle" can be obeyed.
+            alreadyInSet: created.map((poster) => ({
+              headline: poster.creative.content.headline,
+              imageBrief: poster.imageBrief ?? null,
+            })),
           })
           created.push({
             position,
             creativeId: result.creativeId,
             creative: result.creative,
             copyFellBack: result.copyFellBack,
+            imageBrief: result.imageBrief,
           })
           meta = meta ?? result.meta
           if (step) step.state = 'done'

@@ -243,6 +243,8 @@ export interface CreatedPoster {
   creativeId: string
   creative: StoredCreative
   copyFellBack: boolean
+  /** The picture this poster asked for, so the next one can avoid it (§13). */
+  imageBrief?: string | null
 }
 
 export interface CreativeSetOutcome {
