@@ -87,19 +87,42 @@ describe('posterInput', () => {
 })
 
 describe('layoutFor', () => {
-  it('gives each creative direction its own arrangement', () => {
+  it('follows the composition the image was actually generated for', () => {
+    const at = (composition: Parameters<typeof layoutFor>[0]['composition']) =>
+      layoutFor({ direction: 'lifestyle', composition, hasImage: true, hasDevice: true })
+    expect(at('full_bleed')).toBe('editorial')
+    expect(at('hero_right')).toBe('editorial')
+    expect(at('editorial_split')).toBe('split')
+    expect(at('bottom_band')).toBe('band')
+    expect(at('card_overlay')).toBe('card')
+    expect(at('device_beside')).toBe('device')
+    // The direction is the same in every one of these: what changes the
+    // arrangement is the composition the photograph was framed for, which is
+    // what stops a set of three from being one template three times.
+    expect(new Set([at('full_bleed'), at('editorial_split'), at('bottom_band')]).size).toBe(3)
+  })
+
+  it('falls back to the direction for creatives generated before art direction', () => {
     const at = (direction: Parameters<typeof layoutFor>[0]['direction']) =>
-      layoutFor({ direction, hasImage: true })
-    expect(at('hero_product')).toBe('showcase')
-    expect(at('app_showcase')).toBe('showcase')
-    expect(at('feature_highlight')).toBe('showcase')
-    expect(at('bold_promotional')).toBe('promo')
-    expect(at('educational')).toBe('minimal')
-    expect(at('minimal_premium')).toBe('minimal')
-    expect(at('clean_editorial')).toBe('editorial')
+      layoutFor({ direction, composition: null, hasImage: true })
+    expect(at('bold_promotional')).toBe('band')
+    expect(at('hero_product')).toBe('card')
+    expect(at('educational')).toBe('split')
     expect(at('lifestyle')).toBe('editorial')
-    // Not one hard-coded poster: the directions really do differ.
     expect(new Set([at('hero_product'), at('bold_promotional'), at('educational')]).size).toBe(3)
+  })
+
+  it('never stands a phone up with no screenshot to put in it', () => {
+    // The scene was generated with an empty handset in it on the promise that
+    // the owner's screen would be composited on afterwards. If that snapshot
+    // is missing, drawing the phone anyway prints a blank rectangle on the
+    // poster — so the photograph is typeset as a photograph instead.
+    expect(
+      layoutFor({ direction: 'app_showcase', composition: 'device_beside', hasImage: true, hasDevice: false }),
+    ).toBe('editorial')
+    expect(
+      layoutFor({ direction: 'app_showcase', composition: 'device_beside', hasImage: true, hasDevice: true }),
+    ).toBe('device')
   })
 
   it('still makes a poster when the visual could not be made', () => {

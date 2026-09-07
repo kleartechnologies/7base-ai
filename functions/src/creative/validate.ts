@@ -15,6 +15,7 @@
  * prompt alone.
  */
 
+import type { ArtDirection } from './artDirection'
 import type { CreativeDirection } from './direction'
 
 const LIMITS = {
@@ -69,6 +70,19 @@ export interface CreativeContent {
   callToAction: string | null
   offerText: string | null
   image: CreativeImageRef | null
+  /**
+   * A second image composited *into* the first: the owner's real app
+   * screenshot, shown on the phone the generated scene photographs.
+   *
+   * A screenshot cannot be a poster's visual on its own — cover-fitting a
+   * rectangle of interface crops it into nonsense, and laying it flat on a
+   * ground reads as a slide, which is what shipped before. So for an app
+   * business the scene and the screenshot are both real and both used: the
+   * photograph is generated for the layout, and the owner's actual interface
+   * is drawn onto the device in it. Null for every poster that has no
+   * screenshot in play, which is most of them.
+   */
+  deviceImage?: CreativeImageRef | null
   layout: CreativeLayout
 }
 
@@ -99,6 +113,16 @@ export interface CreativeStyle {
    * made before Phase 7G, which lay out as plain editorial posters.
    */
   direction?: CreativeDirection | null
+  /**
+   * How this poster is composed (Phase 7G.1) — where the subject sits, how
+   * the brand colour is applied, what shape the call to action takes.
+   * Decided deterministically at generation time from the direction, the
+   * format and the poster's position in a set; the image was briefed to
+   * leave room for it and the renderer lays the type out into that room.
+   * Absent on creatives made before Phase 7G.1, which fall back to the
+   * composition their direction would lead with today.
+   */
+  artDirection?: ArtDirection | null
   /**
    * Which parts of the owner's Brand Identity fed this creative. Server-set
    * at generation time; absent on creatives made before Phase 7D.

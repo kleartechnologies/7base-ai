@@ -75,6 +75,12 @@ export interface CreativeContent {
   offerText: string | null
   /** Background or subject image. */
   image: CreativeImage | null
+  /**
+   * The owner's real app screenshot, composited onto the device in the
+   * generated scene at render time. Only ever set alongside `image` — a
+   * screen with no scene to stand in has nothing to be drawn onto.
+   */
+  deviceImage?: CreativeImage | null
   layout: CreativeLayout
 }
 
@@ -133,7 +139,46 @@ export interface CreativeStyle {
   brandApplied?: BrandAppliedSummary | null
   /** The creative direction the poster was made in. Absent before Phase 7G. */
   direction?: CreativeDirection | null
+  /**
+   * How the poster is composed. Server-set at generation time, in the same
+   * decision that briefed the image — so the renderer lays type into the room
+   * the photograph was actually asked to leave. Absent before Phase 7G.1, and
+   * the renderer then derives a composition from `direction` instead.
+   */
+  artDirection?: CreativeArtDirection | null
 }
+
+/**
+ * The art direction a poster was generated under (Phase 7G.1).
+ *
+ * Deterministic and server-side: the image brief and the client layout are two
+ * halves of one decision, so they cannot drift apart into a photograph shot
+ * for one arrangement being typeset for another.
+ */
+export interface CreativeArtDirection {
+  composition: PosterComposition
+  accent: PosterAccentTreatment
+  cta: PosterCtaStyle
+  /** Whether a device layer is expected in the scene. */
+  device: boolean
+}
+
+export type PosterComposition =
+  | 'full_bleed'
+  | 'hero_right'
+  | 'hero_left'
+  | 'center_hero'
+  | 'editorial_split'
+  | 'bottom_band'
+  | 'card_overlay'
+  | 'device_beside'
+  | 'device_hero'
+  | 'device_stack'
+  | 'typographic'
+
+export type PosterAccentTreatment = 'emphasis_word' | 'rule' | 'field' | 'chip'
+
+export type PosterCtaStyle = 'solid' | 'outline' | 'chip' | 'bar'
 
 /** What the read-only "Brand Identity — applied" panel renders from. */
 export interface BrandAppliedSummary {

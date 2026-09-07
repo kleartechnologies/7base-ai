@@ -35,8 +35,14 @@ import {
   selectLogoAsset,
   type AssetWithId,
 } from './assets'
+import { artDirectionForPosition, type ArtDirection } from './artDirection'
 import { brandAppliedSummary, brandStyleLine, readBrandKit, resolveBrandStyle } from './brand'
-import { directionForPosition, type CreativeDirection } from './direction'
+import {
+  directionForPosition,
+  visualIsScreenshot,
+  type CreativeDirection,
+  type DirectionContext,
+} from './direction'
 import { buildGroundingCorpus, draftCreativeCopyFromCampaign, mergeCopy } from './draft'
 import { generateCreativeImage, type GeneratedImage } from './image'
 import { disciplinePosterCopy } from './posterCopy'
@@ -263,20 +269,40 @@ export async function generateCreativeForCampaign(
   // What kind of poster this is, decided in code from what the campaign and
   // the chosen photo already say. It art-directs the image brief and is
   // persisted, so the renderer lays the poster out the same way everywhere.
-  const direction: CreativeDirection = directionForPosition(
+  const directionContext: DirectionContext = {
+    campaign,
+    business,
+    photo: productAsset
+      ? {
+          type: productAsset.asset.type,
+          name: productAsset.asset.name,
+          description: productAsset.asset.description,
+          tags: productAsset.asset.tags,
+        }
+      : null,
+  }
+  const setPosition = params.setPosition ?? 0
+  const direction: CreativeDirection = directionForPosition(directionContext, setPosition)
+
+  // A screenshot is interface, not photography. It cannot carry a poster on
+  // its own, so this poster gets a generated scene *and* keeps the owner's
+  // real screen: the scene is the picture, the screenshot goes on the phone
+  // in it. Every other asset still carries the poster by itself and costs no
+  // image call at all.
+  const screenshotAsset = visualIsScreenshot(directionContext) ? productAsset : null
+
+  // How the poster is composed. The image is briefed to leave room for this
+  // and the client renderer lays the type into that room; a set walks through
+  // the composition list so three posters are three arrangements.
+  const art: ArtDirection = artDirectionForPosition(
     {
-      campaign,
-      business,
-      photo: productAsset
-        ? {
-            type: productAsset.asset.type,
-            name: productAsset.asset.name,
-            description: productAsset.asset.description,
-            tags: productAsset.asset.tags,
-          }
-        : null,
+      direction,
+      format,
+      hasVisual: true,
+      isScreenshot: screenshotAsset !== null,
+      position: setPosition,
     },
-    params.setPosition ?? 0,
+    (position) => directionForPosition(directionContext, position),
   )
 
   // 1. Copy: deterministic draft first, fast-tier wording on top.
@@ -302,7 +328,7 @@ export async function generateCreativeForCampaign(
         campaign,
         format,
         directives: [],
-        hasRealImage: productAsset !== null,
+        hasRealImage: productAsset !== null && screenshotAsset === null,
         setContext: params.setContext,
       }),
       schema: {
@@ -339,9 +365,36 @@ export async function generateCreativeForCampaign(
   // Storage folder — GCS copy, no HTTP fetch — and the image model is
   // never called for it.
   let image: CreativeImageRef | null = null
+  let deviceImage: CreativeImageRef | null = null
   let imageError: string | null = null
 
-  if (productAsset) {
+  // The owner's screenshot, snapshotted as the device layer. It is composited
+  // onto the phone in the generated scene client-side and is never sent to
+  // the image model — the interface an owner shows a customer is their real
+  // one, not a model's impression of it.
+  if (screenshotAsset) {
+    try {
+      const snapshotPath = await deps.copyAssetToCreativeStorage(
+        screenshotAsset.asset,
+        campaign.businessId,
+      )
+      deviceImage = buildAssetImageRef({
+        assetId: screenshotAsset.id,
+        asset: screenshotAsset.asset,
+        storagePath: snapshotPath,
+        altText,
+      })
+    } catch (copyError) {
+      // The scene still ships; it simply photographs a blank phone.
+      logger.warn('Screenshot snapshot failed; poster ships without the device layer', {
+        campaignId,
+        assetId: screenshotAsset.id,
+        reason: copyError instanceof Error ? copyError.message : 'unknown',
+      })
+    }
+  }
+
+  if (productAsset && !screenshotAsset) {
     try {
       const snapshotPath = await deps.copyAssetToCreativeStorage(
         productAsset.asset,
@@ -374,6 +427,7 @@ export async function generateCreativeForCampaign(
         altText,
         format,
         direction,
+        composition: art.composition,
         business,
         uid,
         plan,
@@ -434,6 +488,9 @@ export async function generateCreativeForCampaign(
     logoStoragePath: logo?.storagePath ?? null,
     logoAssetId: logo?.assetId ?? null,
     direction,
+    // The composition the image was generated for, so the renderer lays the
+    // poster out into the room the photograph actually left.
+    artDirection: image ? art : { ...art, composition: 'typographic', device: false },
     brandApplied: brandAppliedSummary(business, {
       logoFromKit: logo !== null && logo.assetId === brandKit?.logoAssetId,
       kitColors: brandStyle.kitColors,
@@ -454,12 +511,15 @@ export async function generateCreativeForCampaign(
     content: {
       ...disciplinePosterCopy(draft.content),
       image,
+      // Only meaningful alongside a scene: a device layer with no scene to
+      // stand in has nothing to be drawn onto.
+      deviceImage: image ? deviceImage : null,
       layout: image ? 'image_full_bleed' : 'text_only',
     },
     captions: draft.captions,
     style,
     assetIds: buildCreativeAssetProvenance({
-      productAssetId: image?.assetId ?? null,
+      productAssetId: image?.assetId ?? deviceImage?.assetId ?? null,
       logoAssetId: logo?.assetId ?? null,
     }),
     imageError,
@@ -484,6 +544,8 @@ export async function generateCreativeForCampaign(
     copied: !copyFellBack,
     inSet: params.setContext !== null,
     direction,
+    composition: art.composition,
+    deviceAssetId: deviceImage?.assetId ?? null,
   })
 
   return { creativeId, creative: stored, copyFellBack, meta }

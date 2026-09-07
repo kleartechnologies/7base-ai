@@ -47,6 +47,7 @@ describe('generateCreativeImage', () => {
       altText: 'A plate of nasi lemak',
       format: 'square_post',
       direction: 'hero_product',
+      composition: 'hero_right',
       business: null,
       uid: 'user-1',
       plan: 'basic' as never,
@@ -64,6 +65,7 @@ describe('generateCreativeImage', () => {
       altText: null,
       format: 'square_post',
       direction: 'hero_product',
+      composition: 'hero_right',
       business: null,
       uid: 'user-1',
       plan: 'basic' as never,
@@ -79,11 +81,15 @@ describe('generateCreativeImage', () => {
       altText: null,
       format: 'square_post',
       direction: 'app_showcase',
+      composition: 'device_beside',
       business: null,
       uid: 'user-1',
       plan: 'basic' as never,
     })
     expect(h.prompts[0]).toContain('The Numi app helping a student')
-    expect(h.prompts[0]).toContain('never readable interface text')
+    // The direction says what is photographed; the composition says where it
+    // sits, because the renderer is about to typeset the other half.
+    expect(h.prompts[0]).toContain('Software in real use')
+    expect(h.prompts[0]).toContain('right')
   })
 })

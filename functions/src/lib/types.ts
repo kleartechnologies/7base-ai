@@ -368,4 +368,6 @@ export interface DownloadCreativeImageResponse {
   image: CreativeImagePayload | null
   /** Null when no logo is snapshotted or the logo could not be read. */
   logo: CreativeImagePayload | null
+  /** The owner's screenshot, drawn into the phone in the scene. */
+  device?: CreativeImagePayload | null
 }

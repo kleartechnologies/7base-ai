@@ -117,6 +117,7 @@ describe('downloadCreativePoster', () => {
     expect(loadImages).toHaveBeenCalledWith({
       imageStoragePath: 'businesses/b1/creatives/x.png',
       logoStoragePath: null,
+      deviceStoragePath: null,
     })
     expect(fetchImageBytes).not.toHaveBeenCalled()
     expect(save.mock.calls[0]![1]).toBe('lunch-poster-square.png')
@@ -162,7 +163,7 @@ describe('downloadCreativePoster', () => {
 
     expect(fetchImageBytes).toHaveBeenCalledWith('c1')
     expect(loadFromUrl).toHaveBeenCalledWith('blob:mock-1')
-    expect(render.mock.calls[0]![2]).toEqual({ image: BITMAP, logo: null })
+    expect(render.mock.calls[0]![2]).toEqual({ image: BITMAP, logo: null, device: null })
     // The blob really carries the backend's bytes and type.
     expect(created[0]!.type).toBe('image/png')
     expect(created[0]!.size).toBe('image-bytes'.length)
@@ -191,7 +192,7 @@ describe('downloadCreativePoster', () => {
       save: vi.fn(),
     })
 
-    expect(render.mock.calls[0]![2]).toEqual({ image: BITMAP, logo: BITMAP })
+    expect(render.mock.calls[0]![2]).toEqual({ image: BITMAP, logo: BITMAP, device: null })
     expect(revoked).toEqual(['blob:mock-1', 'blob:mock-2'])
   })
 

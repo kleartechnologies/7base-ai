@@ -20,15 +20,25 @@ export interface PosterImageDeps {
   load?: (url: string, crossOrigin: boolean) => Promise<PosterBitmap>
 }
 
+export interface PosterImagePaths {
+  imageStoragePath: string | null
+  logoStoragePath: string | null
+  /** The owner's screenshot, when the poster stands one in a phone. */
+  deviceStoragePath?: string | null
+}
+
 export async function loadPosterImages(
-  paths: { imageStoragePath: string | null; logoStoragePath: string | null },
+  paths: PosterImagePaths,
   deps: PosterImageDeps = {},
 ): Promise<PosterImages> {
-  const [image, logo] = await Promise.all([
+  const [image, logo, device] = await Promise.all([
     paths.imageStoragePath ? loadStorageImage(paths.imageStoragePath, deps).catch(() => null) : null,
     paths.logoStoragePath ? loadStorageImage(paths.logoStoragePath, deps).catch(() => null) : null,
+    paths.deviceStoragePath
+      ? loadStorageImage(paths.deviceStoragePath, deps).catch(() => null)
+      : null,
   ])
-  return { image, logo }
+  return { image, logo, device }
 }
 
 export function loadStorageImage(storagePath: string, deps: PosterImageDeps = {}): Promise<PosterBitmap> {

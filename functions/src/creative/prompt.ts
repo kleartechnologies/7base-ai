@@ -1,4 +1,5 @@
 import type { StoredCampaign } from '../campaign/store'
+import { compositionBrief, type PosterComposition } from './artDirection'
 import type { CreativeDirection } from './direction'
 import { POSTER_COPY_LIMITS } from './posterCopy'
 import type { StoredCreative } from './store'
@@ -162,122 +163,107 @@ export function buildCreativeEditInput(params: CreativeEditInputParams): string 
 /**
  * The art-direction brief for the poster's visual.
  *
- * The image model is treated as a visual designer, not a stock-photo search:
- * the brief states the intent, the focal point, the composition, the
- * treatment and where the frame must stay quiet — and then leaves the model
- * free to design within it. What it must never do is *write*. Every word on
- * the finished poster (headline, offer, call to action) is set by the
- * renderer from the structured fields, and the logo is composited from the
- * owner's real file, because a generated logo is a forgery and generated
- * type is a garble. That division is also what lets a wording edit skip
- * regeneration entirely.
+ * The image model is briefed as a photographer on an advertising shoot, not
+ * as a stock-photo search: the brief names the subject, the light, the lens,
+ * the mood and the composition, and then leaves the model to make the
+ * picture. What it must never do is *write*. Every word on the finished
+ * poster (headline, offer, call to action) is set by the renderer from the
+ * structured fields, and the logo is composited from the owner's real file,
+ * because a generated logo is a forgery and generated type is a garble. That
+ * division is also what lets a wording edit skip regeneration entirely.
  *
  * The brief is assembled from structured data only — the validated visual
- * brief, the deterministic creative direction, the brand's recorded style,
- * the format. Raw user text never reaches this string; an owner's visual
- * request arrives as a validated `visualChange` brief, not verbatim.
+ * brief, the deterministic creative direction and art direction, the brand's
+ * recorded style, the format. Raw user text never reaches this string; an
+ * owner's visual request arrives as a validated `visualChange` brief.
  */
 
 /**
- * What each creative direction asks the image to be, and where it must leave
- * room. `reserve` mirrors how `posterDesign.ts` lays that direction out on
- * the client — the two are a pair: a visual whose subject sits where the
- * headline goes is a visual fighting its own poster.
+ * The register the whole brief is written in.
+ *
+ * The previous version of this asked for the absence of things — nothing
+ * flat, nothing clip-art, no template look — and got exactly what a negative
+ * brief gets: a frame with nothing wrong with it and nothing in it. Muted
+ * light, a beige wall, a subject standing still. So the quality bar now
+ * states what the photograph *is*, and the model has something to aim at
+ * rather than something to avoid.
  */
-const ART_DIRECTION: Record<CreativeDirection, { intent: string; reserve: string }> = {
-  hero_product: {
-    intent:
-      'One hero shot of the product itself, styled like a premium product advertisement: the subject lit deliberately, materials and texture readable, a simple complementary background that flatters it. Real depth, soft directional light, a believable surface underneath.',
-    reserve:
-      'Centre the subject with even breathing room on all four sides and keep the outer tenth of the frame free of important detail.',
-  },
-  clean_editorial: {
-    intent:
-      'A modern editorial photograph with an advertising sensibility: one clear subject, an uncluttered environment, natural directional light, a restrained colour story. Magazine quality, not stock-library generic.',
-    reserve:
-      'Place the subject in the upper or right two-thirds, and let the lower-left quarter fall away into plain, evenly lit surface or soft shadow with nothing of interest in it.',
-  },
-  bold_promotional: {
-    intent:
-      'A high-energy advertising photograph with strong contrast and saturated, confident lighting — the kind of frame that stops a scroll. Bold, but composed: one subject, no clutter.',
-    reserve:
-      'Compose for the top half: the subject sits in the upper middle, and the bottom third of the photograph is plain, quiet surface with nothing of interest in it.',
-  },
-  lifestyle: {
-    intent:
-      'A candid lifestyle moment: real people or real hands using, enjoying or sharing the thing, in a believable Malaysian setting. Warm, natural, unposed, documentary light.',
-    reserve:
-      'Place the action in the upper or right two-thirds, and let the lower-left quarter fall away into plain, evenly lit surface or soft shadow with nothing of interest in it.',
-  },
-  educational: {
-    intent:
-      'A calm, credible image about learning and understanding: a focused person, a workspace, materials in use. Clean, bright, uncluttered, encouraging rather than clinical.',
-    reserve:
-      'Centre the subject with generous even space around it and a quiet, plain background.',
-  },
-  app_showcase: {
-    intent:
-      'A product-technology composition: a modern device or a clean abstract representation of the product on a simple studio ground, with soft graphic shapes and gentle depth. If a screen is visible, render it as abstract colour blocks and shapes only — never readable interface text, numbers or icons that spell words.',
-    reserve:
-      'Centre the composition with even margins and keep the outer tenth of the frame free of important detail.',
-  },
-  minimal_premium: {
-    intent:
-      'A quiet, premium still life: one subject, restrained palette, soft gradient light, a lot of empty space. Considered and expensive-looking, closer to a fashion or fragrance advertisement than a catalogue photo.',
-    reserve:
-      'Centre the subject small in the frame with generous, genuinely empty negative space around it.',
-  },
-  feature_highlight: {
-    intent:
-      'A clean arrangement of the things on offer: several related items or moments composed as one deliberate group on a simple ground, evenly lit, each readable.',
-    reserve:
-      'Keep the group centred with even margins and the outer tenth of the frame free of important detail.',
-  },
-}
+const QUALITY_BAR = [
+  'Photograph this as a commercial advertising campaign image, shot by a professional on a full-frame camera with a fast prime lens.',
+  'Bright, confident, directional light with real modelling — a clear key, visible falloff, and highlights that lift the subject off the background.',
+  'Rich, true colour and deep contrast: clean whites, real blacks, natural skin tones, materials that read as themselves. Not muted, not washed out, not beige.',
+  'Shallow depth of field with a decisive focal point, so the eye lands in one place and the rest of the frame recedes.',
+  'If people appear they are believable and present — natural expression, genuine attention on what they are doing, never a posed stock-photo smile at the camera.',
+].join(' ')
 
-/** The quality bar, stated once and applied to every direction. */
-const QUALITY_BAR =
-  'Advertising quality: one clear focal point, an intentional composition, real depth and directional light, strong separation between subject and background, deliberate negative space. Nothing flat, nothing clip-art, no collage, no busy backdrop, no template look, no borders or frames.'
+/** What each creative direction is a photograph *of*. */
+const SUBJECT_DIRECTION: Record<CreativeDirection, string> = {
+  hero_product:
+    'The product itself is the hero, styled and lit the way a premium brand photographs the thing it sells.',
+  clean_editorial:
+    'One clear subject in an uncluttered contemporary setting, in the register of a magazine feature rather than a catalogue.',
+  bold_promotional:
+    'A high-energy frame with strong contrast and saturated colour — the kind of picture that stops a scroll.',
+  lifestyle:
+    'A candid, unposed moment: real people or real hands using, enjoying or sharing the thing, in a believable Malaysian setting.',
+  educational:
+    'A focused person and the materials of learning in use — bright, encouraging and credible rather than clinical.',
+  app_showcase:
+    'Software in real use: a person and a phone in a real place, photographed as a moment rather than as a device catalogue shot.',
+  minimal_premium:
+    'A quiet, expensive still life — one subject, restrained palette, a great deal of considered space.',
+  feature_highlight:
+    'Several related items or moments composed as one deliberate group, each of them readable.',
+}
 
 const NO_TEXT_RULE =
   'Strictly no text of any kind: no words, letters, numbers, captions, labels, signage, packaging copy, watermarks, logos or brand marks anywhere in the image.'
 
 /**
  * The model draws the *photograph*; the renderer lays the headline, the
- * colour panel and the real logo over it afterwards. Saying "a panel goes
- * here" invites the model to paint one — and then the poster carries two,
- * in two different colours. So the reserve lines above describe the picture
- * only, and this rule closes the door explicitly.
+ * brand colour and the real logo over it afterwards. Saying "a panel goes
+ * here" invites the model to paint one — and then the poster carries two, in
+ * two different colours. So the composition briefs describe the picture only,
+ * and this rule closes the door explicitly.
  */
 const PHOTOGRAPH_ONLY_RULE =
-  'This is a photograph, not a finished poster: no flat colour panels, bars, banners, ribbons, stickers, badges, buttons, price tags, speech bubbles, arrows or graphic overlays of any kind, and no empty boxes or placeholder shapes waiting to be filled.'
+  'This is a photograph, not a finished poster: no flat colour panels, bars, banners, ribbons, stickers, badges, buttons, price tags, speech bubbles, arrows, borders, frames or graphic overlays of any kind, and no empty boxes or placeholder shapes waiting to be filled.'
 
 export function buildImagePrompt(params: {
   brief: string
   format: CreativeFormat
   direction: CreativeDirection
+  /**
+   * Where the subject must sit and where the frame must stay quiet, so the
+   * photograph is generated for the layout the renderer will actually use.
+   */
+  composition: PosterComposition
   paletteHexes: string[]
   visualStyle: string | null
   /** The owner's own words for what the business is. Null when unknown. */
   businessType: string | null
 }): string {
-  const art = ART_DIRECTION[params.direction]
   const shape = params.format === 'portrait_post' ? 'portrait 4:5' : 'square 1:1'
+  const brief = compositionBrief(params.composition)
   const lines = [
-    `A ${shape} advertising visual for a small Malaysian business${
+    `A ${shape} advertising photograph for a small Malaysian business${
       params.businessType ? ` — ${params.businessType}` : ''
     }.`,
     // The brief is one sentence in a paragraph of them; the deterministic
     // fallback brief (campaign fields joined together) often has no full stop.
     sentence(params.brief),
-    art.intent,
-    art.reserve,
+    SUBJECT_DIRECTION[params.direction],
+    brief.subject,
+    brief.quiet,
     QUALITY_BAR,
   ]
-  if (params.visualStyle) lines.push(`Visual style: ${params.visualStyle}.`)
+  if (params.visualStyle) lines.push(`Brand character: ${params.visualStyle}.`)
   if (params.paletteHexes.length > 0) {
+    // Colour that belongs to the scene reads as art direction; colour poured
+    // over it reads as a filter. So the brand hue arrives as things that are
+    // genuinely that colour, and most of the frame stays neutral.
     lines.push(
-      `Brand colours ${params.paletteHexes.join(', ')} appear as accents — a prop, a surface, a lighting cast or one graphic shape. Never flood the frame with them; most of the image stays neutral.`,
+      `Work the brand colours ${params.paletteHexes.join(', ')} into the scene as real things that happen to be that colour — a garment, a prop, a painted surface, a plant, a reflected light — so the frame feels connected to the brand. Keep them to accents; most of the image stays neutral, and never apply them as a wash, tint or filter over the whole picture.`,
     )
   }
   lines.push(PHOTOGRAPH_ONLY_RULE, NO_TEXT_RULE)

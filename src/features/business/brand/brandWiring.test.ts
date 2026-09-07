@@ -90,8 +90,8 @@ describe('client surface', () => {
   })
 
   it('the poster pipeline honours the kit fonts', () => {
-    const posterSpec = read('../../creative/posterSpec.ts')
-    expect(posterSpec).toContain('style?.bodyFont')
+    const design = read('../../creative/posterDesign.ts')
+    expect(design).toContain('creative.style.bodyFont')
     const poster = read('../../creative/poster.ts')
     expect(poster).toContain('waitForBrandFonts')
   })

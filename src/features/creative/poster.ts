@@ -26,6 +26,7 @@ export interface PosterDownloadDeps {
   loadImages?: (paths: {
     imageStoragePath: string | null
     logoStoragePath: string | null
+    deviceStoragePath: string | null
   }) => Promise<PosterImages>
   render?: (design: PosterDesign, input: PosterInput, images: PosterImages) => Promise<Blob>
   fetchImageBytes?: (creativeId: string) => Promise<AiResult<DownloadCreativeImageResponse>>
@@ -52,6 +53,7 @@ export async function downloadCreativePoster(
     const images = await loadImages({
       imageStoragePath: input.imageStoragePath,
       logoStoragePath: input.logoStoragePath,
+      deviceStoragePath: input.deviceStoragePath,
     })
     save(await render(design, input, images), fileName)
     return
@@ -88,7 +90,14 @@ export async function downloadCreativePoster(
       input.logoStoragePath && result.data.logo
         ? await loadFromUrl(asObjectUrl(result.data.logo)).catch(() => null)
         : null
-    save(await render(design, input, { image, logo }), fileName)
+    // The device layer comes back through the same authenticated door, and
+    // is optional in the same way: without it the handset renders empty
+    // rather than the download failing.
+    const device =
+      input.deviceStoragePath && result.data.device
+        ? await loadFromUrl(asObjectUrl(result.data.device)).catch(() => null)
+        : null
+    save(await render(design, input, { image, logo, device }), fileName)
   } finally {
     for (const url of objectUrls) URL.revokeObjectURL(url)
   }

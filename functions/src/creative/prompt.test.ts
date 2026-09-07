@@ -110,6 +110,7 @@ describe('buildImagePrompt', () => {
       brief: 'A plate of nasi lemak on a kopitiam table',
       format: 'square_post',
       direction: 'hero_product',
+      composition: 'hero_right',
       paletteHexes: [],
       visualStyle: null,
       businessType: null,
@@ -127,6 +128,7 @@ describe('buildImagePrompt', () => {
       brief: 'A laksa bowl, steam rising',
       format: 'portrait_post',
       direction: 'clean_editorial',
+      composition: 'full_bleed',
       paletteHexes: ['#C2410C', '#F59E0B'],
       visualStyle: 'warm and rustic',
       businessType: 'a kopitiam in Ipoh',
@@ -134,9 +136,41 @@ describe('buildImagePrompt', () => {
     expect(prompt).toContain('portrait 4:5')
     expect(prompt).toContain('a kopitiam in Ipoh')
     expect(prompt).toContain('#C2410C, #F59E0B')
-    expect(prompt).toContain('Visual style: warm and rustic.')
-    // The brand colour accents the frame; it never becomes the frame.
-    expect(prompt).toContain('Never flood the frame with them')
+    expect(prompt).toContain('Brand character: warm and rustic.')
+    // §14: the brand colour arrives as things that are genuinely that colour.
+    // Poured over the frame it reads as a filter, which is exactly the muddy,
+    // tinted look the phase set out to kill.
+    expect(prompt).toContain('as real things that happen to be that colour')
+    expect(prompt).toContain('never apply them as a wash, tint or filter')
+  })
+
+  it('briefs the photograph for the composition the renderer will typeset', () => {
+    const at = (composition: Parameters<typeof buildImagePrompt>[0]['composition']) =>
+      buildImagePrompt({
+        brief: 'the same brief',
+        format: 'square_post',
+        direction: 'lifestyle',
+        composition,
+        paletteHexes: [],
+        visualStyle: null,
+        businessType: null,
+      })
+    const right = at('hero_right')
+    const band = at('bottom_band')
+    const device = at('device_beside')
+    expect(new Set([right, band, device]).size).toBe(3)
+    // The subject goes where the type is not, so the message has somewhere to
+    // land that the photographer actually left for it.
+    expect(right).toContain('right half of the frame')
+    expect(band).toContain('top two-thirds')
+    // §10: the phone is photographed empty because the owner's real screen is
+    // composited onto it — the model must not invent an interface.
+    expect(device).toContain('blank, evenly lit rectangle')
+    // The quiet is described as photography, never as absence: "nothing here"
+    // is what produced the flat, empty corners the phase is fixing.
+    for (const prompt of [right, band, device]) {
+      expect(prompt).toMatch(/out of focus|receding|falls away/)
+    }
   })
 
   it('art-directs each creative direction differently, and never as a template', () => {
@@ -145,6 +179,7 @@ describe('buildImagePrompt', () => {
         brief: 'the same brief',
         format: 'square_post',
         direction,
+        composition: 'full_bleed',
         paletteHexes: [],
         visualStyle: null,
         businessType: null,
@@ -153,14 +188,18 @@ describe('buildImagePrompt', () => {
     const minimal = at('minimal_premium')
     const app = at('app_showcase')
     expect(new Set([promo, minimal, app]).size).toBe(3)
-    // Each brief reserves the space its own poster layout draws over.
-    expect(promo).toContain('bottom third')
-    expect(minimal).toContain('genuinely empty negative space')
-    expect(app).toContain('never readable interface text')
-    // The quality bar is stated for every direction, not just some.
+    // Each direction is a photograph of something different, at the same
+    // composition — the subject changes, not just the words around it.
+    expect(promo).toContain('high-energy frame')
+    expect(minimal).toContain('quiet, expensive still life')
+    expect(app).toContain('Software in real use')
+    // §14: the quality bar is stated for every direction, not just some, and
+    // it asks for light and colour rather than merely forbidding dullness.
     for (const prompt of [promo, minimal, app]) {
-      expect(prompt).toContain('one clear focal point')
-      expect(prompt).toContain('no template look')
+      expect(prompt).toContain('full-frame camera with a fast prime lens')
+      expect(prompt).toContain('Not muted, not washed out, not beige')
+      expect(prompt).toContain('Shallow depth of field with a decisive focal point')
+      expect(prompt).toContain('never a posed stock-photo smile')
       // §7 honesty: the renderer draws the panel, the type and the real
       // logo. A brief that says "a panel goes here" gets one painted in,
       // and the poster then carries two in two different colours.

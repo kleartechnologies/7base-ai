@@ -20,14 +20,14 @@ interface PosterCanvasProps {
   className?: string
 }
 
-const EMPTY: PosterImages = { image: null, logo: null }
+const EMPTY: PosterImages = { image: null, logo: null, device: null }
 
 export function PosterCanvas({ creative, className }: PosterCanvasProps) {
   const input = useMemo(() => posterInput(creative), [creative])
   const design = useMemo(() => posterDesign(input), [input])
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  const imageKey = `${input.imageStoragePath ?? ''}|${input.logoStoragePath ?? ''}`
+  const imageKey = `${input.imageStoragePath ?? ''}|${input.logoStoragePath ?? ''}|${input.deviceStoragePath ?? ''}`
   const [loaded, setLoaded] = useState<{ key: string; images: PosterImages } | null>(null)
   const images = loaded && loaded.key === imageKey ? loaded.images : EMPTY
 
@@ -36,10 +36,13 @@ export function PosterCanvas({ creative, className }: PosterCanvasProps) {
 
   useEffect(() => {
     let cancelled = false
-    const [imageStoragePath, logoStoragePath] = imageKey.split('|').map((p) => p || null)
+    const [imageStoragePath, logoStoragePath, deviceStoragePath] = imageKey
+      .split('|')
+      .map((p) => p || null)
     loadPosterImages({
       imageStoragePath: imageStoragePath ?? null,
       logoStoragePath: logoStoragePath ?? null,
+      deviceStoragePath: deviceStoragePath ?? null,
     }).then((next) => {
       if (!cancelled) setLoaded({ key: imageKey, images: next })
     })

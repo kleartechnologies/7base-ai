@@ -95,6 +95,7 @@ export async function performDownloadCreativeImage(
 
   const imagePath = creative.content?.image?.storagePath ?? null
   const logoPath = creative.style?.logoStoragePath ?? null
+  const devicePath = creative.content?.deviceImage?.storagePath ?? null
 
   let image: CreativeImagePayload | null = null
   if (imagePath) {
@@ -138,14 +139,31 @@ export async function performDownloadCreativeImage(
     }
   }
 
+  // The device layer (the owner's screenshot, drawn into the phone in the
+  // scene) is optional in exactly the same way, and degrades the same way:
+  // without it the handset renders empty rather than the download failing.
+  let device: CreativeImagePayload | null = null
+  if (devicePath && devicePath.startsWith(prefix)) {
+    try {
+      const read = await deps.readFile(devicePath)
+      if (read) device = toPayload(read)
+    } catch (error) {
+      logger.warn('creative.download.device_read_failed', {
+        creativeId,
+        reason: error instanceof Error ? error.message : 'unknown',
+      })
+    }
+  }
+
   logger.info('creative.download.served', {
     creativeId,
     hasImage: image !== null,
     hasLogo: logo !== null,
+    hasDevice: device !== null,
     imageBytes: image ? Math.round((image.base64.length * 3) / 4) : 0,
   })
 
-  return { image, logo }
+  return { image, logo, device }
 }
 
 export const creativeDownloadImage = onCall(

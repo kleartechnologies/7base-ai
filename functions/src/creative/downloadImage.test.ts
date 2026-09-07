@@ -165,7 +165,7 @@ describe('performDownloadCreativeImage', () => {
       creative({ content: { ...creative().content, image: null } }),
     )
     const result = await performDownloadCreativeImage(PARAMS, deps)
-    expect(result).toEqual({ image: null, logo: null })
+    expect(result).toEqual({ image: null, logo: null, device: null })
     expect(reads).toEqual([])
   })
 

@@ -5,6 +5,7 @@ import type { SubscriptionPlan } from '../config/models'
 import type { StoredBusiness } from '../lib/business.types'
 import { storageBucket } from '../lib/firebase'
 import type { MessageMeta } from '../lib/types'
+import type { PosterComposition } from './artDirection'
 import { resolveBrandStyle, resolveVisualStyle } from './brand'
 import type { CreativeDirection } from './direction'
 import { buildImagePrompt } from './prompt'
@@ -44,6 +45,12 @@ export async function generateCreativeImage(params: {
    * the client is laying the poster out in.
    */
   direction: CreativeDirection
+  /**
+   * Where the subject must sit and where the frame must stay quiet. The
+   * renderer lays this poster out from the same composition, so the
+   * photograph is made for the layout rather than cropped into it.
+   */
+  composition: PosterComposition
   business: StoredBusiness | null
   /** The authenticated owner — the account whose image quota this consumes. */
   uid: string
@@ -60,6 +67,7 @@ export async function generateCreativeImage(params: {
     brief: params.brief,
     format: params.format,
     direction: params.direction,
+    composition: params.composition,
     paletteHexes: (brandStyle.palette ?? []).slice(0, 3),
     visualStyle: resolveVisualStyle(params.business, CREATIVE_LIMITS.imageBrief),
     businessType: businessTypeLine(params.business),

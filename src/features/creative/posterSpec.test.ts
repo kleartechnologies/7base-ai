@@ -1,42 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  firstUsableColor,
-  normalizeHex,
-  posterFileName,
-  posterSpec,
-  readableTextOn,
-  wrapLines,
-} from './posterSpec'
+import { firstUsableColor, normalizeHex, posterFileName, wrapLines } from './posterSpec'
 
 /**
- * The poster's layout decisions, tested where they are made. "Download
- * Poster" promises a real 1080px social image, and the preview and the
- * export share this spec — if these numbers drift, the owner downloads
- * something other than what they saw.
+ * The pure helpers under the poster pipeline. The layout decisions they used
+ * to sit beside now live in `posterDesign.ts`; what is left is parsing and
+ * wrapping, and both have caught real defects.
  */
-
-describe('posterSpec', () => {
-  it('exports real social sizes: 1080 square, 1080×1350 portrait', () => {
-    expect(posterSpec('square_post', null)).toMatchObject({ width: 1080, height: 1080 })
-    expect(posterSpec('portrait_post', null)).toMatchObject({ width: 1080, height: 1350 })
-  })
-
-  it('takes the accent from the brand palette, with readable text on it', () => {
-    const spec = posterSpec('square_post', {
-      palette: ['not-a-color', '#FFEE00'],
-      headingFont: null,
-      bodyFont: null,
-      logoStoragePath: null,
-    })
-    expect(spec.accent).toBe('#ffee00')
-    expect(spec.accentText).toBe('#1a1a1a')
-  })
-
-  it('falls back to the default accent without a usable palette', () => {
-    expect(posterSpec('square_post', null).accent).toBe('#C2410C')
-  })
-})
 
 describe('normalizeHex and firstUsableColor', () => {
   it('accepts 6- and 3-digit hex, rejects everything else', () => {
@@ -50,15 +20,6 @@ describe('normalizeHex and firstUsableColor', () => {
     expect(firstUsableColor(['nope', '#abc', '#C2410C'])).toBe('#aabbcc')
     expect(firstUsableColor([])).toBeNull()
     expect(firstUsableColor(null)).toBeNull()
-  })
-})
-
-describe('readableTextOn', () => {
-  it('dark text on light accents, white on dark ones', () => {
-    expect(readableTextOn('#ffffff')).toBe('#1a1a1a')
-    expect(readableTextOn('#FFEE00')).toBe('#1a1a1a')
-    expect(readableTextOn('#C2410C')).toBe('#ffffff')
-    expect(readableTextOn('#000000')).toBe('#ffffff')
   })
 })
 

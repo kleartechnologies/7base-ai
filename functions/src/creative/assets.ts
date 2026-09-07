@@ -6,6 +6,7 @@ import type { Product, StoredBusiness } from '../lib/business.types'
 import { COLLECTIONS, db, storageBucket } from '../lib/firebase'
 import { isPathWithinBusiness } from '../lib/storagePaths'
 import type { MessageMeta } from '../lib/types'
+import { selectArtDirection } from './artDirection'
 import { generateCreativeImage } from './image'
 import type { StoredCreative } from './store'
 import type { CreativeImageRef } from './validate'
@@ -383,9 +384,12 @@ export async function resolveRetryImage(
     brief: image?.prompt ?? (fallbackBrief || creative.name),
     altText: image?.altText ?? null,
     format: creative.format,
-    // The direction this poster was designed in, so the retry comes back in
-    // the same one the client is laying it out in.
+    // The direction and composition this poster was designed in, so the
+    // retry comes back in the same one the client is laying it out in — a
+    // regenerated frame composed for a different layout is a headline over
+    // a face.
     direction: creative.style.direction ?? 'clean_editorial',
+    composition: retryComposition(creative),
     business: params.business,
     uid: params.ownerId,
     plan: params.plan,
@@ -446,12 +450,31 @@ export async function resolveVisualEditImage(
     brief: params.visualChange,
     altText: image?.altText ?? null,
     format: creative.format,
-    // Same direction as before: the owner asked for a different picture,
-    // not a different kind of poster.
+    // Same direction and composition as before: the owner asked for a
+    // different picture, not a different kind of poster.
     direction: creative.style.direction ?? 'clean_editorial',
+    composition: retryComposition(creative),
     business: params.business,
     uid: params.ownerId,
     plan: params.plan,
   })
   return { action: 'replaced', image: generated.image, meta: generated.meta, note: null }
+}
+
+/**
+ * The composition a regenerated visual must be made for: the one already
+ * persisted on the creative, or — for a creative made before art directions
+ * were recorded — the one its direction would lead with today.
+ */
+function retryComposition(creative: StoredCreative) {
+  return (
+    creative.style.artDirection?.composition ??
+    selectArtDirection({
+      direction: creative.style.direction ?? 'clean_editorial',
+      format: creative.format,
+      hasVisual: true,
+      isScreenshot: false,
+      position: 0,
+    }).composition
+  )
 }

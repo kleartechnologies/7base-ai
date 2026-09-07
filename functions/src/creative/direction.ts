@@ -243,7 +243,14 @@ function hasConcreteOffer(campaign: StoredCampaign, corpus: string): boolean {
   return /(?:rm|myr)\s?\d/.test(text) || /\d+\s?%/.test(text) || mentions(corpus, OFFER_WORDS)
 }
 
-/** A screenshot reads as a rectangle of UI, and must be shown as a device. */
+/**
+ * A screenshot reads as a rectangle of UI, and must be shown as a device.
+ *
+ * Exported because two decisions turn on it and they must never disagree:
+ * which direction this poster is (here) and whether the poster needs a
+ * generated scene to hold the screenshot (`artDirection.ts`, via
+ * `visualIsScreenshot`). One predicate, one answer.
+ */
 function photoIsScreenshot(context: DirectionContext, corpus: string): boolean {
   const photo = context.photo
   if (!photo) return false
@@ -329,4 +336,14 @@ export function directionForPosition(
   const rotation = directionRotation(context)
   const index = Number.isInteger(position) && position > 0 ? position : 0
   return rotation[index % rotation.length] ?? rotation[0] ?? 'clean_editorial'
+}
+
+/**
+ * Whether the visual chosen for this context is interface rather than
+ * photography — the same judgement `selectDirection` makes internally, on
+ * the same corpus, so the art direction and the direction cannot diverge.
+ */
+export function visualIsScreenshot(context: DirectionContext): boolean {
+  if (!context.photo) return false
+  return photoIsScreenshot(context, corpusOf(context))
 }

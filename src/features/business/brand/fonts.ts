@@ -6,7 +6,7 @@ import { BRAND_FONTS, type BrandFont } from '@/types'
  * requested — arbitrary font URLs and uploads are out of scope by design.
  *
  * Loading is best-effort: every face is declared with a system fallback stack
- * (see `posterSpec.HEADING_STACK` and the BrandBoard styles), so a blocked or
+ * (see `posterDesign.fontFamily` and the BrandBoard styles), so a blocked or
  * slow font costs fidelity, never functionality.
  */
 

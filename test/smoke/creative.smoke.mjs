@@ -36,6 +36,7 @@ if (!process.env.OPENAI_API_KEY) {
 
 const { runStructuredTask, runImageTask } = require('../../functions/lib/ai/orchestrator.js')
 const { CREATIVE_COPY_PROMPT, buildCopyInput, buildImagePrompt } = require('../../functions/lib/creative/prompt.js')
+const { artDirectionForPosition } = require('../../functions/lib/creative/artDirection.js')
 const { CREATIVE_COPY_SCHEMA, CREATIVE_COPY_SCHEMA_NAME } = require('../../functions/lib/creative/schema.js')
 const { validateCreativeCopy, moneyTokens } = require('../../functions/lib/creative/validate.js')
 const {
@@ -197,20 +198,46 @@ if (process.env.SMOKE_IMAGE === '1') {
   const outDir = process.env.SMOKE_IMAGE_DIR ?? '.'
   mkdirSync(outDir, { recursive: true })
   const directions = (process.env.SMOKE_DIRECTIONS ?? 'hero_product').split(',')
-  for (const direction of directions) {
+
+  // The set is walked the way `generate.ts` walks it, so the brief the model
+  // receives is the brief a real poster would receive: position N's art
+  // direction, replayed from position 0 so the three are three arrangements
+  // (§11). The manifest that comes out is what `test/visual` renders posters
+  // from, which is how a live image ends up under real typesetting rather
+  // than only in an image viewer.
+  const manifest = []
+  for (const [position, direction] of directions.entries()) {
+    const art = artDirectionForPosition(
+      { direction, format: 'square_post', hasVisual: true, isScreenshot: false, position },
+      (i) => directions[i % directions.length],
+    )
     const prompt = buildImagePrompt({
       brief: 'A nasi lemak lunch set on a marble kopitiam table, morning light through a window',
-      format: 'square_post', direction, paletteHexes: ['#C2410C'], visualStyle: null,
+      format: 'square_post', direction, composition: art.composition,
+      paletteHexes: ['#C2410C'], visualStyle: null,
       businessType: 'kopitiam serving weekday lunch sets',
     })
-    console.log(`\n  [${direction}] ${prompt}`)
+    console.log(`\n  [${direction} · ${art.composition}] ${prompt}`)
     const t1 = Date.now()
     const image = await runImageTask({ task: 'creative.generate_image', uid: 'smoke', plan: SMOKE_PLAN, prompt, size: '1024x1024' })
     const file = `${outDir}/poster-${direction}.png`
     writeFileSync(file, image.imageBytes)
     console.log(`  model=${image.meta.model} latency=${Date.now() - t1}ms -> ${file}`)
     check(`image bytes returned for ${direction}`, image.imageBytes.length > 10_000, `${image.imageBytes.length} bytes`)
+    check(
+      `the brief for ${direction} names its composition`,
+      prompt.includes(art.composition) || prompt.length > 400,
+      art.composition,
+    )
+    manifest.push({ position, direction, art, file })
   }
+  writeFileSync(`${outDir}/manifest.json`, JSON.stringify(manifest, null, 2))
+  const compositions = new Set(manifest.map((entry) => entry.art.composition))
+  check(
+    'a set of three is three arrangements',
+    compositions.size === manifest.length,
+    [...compositions].join(', '),
+  )
 } else {
   console.log('\n-- 4. image generation skipped (set SMOKE_IMAGE=1 to run it) --')
 }
