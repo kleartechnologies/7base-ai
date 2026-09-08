@@ -13,12 +13,24 @@ import type { MarketingRecommendationBlock } from '@/types'
  * by small provenance tags, because "your customers" and "my guess about your
  * customers" must never look the same.
  *
- * [Build this campaign] asks the backend to turn this recommendation into a
+ * The go-ahead button asks the backend to turn this recommendation into a
  * campaign draft. The confirmation message — with its campaign card — arrives
  * through the same Firestore subscription as every other assistant turn, so
  * there is nothing to render optimistically here.
+ *
+ * Since Phase 7J EVA usually offers that step herself, in words, right under
+ * this card. When she has, the footer stands down and the proposal is the
+ * single way forward; older recommendations in the thread keep their button,
+ * because nothing else in the thread still offers to build them.
  */
-export function RecommendationCard({ block }: { block: MarketingRecommendationBlock }) {
+export function RecommendationCard({
+  block,
+  hasProposal = false,
+}: {
+  block: MarketingRecommendationBlock
+  /** EVA already offered this step in her own words on this turn. */
+  hasProposal?: boolean
+}) {
   const { t } = useI18n()
   const [building, setBuilding] = useState(false)
   const [built, setBuilt] = useState(false)
@@ -88,7 +100,7 @@ export function RecommendationCard({ block }: { block: MarketingRecommendationBl
         </Row>
       </div>
 
-      {block.nextAction === 'build_campaign' ? (
+      {block.nextAction === 'build_campaign' && !hasProposal ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border px-5 py-3.5">
           <Button size="sm" onClick={() => void handleBuild()} disabled={building || built}>
             {building

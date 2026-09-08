@@ -7,7 +7,7 @@ import { suggestionKey } from './suggestion'
 /**
  * The Overview "EVA suggests" card is deterministic: its copy is chosen from
  * real workspace state, never generated. These tests pin the priority order —
- * profile gaps first, then a first campaign, then an unfinished draft.
+ * a first campaign, then profile gaps, then an unfinished draft.
  */
 
 function business(): Business {
@@ -22,8 +22,15 @@ function campaign(status: CampaignStatus): Campaign {
 }
 
 describe('suggestionKey', () => {
-  it('asks for profile answers first when EVA still has questions', () => {
+  it('asks for profile answers once there is work to sharpen', () => {
     expect(suggestionKey(business(), [campaign('ready')])).toBe('overview.suggestProfile')
+  })
+
+  // Phase 7J §6/§15: the Business profile card below already asks for those
+  // answers, so an empty workspace gets the first move instead of the ask
+  // twice over.
+  it('offers the first campaign before the profile on an empty workspace', () => {
+    expect(suggestionKey(business(), [])).toBe('overview.suggestFirstCampaign')
   })
 
   it('suggests the first campaign when none exist', () => {

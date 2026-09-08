@@ -39,4 +39,12 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'off',
     },
   },
+  {
+    // The visual-QA harness is a headless entry point, not app code: it
+    // mounts the real components once and is never hot-reloaded.
+    files: ['test/visual/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 )

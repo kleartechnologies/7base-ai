@@ -48,7 +48,12 @@ import {
   pendingProposal,
   readAffirmation,
 } from './actions/decide'
-import { describeProposal, proposeFromOffer, runChatAction } from './actions/execute'
+import {
+  describeProposal,
+  proposeFromOffer,
+  proposeFromRecommendation,
+  runChatAction,
+} from './actions/execute'
 import { detectReplyLanguage, presentProposal } from './actions/present'
 import {
   applyCampaignPatch,
@@ -91,13 +96,20 @@ import {
 import { buildRecommendationPresentation, MISSING_BRAIN_REPLY } from '../marketing/present'
 import { generateMarketingRecommendation } from '../marketing/recommend'
 import { buildStoredRecommendation, saveRecommendation } from '../marketing/store'
-import { RecommendationValidationError } from '../marketing/validate'
+import { recommendedOpportunity, RecommendationValidationError } from '../marketing/validate'
 
 /** How many prior turns to send. Enough for continuity, bounded for cost. */
 const HISTORY_LIMIT = 30
 
 /** How many prior turns the marketing engine sees. Context, not evidence. */
 const MARKETING_CONTEXT_TURNS = 6
+
+/**
+ * How much of the owner's own goal rides along as the poster set's brief.
+ * Matches the brief budget the request path uses, so "promote our weekday
+ * lunch" reaches the copy call in their words either way.
+ */
+const RECOMMENDATION_BRIEF_MAX_CHARS = 600
 
 /**
  * Generates MARKA's reply to a stored user message.
@@ -460,9 +472,33 @@ export const chatAssistantReply = onCall(
         )
 
         const presentation = buildRecommendationPresentation(recommendationId, draft)
+
+        // Phase 7J §7 — the goal the owner typed becomes one confirmable
+        // plan, not a card with a button that leads to another card with
+        // another button. The proposal is resolved server-side against the
+        // owner's own campaigns (an existing one in this thread is reused,
+        // never duplicated) and executes through the same build and creative
+        // pipelines the buttons use. Saying "yes, do it" now does the work.
+        const recommendationProposal = await proposeFromRecommendation(
+          {
+            recommendationId,
+            title: recommendedOpportunity(draft).title,
+            nextAction: draft.nextAction,
+            brief: latest.text.slice(0, RECOMMENDATION_BRIEF_MAX_CHARS),
+          },
+          { uid, conversationId, businessId, business, language, text: latest.text },
+        )
+        const recommendationBlocks: MessageBlock[] = recommendationProposal
+          ? [...presentation.blocks, recommendationProposal.lead, recommendationProposal.proposal]
+          : presentation.blocks
+        const recommendationText =
+          recommendationProposal && recommendationProposal.lead.type === 'text'
+            ? `${presentation.plainText}\n\n${recommendationProposal.lead.text}`
+            : presentation.plainText
+
         const assistantMessageId = await writeAssistantMessage(
-          presentation.blocks,
-          presentation.plainText,
+          recommendationBlocks,
+          recommendationText,
           meta,
         )
 
@@ -474,6 +510,7 @@ export const chatAssistantReply = onCall(
           richness,
           confidence: draft.confidence,
           opportunities: draft.opportunities.length,
+          proposal: recommendationProposal ? recommendationProposal.proposal.action.kind : null,
         })
 
         return { conversationId, assistantMessageId }

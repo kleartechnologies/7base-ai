@@ -27,6 +27,7 @@ export const BlockRenderer = memo(function BlockRenderer({
   conversationId,
   markdown = false,
   isLatest = false,
+  hasProposal = false,
 }: {
   block: MessageBlock
   /** Present in the thread view; enables attachment actions like Save to Assets. */
@@ -39,6 +40,12 @@ export const BlockRenderer = memo(function BlockRenderer({
   markdown?: boolean
   /** True for the newest turn in the thread; only it shows go-ahead buttons. */
   isLatest?: boolean
+  /**
+   * This turn already carries a live action proposal. Cards that would offer
+   * the same thing a second time stand down, so the turn keeps exactly one
+   * obvious next step.
+   */
+  hasProposal?: boolean
 }) {
   switch (block.type) {
     case 'text':
@@ -57,10 +64,10 @@ export const BlockRenderer = memo(function BlockRenderer({
       )
 
     case 'marketing_recommendation':
-      return <RecommendationCard block={block} />
+      return <RecommendationCard block={block} hasProposal={hasProposal} />
 
     case 'campaign_card':
-      return <CampaignCard block={block} />
+      return <CampaignCard block={block} hasProposal={hasProposal} />
 
     case 'creative_preview':
       return <CreativePreview block={block} />

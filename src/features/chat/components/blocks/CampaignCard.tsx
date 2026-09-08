@@ -24,11 +24,23 @@ const CHANNEL_PROPER_NOUNS: Partial<Record<CampaignCardBlock['channels'][number]
  * summarising a decision, not a dashboard. Provenance tags keep "your
  * customers" and "my hypothesis about your customers" visually distinct.
  *
- * [Create Marketing Materials] hands the campaign to the creative engine.
- * The finished materials arrive as a new message in the thread, so this
- * button only needs to start the work and say that it is happening.
+ * The primary button hands the campaign to the creative engine. The finished
+ * materials arrive as a new message in the thread, so it only needs to start
+ * the work and say that it is happening; editing the campaign is the quiet
+ * alternative beside it, not a competing call to action.
+ *
+ * When EVA has already offered the posters in her own words on this turn,
+ * the primary stands down and only the link to the campaign remains — one
+ * obvious next step per turn (Phase 7J §6).
  */
-export function CampaignCard({ block }: { block: CampaignCardBlock }) {
+export function CampaignCard({
+  block,
+  hasProposal = false,
+}: {
+  block: CampaignCardBlock
+  /** EVA already offered to make the posters on this turn. */
+  hasProposal?: boolean
+}) {
   const { t } = useI18n()
   const [creating, setCreating] = useState(false)
   const [materialsError, setMaterialsError] = useState<string | null>(null)
@@ -113,11 +125,13 @@ export function CampaignCard({ block }: { block: CampaignCardBlock }) {
 
       <div className="border-t border-border px-5 py-3.5">
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" asChild>
-            <Link to={ROUTES.campaignDetail(block.campaignId)}>{t('common.edit')}</Link>
-          </Button>
-          <Button size="sm" onClick={handleCreateMaterials} disabled={creating}>
-            {creating ? t('campaign.creatingMaterials') : t('campaign.createMaterials')}
+          {hasProposal ? null : (
+            <Button size="sm" onClick={handleCreateMaterials} disabled={creating}>
+              {creating ? t('campaign.creatingMaterials') : t('campaign.createMaterials')}
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" className="text-muted-foreground" asChild>
+            <Link to={ROUTES.campaignDetail(block.campaignId)}>{t('campaign.viewCampaign')}</Link>
           </Button>
         </div>
         {creating ? (

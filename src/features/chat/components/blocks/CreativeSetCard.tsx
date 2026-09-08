@@ -6,6 +6,7 @@ import { DownloadPosterButton, LivePosterFrame, useLivePoster } from '@/features
 import { PlatformCopy } from '@/features/creative/PlatformCopy'
 import { useI18n } from '@/hooks/useI18n'
 import type { CreativeSetBlock, CreativeSetItem } from '@/types'
+import { useChatActions } from '../../chatActionsContext'
 
 /**
  * Several posters EVA made in one go — the result card for "create 3 posters".
@@ -15,11 +16,17 @@ import type { CreativeSetBlock, CreativeSetItem } from '@/types'
  * draws it and the download exports it. The block only says which creatives
  * belong here; it never composes a poster of its own. Says "2 of 3" plainly
  * when fewer arrived; the prose above explains and offers the retry.
+ *
+ * The footer carries at most one suggestion of what to do next (Phase 7J
+ * §12) — written server-side in the owner's language — beside the way out to
+ * the Creative page. Pressing it just types that sentence to EVA.
  */
 export function CreativeSetCard({ block }: { block: CreativeSetBlock }) {
   const { t } = useI18n()
+  const actions = useChatActions()
   const created = block.items.length
   const partial = created < block.requested
+  const followUp = block.followUp ?? null
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -44,8 +51,18 @@ export function CreativeSetCard({ block }: { block: CreativeSetBlock }) {
         ))}
       </div>
 
-      <div className="border-t border-border px-5 py-3.5">
-        <Button size="sm" variant="outline" asChild>
+      <div className="flex flex-wrap items-center gap-2 border-t border-border px-5 py-3.5">
+        {followUp && actions ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={actions.busy}
+            onClick={() => actions.sendQuickReply(followUp.text)}
+          >
+            {followUp.label}
+          </Button>
+        ) : null}
+        <Button size="sm" variant="ghost" className="text-muted-foreground" asChild>
           <Link to={ROUTES.creative}>{t('chat.viewAllCreatives')}</Link>
         </Button>
       </div>

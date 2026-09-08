@@ -75,7 +75,11 @@ export function confirmLabelFor(action: ProposedAction, language: ReplyLanguage)
       if (language === 'ms') return count === 1 ? 'Buat poster' : `Buat ${count} poster`
       return count === 1 ? 'Make the poster' : `Make ${count} posters`
     }
+    // A campaign built from a recommendation is the same promise to the
+    // owner as a campaign created from scratch: they never learn which
+    // internal pipeline made it.
     case 'campaign.create':
+    case 'campaign.build':
       return language === 'ms' ? 'Buat kempen' : 'Create the campaign'
     case 'campaign.choose':
       // The choices themselves are the buttons.
@@ -107,7 +111,7 @@ export function proposalSummary(
   const spec =
     action.kind === 'creative.generate'
       ? action.spec
-      : action.kind === 'campaign.create'
+      : action.kind === 'campaign.create' || action.kind === 'campaign.build'
         ? action.then
         : null
   if (!spec) return null
@@ -144,13 +148,20 @@ export function proposalLead(
     | { kind: 'campaign_ready' }
     | { kind: 'repeat' }
     | { kind: 'offer_set' }
+    | { kind: 'from_recommendation' }
     | { kind: 'reask' },
 ): string {
   const ms = language === 'ms'
-  const count = action.kind === 'creative.generate' ? action.spec.positions.length : null
+  const count =
+    action.kind === 'creative.generate'
+      ? action.spec.positions.length
+      : action.kind === 'campaign.build'
+        ? (action.then?.positions.length ?? null)
+        : null
   switch (situation.kind) {
     case 'no_campaign': {
-      const then = action.kind === 'campaign.create' ? action.then : null
+      const then =
+        action.kind === 'campaign.create' || action.kind === 'campaign.build' ? action.then : null
       const n = then ? then.positions.length : 0
       if (ms) {
         return n > 0
@@ -161,18 +172,17 @@ export function proposalLead(
         ? `You don’t have a campaign for this yet. I can create one for you, then make the ${posters(n, 'en')}. Want me to go ahead?`
         : 'You don’t have a campaign for this yet. I can create one for you. Want me to go ahead?'
     }
-    case 'choose': {
-      const names =
-        action.kind === 'campaign.choose' ? action.choices.map((c) => c.name).join(' / ') : ''
+    /*
+      The campaign names are the buttons underneath (Phase 7J §8/§17), so
+      the question asks once and stops. Listing them here as well said the
+      same two names twice in four lines.
+    */
+    case 'choose':
       return ms
-        ? `Poster ini untuk kempen yang mana? ${names}`
-        : `Which campaign should these posters be for? ${names}`
-    }
-    case 'reask': {
-      const names =
-        action.kind === 'campaign.choose' ? action.choices.map((c) => c.name).join(' / ') : ''
-      return ms ? `Yang mana satu — ${names}?` : `Which one — ${names}?`
-    }
+        ? 'Poster ini untuk kempen yang mana?'
+        : 'Which campaign should these posters be for?'
+    case 'reask':
+      return ms ? 'Yang mana satu?' : 'Which one?'
     case 'quota_cap':
       return ms
         ? `Saya boleh buat ${count} daripada ${situation.requested} hari ini — had harian anda dah dicapai untuk selebihnya. Nak saya teruskan dengan ${count}?`
@@ -195,6 +205,18 @@ export function proposalLead(
       return ms
         ? `Boleh. Saya boleh buatkan ${posters(count ?? 1, 'ms')} untuk ini, setiap satu dengan gaya berbeza.`
         : `Sure. I can make you ${posters(count ?? 1, 'en')} for this, each with a different look.`
+    // Phase 7J §7 — the owner said what they want to promote, not what they
+    // want *built*. EVA names the outcome and hides the plumbing: one
+    // sentence, one summary line, one button. The campaign document is
+    // never mentioned as a thing they have to understand first.
+    case 'from_recommendation':
+      return count && count > 0
+        ? ms
+          ? `Saya boleh terus jadikan ini sebagai kempen dan sediakan ${posters(count, 'ms')} untuknya.`
+          : `I can turn this into a campaign and make ${posters(count, 'en')} for it.`
+        : ms
+          ? 'Saya boleh terus jadikan ini sebagai kempen untuk anda.'
+          : 'I can turn this into a campaign for you.'
   }
 }
 
@@ -268,6 +290,12 @@ export interface CreativeSetOutcome {
   blockedMessage: string | null
   /** A campaign created in the same action, presented above the posters. */
   campaignCreated: { campaignId: string; campaign: StoredCampaign } | null
+  /**
+   * Phase 7J §9 — the owner has set no Brand Identity and none was
+   * discovered, so the posters used a neutral style. Said once, after the
+   * result, as a fact and an invitation — never as a reason to stop.
+   */
+  brandMissing?: boolean
 }
 
 /**
@@ -334,6 +362,11 @@ export function presentCreativeSetOutcome(
     }`
   }
   if (anyFallback) lead = `${lead} ${FALLBACK_COPY_NOTE}`
+  // Never a blocker, never a form: the posters exist, and the owner is told
+  // once — in one sentence — where the look came from.
+  if (outcome.brandMissing && createdCount > 0) {
+    lead = `${lead} ${brandFallbackNote(language)}`
+  }
 
   const text = campaignLead ? `${campaignLead} ${lead}` : lead
   blocks.push({ id: id(), type: 'text', text })
@@ -359,6 +392,13 @@ export function presentCreativeSetOutcome(
       requested: requestedCount,
       items: outcome.created.map((p) => buildCreativeSetItem(p.creativeId, p.creative, p.position)),
     }
+    // Phase 7J §12 — exactly one next step, and only when nothing else is
+    // already asking for a decision. A retry proposal below (or a daily
+    // limit) is the more useful thing to answer, so the suggestion stands
+    // down rather than competing with it.
+    if (outcome.failed.length === 0 && !outcome.blockedMessage) {
+      set.followUp = followUpFor(language)
+    }
     blocks.push(set)
     lines.push(...outcome.created.map((p) => `Creative: ${p.creative.name}`))
   }
@@ -383,6 +423,26 @@ export function presentCreativeSetOutcome(
   return { blocks, plainText: lines.join('\n\n') }
 }
 
+/**
+ * The one follow-up EVA offers after a finished set. Deliberately a single,
+ * always-true option — another angle on the same campaign — rather than a
+ * menu of five guesses about what the owner might want next. Pressing it
+ * sends this text as an ordinary message, which the existing request path
+ * reads exactly as if it had been typed.
+ */
+export function followUpFor(language: ReplyLanguage): { label: string; text: string } {
+  return language === 'ms'
+    ? { label: 'Sudut lain', text: 'Buat satu lagi poster dengan sudut yang berbeza.' }
+    : { label: 'Another angle', text: 'Make another poster with a different angle.' }
+}
+
+/** Said once when the posters had no Brand Identity to follow. */
+export function brandFallbackNote(language: ReplyLanguage): string {
+  return language === 'ms'
+    ? 'Saya belum ada Identiti Jenama anda, jadi saya guna gaya neutral yang kemas — anda boleh tetapkannya bila-bila masa di Business → Brand.'
+    : 'I don’t have your Brand Identity yet, so I used a clean, neutral style — you can set it up any time under Business → Brand.'
+}
+
 /** A plain sentence, no action. */
 export function presentText(text: string): Presentation {
   return { blocks: [{ id: 'b0', type: 'text', text }], plainText: text }
@@ -393,6 +453,13 @@ export function campaignGoneText(language: ReplyLanguage): string {
   return language === 'ms'
     ? 'Kempen itu sudah tiada. Beritahu saya kempen mana yang anda mahu, atau saya boleh buatkan yang baru.'
     : 'That campaign isn’t available any more. Tell me which campaign you mean, or I can create a new one.'
+}
+
+/** The recommendation behind a proposal is gone (or was never theirs). */
+export function campaignBuildGoneText(language: ReplyLanguage): string {
+  return language === 'ms'
+    ? 'Cadangan itu sudah tiada. Beritahu saya semula apa yang anda nak promosikan dan saya sediakan yang baru.'
+    : 'That plan isn’t available any more. Tell me again what you’d like to promote and I’ll put a fresh one together.'
 }
 
 /** The Business Brain is missing — the action needs it. */

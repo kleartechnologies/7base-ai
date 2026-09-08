@@ -165,6 +165,21 @@ export type ProposedAction =
       then: CreativeRequestSpec | null
     }
   | {
+      kind: 'campaign.build'
+      /**
+       * A recommendation EVA already generated and persisted on this turn.
+       * Saying yes builds the campaign from *that* record — the same
+       * pipeline the recommendation card's own button uses — so agreeing in
+       * words never costs a second strategy call, and one recommendation can
+       * only ever produce one campaign.
+       */
+      recommendationId: string
+      /** The opportunity's title, so the proposal reads as something real. */
+      title: string
+      /** Posters to create once the campaign exists; null for a campaign alone. */
+      then: CreativeRequestSpec | null
+    }
+  | {
       kind: 'campaign.choose'
       choices: { campaignId: string; name: string }[]
       then: CreativeRequestSpec
@@ -227,6 +242,13 @@ export interface CreativeSetBlock {
   /** How many the owner asked for; items.length is how many exist. */
   requested: number
   items: CreativeSetItem[]
+  /**
+   * Phase 7J §12 — the one next step worth offering, written server-side in
+   * the owner's language. Pressing it sends `text` as an ordinary chat
+   * message, exactly as if they had typed it. Absent on blocks written
+   * before this phase, and absent whenever nothing useful follows.
+   */
+  followUp?: { label: string; text: string } | null
 }
 
 export type MessageBlock =

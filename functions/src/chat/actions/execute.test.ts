@@ -12,6 +12,7 @@ import type {
 import { buildStoredCreative, type StoredCreative } from '../../creative/store'
 import type { CreativeGenerationParams, CreativeGenerationResult } from '../../creative/generate'
 import type { CampaignBuildParams } from '../../campaign/build'
+import type { StoredRecommendation } from '../../marketing/store'
 import type { AssetWithId } from '../../creative/assets'
 import {
   buildSetContext,
@@ -148,6 +149,7 @@ function harness(options: {
   inThread?: { id: string; campaign: StoredCampaign } | null
   business?: StoredBusiness | null
   now?: () => number
+  recommendation?: StoredRecommendation | null
 } = {}): Harness {
   const calls: CreativeGenerationParams[] = []
   const locks: string[] = []
@@ -155,6 +157,7 @@ function harness(options: {
   const campaigns = options.campaigns ?? [{ id: 'camp1', campaign }]
   const deps: ActionDeps = {
     loadCampaign: async (id) => campaigns.find((c) => c.id === id)?.campaign ?? null,
+    loadRecommendation: async () => options.recommendation ?? null,
     findConversationCampaign: async () =>
       options.inThread === undefined ? (campaigns[0] ?? null) : options.inThread,
     listBusinessCampaigns: async () => campaigns,
@@ -458,7 +461,7 @@ describe('runChatAction — explicit requests resolve the campaign server-side',
     })
     const outcome = await runChatAction(request, h.ctx, h.deps)
     expect(h.calls).toHaveLength(0)
-    expect(outcome.plainText).toBe('Which campaign should these posters be for? Matheasy Launch / Raya Promo')
+    expect(outcome.plainText).toBe('Which campaign should these posters be for?')
     expect(proposalBlock(outcome.blocks)?.action).toEqual({
       kind: 'campaign.choose',
       choices: [

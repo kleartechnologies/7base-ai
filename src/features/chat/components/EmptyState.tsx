@@ -1,14 +1,5 @@
-import { Link } from 'react-router-dom'
-import {
-  FolderOpen,
-  Image,
-  Lightbulb,
-  Megaphone,
-  MessageSquare,
-  type LucideIcon,
-} from 'lucide-react'
+import { Image, Lightbulb, Megaphone, Users, type LucideIcon } from 'lucide-react'
 import { EvaSpark } from '@/components/EvaMark'
-import { ROUTES } from '@/app/routes/paths'
 import { useAuth } from '@/hooks/useAuth'
 import { useI18n } from '@/hooks/useI18n'
 import type { MessageKey } from '@/i18n/translate'
@@ -16,28 +7,27 @@ import { greetingKey } from './greeting'
 
 /**
  * The first thing a user sees: a time-of-day eyebrow with EVA's spark, one
- * question, suggestion chips that start a conversation, and the "Explore what
- * you can do" cards into the workspace.
+ * question, and four ways to answer it.
+ *
+ * The chips are goals, not features (Phase 7J §15): "More customers this
+ * weekend", never "Create a campaign". Nobody opening this product for the
+ * first time knows what a campaign is here, and they shouldn't need to —
+ * they know what they want to happen to their business this weekend.
+ *
+ * There is deliberately no tour of the workspace here. A grid of Business
+ * Brain / Campaigns / Creative / Assets cards was the product explaining its
+ * own architecture on the one screen that should say "just tell me what you
+ * want" (§1/§16); those pages are a click away in the nav for anyone who
+ * wants them.
  */
 
 const SUGGESTIONS: readonly { labelKey: MessageKey; promptKey: MessageKey; icon: LucideIcon }[] = [
-  { labelKey: 'chat.chipIdeas', promptKey: 'chat.suggestionSlowSales', icon: Lightbulb },
-  { labelKey: 'chat.chipCampaign', promptKey: 'chat.suggestionNewItem', icon: Megaphone },
-  { labelKey: 'chat.chipVisual', promptKey: 'chat.promptVisual', icon: Image },
-  { labelKey: 'chat.chipProfile', promptKey: 'chat.promptProfile', icon: MessageSquare },
+  { labelKey: 'chat.chipCustomers', promptKey: 'chat.promptCustomers', icon: Users },
+  { labelKey: 'chat.chipSomethingNew', promptKey: 'chat.promptSomethingNew', icon: Megaphone },
+  { labelKey: 'chat.chipPoster', promptKey: 'chat.promptPoster', icon: Image },
+  { labelKey: 'chat.chipQuiet', promptKey: 'chat.promptQuiet', icon: Lightbulb },
 ]
 
-const EXPLORE_CARDS: readonly {
-  titleKey: MessageKey
-  bodyKey: MessageKey
-  to: string
-  icon: LucideIcon
-}[] = [
-  { titleKey: 'nav.business', bodyKey: 'chat.exploreBusinessBody', to: ROUTES.business, icon: MessageSquare },
-  { titleKey: 'nav.campaigns', bodyKey: 'chat.exploreCampaignsBody', to: ROUTES.campaigns, icon: Megaphone },
-  { titleKey: 'nav.creative', bodyKey: 'chat.exploreCreativeBody', to: ROUTES.creative, icon: Image },
-  { titleKey: 'chat.exploreAssetsTitle', bodyKey: 'chat.exploreAssetsBody', to: ROUTES.assets, icon: FolderOpen },
-]
 
 export function EmptyState() {
   const { user } = useAuth()
@@ -80,27 +70,3 @@ export function SuggestionChips({ onPick }: { onPick: (text: string) => void }) 
   )
 }
 
-/** "Explore what you can do" — four doors into the workspace. */
-export function ExploreGrid() {
-  const { t } = useI18n()
-  return (
-    <div className="mx-auto mt-12 w-full max-w-3xl">
-      <p className="text-left text-[14px] font-semibold tracking-[-0.01em] text-foreground">
-        {t('chat.exploreTitle')}
-      </p>
-      <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {EXPLORE_CARDS.map(({ titleKey, bodyKey, to, icon: Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className="rounded-[13px] border border-border bg-card p-4 text-left transition-colors hover:border-ring/50"
-          >
-            <Icon className="size-[18px] text-muted-foreground" aria-hidden />
-            <p className="mt-3 text-[14px] font-semibold text-foreground">{t(titleKey)}</p>
-            <p className="mt-1 text-[12.5px] leading-normal text-muted-foreground">{t(bodyKey)}</p>
-          </Link>
-        ))}
-      </div>
-    </div>
-  )
-}

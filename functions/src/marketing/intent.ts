@@ -37,6 +37,17 @@ const SLOW_WORDS = 'slow|down|quiet|dropping|declining|low|falling|perlahan|suny
 const DAY_PARTS =
   'weekdays?|weekends?|lunch(?:time)?|dinners?|mornings?|nights?|afternoons?'
 
+/** The things a small business announces: what "new" attaches to. */
+const NEW_THINGS =
+  'menu|menus|product|products|item|items|dish|dishes|drink|drinks|service|services|offer|offers|promo|promotion|deal|deals|package|packages|opening|branch|outlet|store|shop|produk|barang|hidangan|minuman|perkhidmatan|tawaran|cawangan|kedai'
+
+/**
+ * Festive and calendar moments a Malaysian owner markets around. Naming one
+ * ("I need something for Raya") is a marketing goal even with no verb.
+ */
+const OCCASIONS =
+  'raya|hari raya|aidilfitri|aidiladha|ramadan|ramadhan|puasa|cny|chinese new year|tahun baru cina|deepavali|diwali|christmas|xmas|krismas|merdeka|malaysia day|new year|tahun baru|valentine|mother\'s day|father\'s day|school holidays|cuti sekolah|back to school'
+
 const GOAL_PATTERNS: RegExp[] = [
   // "I want more customers", "attract families", "bring in weekday diners"
   new RegExp(
@@ -65,6 +76,29 @@ const GOAL_PATTERNS: RegExp[] = [
   // "what should I do to grow?", "how do I grow my business?"
   /\bwhat should (?:i|we) do\b[^.?!]{0,40}\bgrow\b/i,
   /\bgrow (?:my|our|the) business\b/i,
+  // Phase 7J §2 — the sentences owners actually open with, none of which
+  // name a product concept. "Help me market my restaurant", "tolong
+  // pasarkan kedai saya". Still deterministic, still no model call.
+  /\b(?:help|tolong|bantu)\b[^.?!]{0,20}\b(?:market|advertise|promote|sell|pasarkan|promosikan|iklankan)\b/i,
+  /\b(?:promosi|promosikan|iklankan|pasarkan|memasarkan)\b/i,
+  // "I want to announce our new product", "nak umumkan menu baru"
+  new RegExp(
+    `\\b(?:announce|launch|introduce|umum(?:kan)?|lancar(?:kan)?|perkenalkan)\\b[^.?!]{0,40}\\b(?:${NEW_THINGS})\\b`,
+    'i',
+  ),
+  // "I have a new menu", "we just added a new dish", "ada menu baru"
+  new RegExp(
+    `\\b(?:i have|we have|got|added|adding|ada|baru dapat)\\b[^.?!]{0,20}\\bnew\\b[^.?!]{0,20}\\b(?:${NEW_THINGS})\\b`,
+    'i',
+  ),
+  // The Malay half: "menu baru", "produk baharu" — the noun leads.
+  new RegExp(`\\b(?:${NEW_THINGS})\\s+(?:baharu|baru)\\b`, 'i'),
+  // "I need something for Raya", "something for the weekend"
+  new RegExp(
+    `\\b(?:need|want|nak|mahu|perlu)\\b[^.?!]{0,20}\\bsomething\\b[^.?!]{0,20}\\bfor\\b[^.?!]{0,30}\\b(?:${OCCASIONS}|${DAY_PARTS})\\b`,
+    'i',
+  ),
+  new RegExp(`\\b(?:for|untuk)\\s+(?:${OCCASIONS})\\b`, 'i'),
 ]
 
 /** Only meaningful right after a recommendation. */

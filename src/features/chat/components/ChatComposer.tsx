@@ -53,15 +53,22 @@ export function ChatComposer({
   disabled,
   placeholder,
   autoFocus = false,
+  initialText = '',
 }: {
   onSend: (text: string, attachments: AttachmentDraft[]) => void
   disabled?: boolean
   placeholder?: string
   autoFocus?: boolean
+  /**
+   * Words the owner has already chosen elsewhere — a prompt tapped on the
+   * Overview page. Read once, as the field's starting text; it is theirs to
+   * edit or delete before sending, so nothing is sent on their behalf.
+   */
+  initialText?: string
 }) {
   const { user, business } = useAuth()
   const { t } = useI18n()
-  const [value, setValue] = useState('')
+  const [value, setValue] = useState(initialText)
   const [pending, setPending] = useState<PendingAttachment[]>([])
   const [attachError, setAttachError] = useState<string | null>(null)
   // Assets are only fetched once the owner opens the attach menu.

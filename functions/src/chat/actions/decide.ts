@@ -127,7 +127,7 @@ function decideOnProposal(text: string, action: ProposedAction): ChatActionDecis
   if (action.kind === 'creative.generate') {
     return { type: 'confirm', action: { ...action, spec: applyOverrides(action.spec, override) } }
   }
-  if (action.kind === 'campaign.create') {
+  if (action.kind === 'campaign.create' || action.kind === 'campaign.build') {
     return {
       type: 'confirm',
       action: { ...action, then: action.then ? applyOverrides(action.then, override) : null },

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { EvaSpark } from '@/components/EvaMark'
@@ -88,9 +88,7 @@ export default function OverviewPage() {
                 {t('common.loadingEllipsis')}
               </p>
             ) : activeCampaigns.length === 0 ? (
-              <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-                {t('overview.noCampaigns')}
-              </p>
+              <NoCampaignsYet />
             ) : (
               <ul className="mt-3 divide-y divide-border">
                 {activeCampaigns.map((campaign) => (
@@ -161,6 +159,45 @@ export default function OverviewPage() {
 
           {business ? <ProfileCard business={business} /> : null}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The first thing on an empty workspace.
+ *
+ * "No campaigns yet" tells an owner what they already know and leaves them
+ * nowhere to go. So this says what to do instead, and hands them three ways
+ * of saying it — the prompt lands in the composer, where they can change it
+ * before sending. Nothing is created here and nothing is sent for them; the
+ * only campaign wizard in this product is the conversation (Phase 7J §15).
+ */
+function NoCampaignsYet() {
+  const { t } = useI18n()
+  const navigate = useNavigate()
+  const prompts: readonly { labelKey: MessageKey; promptKey: MessageKey }[] = [
+    { labelKey: 'chat.chipCustomers', promptKey: 'chat.promptCustomers' },
+    { labelKey: 'chat.chipSomethingNew', promptKey: 'chat.promptSomethingNew' },
+    { labelKey: 'chat.chipPoster', promptKey: 'chat.promptPoster' },
+  ]
+
+  return (
+    <div className="mt-4">
+      <p className="text-[13px] leading-relaxed text-muted-foreground">
+        {t('overview.noCampaigns')}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {prompts.map(({ labelKey, promptKey }) => (
+          <button
+            key={labelKey}
+            type="button"
+            onClick={() => navigate(ROUTES.chat, { state: { prompt: t(promptKey) } })}
+            className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:border-ring/50 hover:text-foreground"
+          >
+            {t(labelKey)}
+          </button>
+        ))}
       </div>
     </div>
   )

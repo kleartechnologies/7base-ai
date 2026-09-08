@@ -32,6 +32,10 @@ service-account*.json
 !.vscode/extensions.json
 *.local
 
+# Visual QA output — screenshots are looked at, never committed
+test/visual/out/
+test/visual/chat-out/
+
 # Logs
 logs/
 npm-debug.log*

@@ -10,6 +10,7 @@ import {
   type CampaignBuildResult,
 } from '../../campaign/build'
 import { buildCampaignCardBlock } from '../../campaign/present'
+import { CampaignValidationError } from '../../campaign/validate'
 import {
   findLatestEditableCampaign,
   listEditableCampaignsForBusiness,
@@ -17,6 +18,7 @@ import {
 } from '../../campaign/store'
 import type { SubscriptionPlan } from '../../config/models'
 import { listEligibleAssets, type AssetWithId } from '../../creative/assets'
+import { resolveBrandStyle } from '../../creative/brand'
 import {
   CREATIVE_GENERATE_BUSY_MESSAGE,
   creativeGenerateLockKey,
@@ -58,11 +60,13 @@ import {
 import {
   buildProposalBlock,
   campaignFailedText,
+  campaignBuildGoneText,
   campaignGoneText,
   missingBrainText,
   presentCreativeSetOutcome,
   presentProposal,
   presentText,
+  proposalLead,
   type CreatedPoster,
   type ReplyLanguage,
 } from './present'
@@ -108,6 +112,8 @@ export interface ActionContext {
 /** The seams a test replaces. Production wires the real modules below. */
 export interface ActionDeps {
   loadCampaign: (campaignId: string) => Promise<StoredCampaign | null>
+  /** The persisted recommendation behind a `campaign.build` proposal. */
+  loadRecommendation: (recommendationId: string) => Promise<StoredRecommendation | null>
   findConversationCampaign: typeof findLatestEditableCampaign
   listBusinessCampaigns: typeof listEditableCampaignsForBusiness
   listEligibleAssets: (businessId: string, ownerId: string) => Promise<AssetWithId[]>
@@ -126,6 +132,10 @@ export const defaultActionDeps: ActionDeps = {
   async loadCampaign(campaignId) {
     const snapshot = await db.collection(COLLECTIONS.campaigns).doc(campaignId).get()
     return snapshot.exists ? (snapshot.data() as StoredCampaign) : null
+  },
+  async loadRecommendation(recommendationId) {
+    const snapshot = await db.collection(COLLECTIONS.recommendations).doc(recommendationId).get()
+    return snapshot.exists ? (snapshot.data() as StoredRecommendation) : null
   },
   findConversationCampaign: findLatestEditableCampaign,
   listBusinessCampaigns: listEditableCampaignsForBusiness,
@@ -178,6 +188,8 @@ async function runProposedAction(
       return runCreativeGeneration(action, ctx, deps, { fromProposal: true })
     case 'campaign.create':
       return runCampaignCreate(action, ctx, deps)
+    case 'campaign.build':
+      return runCampaignBuild(action, ctx, deps)
     case 'campaign.choose':
       return outcome(presentProposal(action, ctx.language, { kind: 'reask' }), null, {
         action: 'campaign.choose',
@@ -346,12 +358,80 @@ export async function proposeFromOffer(
   )
 }
 
+/**
+ * Phase 7J §7/§8 — a marketing goal becomes one confirmable plan.
+ *
+ * The owner said what they want to promote; EVA answered with a
+ * recommendation. Rather than leaving them to find a [Build this campaign]
+ * button and then a second [Create materials] button, her turn carries one
+ * proposal: everything from here to finished posters, behind one go-ahead.
+ *
+ * Reuse comes first (§8): when this conversation already has a live
+ * campaign, the posters are proposed *for that campaign* and no second
+ * campaign is built. The business-wide fallback that `resolveCampaign` uses
+ * for poster requests deliberately does not apply here — a fresh goal is a
+ * fresh campaign, and quietly attaching it to an unrelated one would be
+ * wrong in a way the owner could not see.
+ *
+ * Null when the recommendation is not something to build (EVA's own
+ * `nextAction`), in which case the turn stays exactly as it was.
+ */
+export async function proposeFromRecommendation(
+  params: {
+    recommendationId: string
+    title: string
+    nextAction: string
+    /** The owner's own words, carried into the poster copy as set context. */
+    brief: string | null
+  },
+  ctx: OfferContext,
+  deps: ActionDeps = defaultActionDeps,
+): Promise<{ lead: MessageBlock; proposal: ActionProposalBlock } | null> {
+  if (params.nextAction !== 'build_campaign') return null
+
+  const spec: CreativeRequestSpec = {
+    format: 'square_post',
+    brief: params.brief,
+    positions: positionsFor(MAX_CREATIVES_PER_REQUEST),
+    size: MAX_CREATIVES_PER_REQUEST,
+  }
+
+  // An open campaign in this thread is the one to use: the owner asked for
+  // posters about this, not for a second campaign about it.
+  const inThread = await deps.findConversationCampaign(ctx.conversationId, ctx.uid)
+  const action: ProposedAction = inThread
+    ? {
+        kind: 'creative.generate',
+        campaignId: inThread.id,
+        campaignName: inThread.campaign.name,
+        spec,
+      }
+    : {
+        kind: 'campaign.build',
+        recommendationId: params.recommendationId,
+        title: params.title,
+        then: spec,
+      }
+
+  return {
+    lead: {
+      id: 'b2',
+      type: 'text',
+      text: proposalLead(action, ctx.language, {
+        kind: inThread ? 'campaign_ready' : 'from_recommendation',
+      }),
+    },
+    proposal: buildProposalBlock('b3', action, ctx.language),
+  }
+}
+
 /** One short line describing a pending proposal, for the system prompt. */
 export function describeProposal(action: ProposedAction): string {
   switch (action.kind) {
     case 'creative.generate':
       return `to create ${action.spec.positions.length} poster(s) for the campaign "${action.campaignName}"`
     case 'campaign.create':
+    case 'campaign.build':
       return action.then
         ? `to create a campaign and then ${action.then.positions.length} poster(s) for it`
         : 'to create a campaign'
@@ -556,6 +636,10 @@ async function runCreativeGeneration(
       failed: failed.map((f) => f.position),
       blockedMessage: failed.find((f) => f.blockedMessage)?.blockedMessage ?? null,
       campaignCreated: options.campaignCreated ?? null,
+      // §9 — Brand Identity is invisible when it exists and never a blocker
+      // when it does not. The one time the owner hears about it is here,
+      // after the posters are already made.
+      brandMissing: !hasBrandIdentity(ctx.business),
     },
     ctx.language,
   )
@@ -674,13 +758,128 @@ async function runCampaignCreate(
     throw error
   }
 
-  const campaignCreated = { campaignId: built.campaignId, campaign: built.campaign }
   logger.info('Chat action campaign created', {
     conversationId: ctx.conversationId,
     campaignId: built.campaignId,
     recommendationId,
     reused: built.reused,
   })
+
+  return afterCampaignBuilt(built, action.then, ctx, deps, 'campaign.create')
+}
+
+/**
+ * Phase 7J §7 — "yes, do it" against a recommendation EVA already showed.
+ *
+ * The strategy call has already happened and its result is persisted, so
+ * agreeing in words costs nothing extra: this loads that record, re-checks
+ * that it is the owner's and belongs to the business EVA is speaking for,
+ * and hands it to the same build under the same per-recommendation lock the
+ * card's own button uses. One recommendation can only ever produce one
+ * campaign — a second go-ahead reuses the first (`built.reused`), which is
+ * what keeps a double-send from making a duplicate.
+ */
+async function runCampaignBuild(
+  action: Extract<ProposedAction, { kind: 'campaign.build' }>,
+  ctx: ActionContext,
+  deps: ActionDeps,
+): Promise<ActionOutcome> {
+  if (!ctx.business || !ctx.businessId) {
+    return outcome(presentText(missingBrainText(ctx.language)), null, {
+      action: 'campaign.build',
+      blocked: 'missing_brain',
+    })
+  }
+  const business = ctx.business
+
+  // The id came from a proposal EVA wrote, and is re-checked like any other:
+  // a missing record and someone else's answer identically.
+  const recommendation = await deps.loadRecommendation(action.recommendationId)
+  if (
+    !recommendation ||
+    recommendation.ownerId !== ctx.uid ||
+    recommendation.businessId !== ctx.businessId
+  ) {
+    return outcome(presentText(campaignBuildGoneText(ctx.language)), null, {
+      action: 'campaign.build',
+      blocked: 'recommendation_unavailable',
+    })
+  }
+
+  const steps: ActionProgressStep[] = [{ key: 'campaign_create', state: 'active' }]
+  ctx.onProgress(steps.map((s) => ({ ...s })))
+
+  let built: CampaignBuildResult
+  try {
+    built = await deps.withLock(
+      {
+        key: campaignBuildLockKey(ctx.uid, action.recommendationId),
+        ownerId: ctx.uid,
+        operation: 'campaign.build',
+        busyMessage: CAMPAIGN_BUILD_BUSY_MESSAGE,
+      },
+      () =>
+        deps.buildCampaign({
+          uid: ctx.uid,
+          plan: ctx.plan,
+          recommendationId: action.recommendationId,
+          recommendation,
+          businessName: typeof business.name === 'string' ? business.name : null,
+        }),
+    )
+  } catch (error) {
+    steps[0] = { key: 'campaign_create', state: 'failed' }
+    ctx.onProgress(steps.map((s) => ({ ...s })))
+    if (error instanceof HttpsError) {
+      logger.warn('Chat action campaign build blocked', { conversationId: ctx.conversationId })
+      return outcome(presentText(campaignFailedText(ctx.language, error.message)), null, {
+        action: 'campaign.build',
+        failed: 'blocked',
+      })
+    }
+    if (
+      error instanceof AiNotConfiguredError ||
+      error instanceof AiServiceError ||
+      error instanceof AiResponseError ||
+      error instanceof CampaignValidationError
+    ) {
+      logger.warn('Chat action campaign build failed', {
+        conversationId: ctx.conversationId,
+        reason: error.message,
+      })
+      return outcome(presentText(campaignFailedText(ctx.language, null)), null, {
+        action: 'campaign.build',
+        failed: 'model',
+      })
+    }
+    throw error
+  }
+
+  logger.info('Chat action campaign built from recommendation', {
+    conversationId: ctx.conversationId,
+    campaignId: built.campaignId,
+    recommendationId: action.recommendationId,
+    reused: built.reused,
+  })
+
+  return afterCampaignBuilt(built, action.then, ctx, deps, 'campaign.build')
+}
+
+/**
+ * Phase 7J §7 — the campaign exists; the owner sees the outcome, not the
+ * plumbing. Shared by both routes into a campaign (built from a goal EVA
+ * turned into a recommendation on the spot, or from a recommendation she
+ * already showed them), so the two read identically in the thread.
+ */
+async function afterCampaignBuilt(
+  built: CampaignBuildResult,
+  then: CreativeRequestSpec | null,
+  ctx: ActionContext,
+  deps: ActionDeps,
+  logAction: 'campaign.create' | 'campaign.build',
+): Promise<ActionOutcome> {
+  const action = { then }
+  const campaignCreated = { campaignId: built.campaignId, campaign: built.campaign }
 
   if (!action.then) {
     const lead =
@@ -696,7 +895,7 @@ async function runCampaignCreate(
         plainText: `${lead}\n\nCampaign: ${built.campaign.name}`,
       },
       built.meta,
-      { action: 'campaign.create', campaignId: built.campaignId, then: null },
+      { action: logAction, campaignId: built.campaignId, then: null },
     )
   }
 
@@ -721,7 +920,7 @@ async function runCampaignCreate(
         plainText: `${proposal.plainText}\n\nCampaign: ${built.campaign.name}`,
       },
       built.meta,
-      { action: 'campaign.create', campaignId: built.campaignId, then: 'deferred' },
+      { action: logAction, campaignId: built.campaignId, then: 'deferred' },
     )
   }
 
@@ -730,6 +929,16 @@ async function runCampaignCreate(
     campaignCreated,
   })
   return { ...posters, meta: posters.meta ?? built.meta }
+}
+
+/**
+ * Whether the posters had any brand direction to follow — the owner's Brand
+ * Kit, or the colours and typeface discovery found. False means the neutral
+ * house style was used, which is worth one honest sentence and nothing more.
+ */
+function hasBrandIdentity(business: StoredBusiness | null): boolean {
+  const style = resolveBrandStyle(business)
+  return style.palette !== null || style.headingFont !== null || style.bodyFont !== null
 }
 
 function campaignCardOf(created: { campaignId: string; campaign: StoredCampaign }): MessageBlock {

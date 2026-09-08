@@ -77,7 +77,7 @@ export function PlatformCopy({
   const preview = collapsedPreview(entries)
 
   return (
-    <div className={cn('rounded-lg border border-border', className)}>
+    <div className={cn('@container rounded-lg border border-border', className)}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -92,10 +92,17 @@ export function PlatformCopy({
           /* `w-0` as well as `min-w-0`: a truncating line still reports its
              full text as a minimum width, which pushes the whole card wider
              than a 390px phone. Zero width plus flex-grow fills what is there
-             and truncates, without ever asking the card for room. */
-          <span className="w-0 min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
-            {preview}
-          </span>
+             and truncates, without ever asking the card for room.
+
+             Below ~17rem of card there is no room for a preview worth
+             reading — in a three-up poster grid it came out as "W." — so it
+             is dropped entirely rather than shown as two characters. */
+          <>
+            <span className="hidden w-0 min-w-0 flex-1 truncate text-[13px] text-muted-foreground @[17rem]:block">
+              {preview}
+            </span>
+            <span className="flex-1 @[17rem]:hidden" />
+          </>
         ) : (
           <span className="flex-1" />
         )}

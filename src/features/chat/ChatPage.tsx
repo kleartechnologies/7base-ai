@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { useAuth } from '@/hooks/useAuth'
@@ -8,7 +8,7 @@ import { ChatActionsContext, type ChatActions } from './chatActionsContext'
 import { useConversation } from './useConversation'
 import { ActionProgress } from './components/ActionProgress'
 import { ChatComposer } from './components/ChatComposer'
-import { EmptyState, ExploreGrid, SuggestionChips } from './components/EmptyState'
+import { EmptyState, SuggestionChips } from './components/EmptyState'
 import { MessageBubble } from './components/MessageBubble'
 import { StreamingMessage } from './components/StreamingMessage'
 import { ThinkingIndicator } from './components/ThinkingIndicator'
@@ -21,6 +21,16 @@ import { ThinkingIndicator } from './components/ThinkingIndicator'
 export default function ChatPage() {
   const { conversationId } = useParams<{ conversationId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  /*
+    A prompt the owner tapped on another page arrives as navigation state
+    and lands in the composer as ordinary text — read once, never re-sent on
+    a re-render, and never sent for them.
+  */
+  const handoffPrompt =
+    typeof (location.state as { prompt?: unknown } | null)?.prompt === 'string'
+      ? ((location.state as { prompt: string }).prompt)
+      : ''
   const { business } = useAuth()
   const { t } = useI18n()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -80,11 +90,11 @@ export default function ChatPage() {
               <ChatComposer
                 onSend={(text, attachments) => void send(text, attachments)}
                 autoFocus
+                initialText={handoffPrompt}
               />
               {error ? <ErrorNotice message={error} /> : null}
             </div>
             <SuggestionChips onPick={(text) => void send(text)} />
-            <ExploreGrid />
             {business ? (
               <p className="mt-10 text-center text-xs text-muted-foreground">
                 {t('chat.evaKnowsFooter', { name: business.name })}

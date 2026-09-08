@@ -72,7 +72,7 @@ export const ms: Record<MessageKey, string> = {
   'overview.activeCampaigns': 'Kempen aktif',
   'overview.viewAll': 'Lihat semua',
   'overview.noCampaigns':
-    'Belum ada kempen. Tanya EVA apa yang anda mahu capai — EVA akan jadikan cadangannya sebagai kempen.',
+    'Beritahu EVA apa yang anda nak promosikan — dia uruskan semuanya: kempen, poster dan kapsyen.',
   'overview.recentCreative': 'Kreatif terkini',
   'overview.askNewVisual': 'Minta EVA reka visual baru',
   'overview.evaSuggests': 'Cadangan EVA',
@@ -187,21 +187,16 @@ export const ms: Record<MessageKey, string> = {
   'chat.greetingAfternoonName': 'Selamat tengah hari, {name}',
   'chat.greetingEvening': 'Selamat petang',
   'chat.greetingEveningName': 'Selamat petang, {name}',
-  'chat.emptyTitle': 'Bagaimana EVA boleh bantu perniagaan anda berkembang hari ini?',
-  'chat.emptySubtitle':
-    'Dapatkan idea, cipta kempen, reka visual, atau tanya apa sahaja tentang perniagaan anda.',
-  'chat.chipIdeas': 'Idea pemasaran',
-  'chat.chipCampaign': 'Cipta kempen',
-  'chat.chipVisual': 'Reka visual',
-  'chat.chipProfile': 'Perkemas profil perniagaan saya',
-  'chat.promptVisual': 'Rekakan visual promosi untuk perniagaan saya.',
-  'chat.promptProfile': 'Apa yang boleh menjadikan profil perniagaan saya lebih kukuh?',
-  'chat.exploreTitle': 'Teroka apa yang anda boleh buat',
-  'chat.exploreBusinessBody': 'Fahami perniagaan anda dan dapatkan nasihat yang khusus',
-  'chat.exploreCampaignsBody': 'Rancang dan cipta kempen pemasaran',
-  'chat.exploreCreativeBody': 'Jana visual yang menepati jenama daripada kempen anda',
-  'chat.exploreAssetsTitle': 'Aset & Pustaka',
-  'chat.exploreAssetsBody': 'Urus dan guna semula aset pemasaran anda',
+  'chat.emptyTitle': 'Apa yang anda nak promosikan?',
+  'chat.emptySubtitle': 'Beritahu EVA dalam bahasa anda sendiri. Dia uruskan selebihnya.',
+  'chat.chipCustomers': 'Lebih ramai pelanggan hujung minggu',
+  'chat.promptCustomers': 'Saya nak lebih ramai pelanggan hujung minggu ini.',
+  'chat.chipSomethingNew': 'Promosi barang baru',
+  'chat.promptSomethingNew': 'Saya ada barang baru yang nak dipromosikan.',
+  'chat.chipPoster': 'Buatkan saya poster',
+  'chat.promptPoster': 'Saya nak buat poster untuk Instagram.',
+  'chat.chipQuiet': 'Hari bekerja sunyi',
+  'chat.promptQuiet': 'Jualan hari bekerja saya perlahan. Apa yang patut saya buat?',
   'chat.evaKnowsFooter': 'EVA kenal {name} — menu, pelanggan dan jenama anda.',
   'chat.working': 'EVA sedang mengusahakannya',
   'chat.progressCampaign': 'Kempen dipilih',
@@ -216,6 +211,7 @@ export const ms: Record<MessageKey, string> = {
   'chat.quickYes': 'Ya, teruskan.',
   'chat.quickUseCampaign': 'Guna kempen: {name}',
   'chat.chooseCampaign': 'Kempen yang mana?',
+  'chat.changeSomething': 'Nak tukar sikit',
   'chat.creativeSetTitle': 'Poster untuk {campaign}',
   'chat.creativeSetCount': '{count} poster',
   'chat.creativeSetPartial': '{created} daripada {requested} poster',
@@ -414,6 +410,7 @@ export const ms: Record<MessageKey, string> = {
 
   /* --- campaign & recommendation cards in chat ----------------------------- */
   'campaign.title': 'Kempen',
+  'campaign.viewCampaign': 'Lihat kempen',
   'campaign.statusDraft': 'Draf',
   'campaign.statusReady': 'Sedia',
   'campaign.statusArchived': 'Diarkibkan',
@@ -431,7 +428,7 @@ export const ms: Record<MessageKey, string> = {
   'campaign.tagHypothesis': 'Hipotesis',
   'campaign.tagExisting': 'Sedia ada',
   'campaign.tagRecommendation': 'Cadangan',
-  'campaign.createMaterials': 'Hasilkan Bahan Pemasaran',
+  'campaign.createMaterials': 'Buat posternya',
   'campaign.creatingMaterials': 'Menghasilkan bahan pemasaran anda…',
   'campaign.creatingMaterialsNote':
     'EVA sedang menulis teks anda dan menyediakan poster. Semuanya akan muncul di sini sebagai mesej baru — ini boleh mengambil masa satu dua minit.',
@@ -443,10 +440,10 @@ export const ms: Record<MessageKey, string> = {
   'campaign.confidenceHigh': 'Tinggi',
   'campaign.confidenceMedium': 'Sederhana',
   'campaign.confidenceLow': 'Rendah',
-  'campaign.building': 'Membina…',
+  'campaign.building': 'Sedang disediakan…',
   'campaign.campaignCreated': 'Kempen dicipta',
-  'campaign.buildCampaign': 'Bina kempen ini',
-  'campaign.askSomethingElse': 'Tanya perkara lain',
+  'campaign.buildCampaign': 'Jom buat',
+  'campaign.askSomethingElse': 'Nak tukar sikit',
 
   /* --- campaigns pages ------------------------------------------------------ */
   'campaign.pageTitle': 'Kempen',
@@ -509,7 +506,7 @@ export const ms: Record<MessageKey, string> = {
   /* --- onboarding ---------------------------------------------------------- */
   'onboarding.chooseTitle': 'Mari bantu EVA mengenali perniagaan anda',
   'onboarding.chooseSubtitle':
-    'Daripada meminta anda mengisi profil, EVA lebih suka pergi mencari sendiri.',
+    'Beritahu EVA tentang perniagaan anda sekali sahaja — selepas itu, cukup beritahu apa yang anda nak promosikan.',
   'onboarding.typeItMyself': 'Saya lebih suka taip sendiri',
   'onboarding.methodWebsiteTitle': 'Dari laman web atau media sosial saya',
   'onboarding.methodWebsiteDescription':

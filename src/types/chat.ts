@@ -290,6 +290,12 @@ export interface CreativeRequestSpec {
 export type ProposedAction =
   | { kind: 'creative.generate'; campaignId: EntityId; campaignName: string; spec: CreativeRequestSpec }
   | { kind: 'campaign.create'; goal: string; then: CreativeRequestSpec | null }
+  /**
+   * Build the campaign from a recommendation EVA already persisted on this
+   * turn, then make the posters. Saying yes costs no second strategy call,
+   * and a recommendation can only ever produce one campaign.
+   */
+  | { kind: 'campaign.build'; recommendationId: EntityId; title: string; then: CreativeRequestSpec | null }
   | { kind: 'campaign.choose'; choices: { campaignId: EntityId; name: string }[]; then: CreativeRequestSpec }
 
 export interface ActionProposalBlock extends BlockBase {
@@ -332,6 +338,12 @@ export interface CreativeSetBlock extends BlockBase {
   /** How many were asked for — the card says "2 of 3" when fewer arrived. */
   requested: number
   items: CreativeSetItem[]
+  /**
+   * The one next step worth offering (Phase 7J §12), written server-side in
+   * the owner's language. Pressing it sends `text` as an ordinary chat
+   * message. Absent on blocks written before Phase 7J.
+   */
+  followUp?: { label: string; text: string } | null
 }
 
 /** A step of an action in flight, streamed while EVA works. */

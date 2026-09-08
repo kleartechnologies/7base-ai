@@ -75,7 +75,7 @@ export const en = {
   'overview.activeCampaigns': 'Active campaigns',
   'overview.viewAll': 'View all',
   'overview.noCampaigns':
-    'No campaigns yet. Ask EVA what you want to achieve — she turns her recommendation into a campaign.',
+    'Tell EVA what you want to promote and she’ll set the whole thing up — campaign, posters and captions.',
   'overview.recentCreative': 'Recent creative',
   'overview.askNewVisual': 'Ask EVA for a new visual',
   'overview.evaSuggests': 'EVA suggests',
@@ -190,21 +190,16 @@ export const en = {
   'chat.greetingAfternoonName': 'Good afternoon, {name}',
   'chat.greetingEvening': 'Good evening',
   'chat.greetingEveningName': 'Good evening, {name}',
-  'chat.emptyTitle': 'How can EVA help your business grow today?',
-  'chat.emptySubtitle':
-    'Get ideas, create campaigns, design visuals, or ask anything about your business.',
-  'chat.chipIdeas': 'Marketing ideas',
-  'chat.chipCampaign': 'Create a campaign',
-  'chat.chipVisual': 'Design a visual',
-  'chat.chipProfile': 'Improve my business profile',
-  'chat.promptVisual': 'Design a promotional visual for my business.',
-  'chat.promptProfile': 'What could make my business profile stronger?',
-  'chat.exploreTitle': 'Explore what you can do',
-  'chat.exploreBusinessBody': 'Understand your business and get tailored advice',
-  'chat.exploreCampaignsBody': 'Plan and create marketing campaigns',
-  'chat.exploreCreativeBody': 'Generate on-brand visuals from your campaigns',
-  'chat.exploreAssetsTitle': 'Assets & Library',
-  'chat.exploreAssetsBody': 'Manage and reuse your marketing assets',
+  'chat.emptyTitle': 'What would you like to promote?',
+  'chat.emptySubtitle': 'Tell EVA in your own words. She’ll handle the rest.',
+  'chat.chipCustomers': 'More customers this weekend',
+  'chat.promptCustomers': 'I want more customers this weekend.',
+  'chat.chipSomethingNew': 'Promote something new',
+  'chat.promptSomethingNew': 'I have a new item I want to promote.',
+  'chat.chipPoster': 'Make me a poster',
+  'chat.promptPoster': 'I want to make an Instagram poster.',
+  'chat.chipQuiet': 'Quiet weekdays',
+  'chat.promptQuiet': 'My weekday sales are slow. What should I do?',
   'chat.evaKnowsFooter': 'EVA knows {name} — your menu, customers and brand.',
   /* Phase 7F — EVA doing the work: progress, proposals, results. */
   'chat.working': 'EVA is working on it',
@@ -220,6 +215,7 @@ export const en = {
   'chat.quickYes': 'Yes, go ahead.',
   'chat.quickUseCampaign': 'Use the campaign: {name}',
   'chat.chooseCampaign': 'Which campaign?',
+  'chat.changeSomething': 'Change something',
   'chat.creativeSetTitle': 'Posters for {campaign}',
   'chat.creativeSetCount': '{count} posters',
   'chat.creativeSetPartial': '{created} of {requested} posters',
@@ -410,6 +406,7 @@ export const en = {
 
   /* --- campaign & recommendation cards in chat ----------------------------- */
   'campaign.title': 'Campaign',
+  'campaign.viewCampaign': 'View campaign',
   'campaign.statusDraft': 'Draft',
   'campaign.statusReady': 'Ready',
   'campaign.statusArchived': 'Archived',
@@ -427,7 +424,7 @@ export const en = {
   'campaign.tagHypothesis': 'Hypothesis',
   'campaign.tagExisting': 'Existing',
   'campaign.tagRecommendation': 'Recommendation',
-  'campaign.createMaterials': 'Create Marketing Materials',
+  'campaign.createMaterials': 'Make the posters',
   'campaign.creatingMaterials': 'Creating your marketing materials…',
   'campaign.creatingMaterialsNote':
     'EVA is writing your copy and preparing the poster. They’ll appear here as a new message — this can take a minute or two.',
@@ -439,10 +436,10 @@ export const en = {
   'campaign.confidenceHigh': 'High',
   'campaign.confidenceMedium': 'Medium',
   'campaign.confidenceLow': 'Low',
-  'campaign.building': 'Building…',
+  'campaign.building': 'Setting it up…',
   'campaign.campaignCreated': 'Campaign created',
-  'campaign.buildCampaign': 'Build this campaign',
-  'campaign.askSomethingElse': 'Ask something else',
+  'campaign.buildCampaign': 'Let’s do this',
+  'campaign.askSomethingElse': 'Change something',
 
   /* --- campaigns pages ------------------------------------------------------ */
   'campaign.pageTitle': 'Campaigns',
@@ -504,7 +501,7 @@ export const en = {
   /* --- onboarding ---------------------------------------------------------- */
   'onboarding.chooseTitle': 'Let’s get EVA up to speed',
   'onboarding.chooseSubtitle':
-    'Rather than asking you to fill in a profile, EVA would rather go and find out.',
+    'Tell EVA about your business once — after that, just tell her what you want to promote.',
   'onboarding.typeItMyself': 'I’d rather type it in myself',
   'onboarding.methodWebsiteTitle': 'From my website or social media',
   'onboarding.methodWebsiteDescription':

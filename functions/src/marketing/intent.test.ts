@@ -57,6 +57,42 @@ describe('Malay and Manglish goals are recognised', () => {
   }
 })
 
+describe('Phase 7J — goals said the way an owner actually says them', () => {
+  // Nobody types "create a campaign". They say what they want to happen to
+  // their business this weekend. Each of these used to fall through to small
+  // talk, which made EVA look like a chatbot beside a product she can drive.
+  const goals = [
+    'I want more customers this weekend',
+    'promote my new nasi lemak',
+    'I need something for Raya',
+    'I want to promote lunch',
+    'I have a new menu',
+    'we have a new drink',
+    'Help me market my restaurant',
+    'I want to announce our new product',
+    'menu baharu',
+    'tolong pasarkan kedai saya',
+    'nak promosikan set lunch',
+    'saya nak sesuatu untuk Raya',
+    'kami ada produk baru',
+    'something for Merdeka',
+  ]
+
+  for (const text of goals) {
+    it(`"${text}" → marketing_goal`, () => {
+      expect(detectIntent(text)).toBe('marketing_goal')
+    })
+  }
+
+  it('still leaves ordinary talk about the same nouns alone', () => {
+    // "new" and "menu" are everywhere in a restaurant's chat; only a wish to
+    // do something with them is a goal.
+    expect(detectIntent('What is on my menu?')).toBe('conversation')
+    expect(detectIntent('Thanks, the new poster looks great!')).toBe('conversation')
+    expect(detectIntent('menu saya ada apa?')).toBe('conversation')
+  })
+})
+
 describe('opportunity questions are recognised', () => {
   const goals = [
     "What's my best marketing opportunity right now?",

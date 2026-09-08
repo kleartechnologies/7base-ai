@@ -25,6 +25,12 @@ export const MessageBubble = memo(function MessageBubble({
   isLatest?: boolean
 }) {
   const isUser = message.role === 'user'
+  /*
+    When EVA has already asked "shall I?" on this turn, every other card in
+    it stops offering its own version of the same step (Phase 7J §6).
+  */
+  const hasProposal =
+    isLatest && message.blocks.some((block) => block.type === 'action_proposal')
 
   if (isUser) {
     return (
@@ -51,6 +57,7 @@ export const MessageBubble = memo(function MessageBubble({
           conversationId={message.conversationId}
           markdown
           isLatest={isLatest}
+          hasProposal={hasProposal}
         />
       ))}
     </EvaTurn>
