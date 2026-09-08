@@ -483,7 +483,10 @@ export const ms: Record<MessageKey, string> = {
   'campaign.editCampaign': 'Edit kempen',
   'campaign.createWithEva': 'Hasilkan kreatif dengan EVA',
   'campaign.createAnotherWithEva': 'Hasilkan satu lagi kreatif dengan EVA',
+  'campaign.reviewCopy': 'Semak teks',
   'campaign.workbenchTitle': 'Kreatif',
+  'campaign.creativeCountOne': '1 kreatif',
+  'campaign.creativeCountMany': '{count} kreatif',
   'campaign.workbenchEmptyTitle': 'Belum ada kreatif',
   'campaign.workbenchEmptyReady':
     'Strategi kempen anda sudah sedia. Hasilkan kreatif promosi pertama anda dengan EVA.',
@@ -499,6 +502,8 @@ export const ms: Record<MessageKey, string> = {
     'Strategi kempen anda sudah sedia. Mahu saya hasilkan kreatif promosi yang pertama?',
   'campaign.evaSuggestAnother':
     'Mahu satu lagi kreatif untuk kempen ini? Saya akan pastikan ia kekal mengikut jenama anda.',
+  'campaign.evaSuggestReviewCopy':
+    'Salah satu poster ini belum ada teksnya. Buka poster itu dan minta saya tuliskan kapsyennya.',
   'campaign.evaCreateCta': 'Hasilkan dengan EVA',
 
   /* --- onboarding ---------------------------------------------------------- */

@@ -97,8 +97,10 @@ describe('client surface', () => {
   })
 
   it('the applied panel renders only from the server-stamped summary', () => {
-    const creativePage = read('../../../pages/CreativePage.tsx')
-    expect(creativePage).toContain('creative.style.brandApplied ?')
+    // The panel lives on the one creative card the library and the campaign
+    // workspace both render.
+    const creativeCard = read('../../creative/CreativeCard.tsx')
+    expect(creativeCard).toContain('creative.style.brandApplied ?')
     const panel = read('../../creative/BrandAppliedPanel.tsx')
     expect(panel).toContain('ROUTES.businessBrand')
   })

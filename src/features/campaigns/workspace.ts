@@ -1,3 +1,4 @@
+import { platformCopyEntries } from '@/features/creative/copyPlatforms'
 import type { Campaign, Creative } from '@/types'
 
 /**
@@ -41,23 +42,41 @@ export function campaignProgress(
   }
 }
 
-/**
- * The one deterministic EVA suggestion — no AI call, just state:
- * a draft asks to be completed, a ready campaign without creatives asks for
- * the first one, a ready campaign with creatives offers another. Archived
- * campaigns get no nudge, and a suggestion that depends on the creative list
- * waits for the list instead of guessing.
- */
-export type WorkspaceSuggestion = 'complete_draft' | 'first_creative' | 'another_creative'
+/** Whether this creative has any platform copy stored at all. */
+export function hasPlatformCopy(creative: Creative): boolean {
+  return platformCopyEntries(creative.captions).length > 0
+}
 
-export function workspaceSuggestion(
+/**
+ * The single next useful thing to do with this campaign — no AI call, no
+ * workflow engine, just the stored state read in a fixed order:
+ *
+ * - a draft asks for its strategy to be finished;
+ * - a ready campaign with no creatives asks for the first one;
+ * - a creative that has no copy at all is the gap worth pointing at, so the
+ *   action leads to that creative rather than making yet another poster;
+ * - otherwise the campaign is in good shape and can have another creative.
+ *
+ * Archived campaigns get nothing, and anything that depends on the creative
+ * list waits for the list instead of guessing while it loads.
+ */
+export type CampaignNextAction =
+  | { kind: 'edit_campaign' }
+  | { kind: 'create_first' }
+  | { kind: 'review_copy'; creativeId: string }
+  | { kind: 'create_another' }
+
+export function campaignNextAction(
   campaign: Campaign,
-  creativeCount: number | null,
-): WorkspaceSuggestion | null {
+  creatives: Creative[] | null,
+): CampaignNextAction | null {
   if (campaign.status === 'archived') return null
-  if (campaign.status === 'draft') return 'complete_draft'
-  if (creativeCount === null) return null
-  return creativeCount === 0 ? 'first_creative' : 'another_creative'
+  if (campaign.status === 'draft') return { kind: 'edit_campaign' }
+  if (creatives === null) return null
+  if (creatives.length === 0) return { kind: 'create_first' }
+  const withoutCopy = creatives.find((creative) => !hasPlatformCopy(creative))
+  if (withoutCopy) return { kind: 'review_copy', creativeId: withoutCopy.id }
+  return { kind: 'create_another' }
 }
 
 /** The owner's creatives that belong to this campaign; null while loading. */

@@ -32,18 +32,34 @@ import {
 export function PlatformCopy({
   creative,
   fallbackCaptions,
+  defaultOpen = false,
   className,
 }: {
   /** The live creative. Null while a chat card is still loading its document. */
   creative: Creative | null
   /** The captions frozen into a chat message, used only until it loads. */
   fallbackCaptions?: CreativeCaptions
+  /**
+   * Opens the panel when this turns true — how "Review copy" on the campaign
+   * workspace lands the owner on the copy itself. Only ever opens: the owner
+   * can always close it again, and closing must stick.
+   */
+  defaultOpen?: boolean
   className?: string
 }) {
   const { t } = useI18n()
   const panelId = useId()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const [selected, setSelected] = useState<CopyPlatform | null>(null)
+
+  // Adjusting state during render — the React-recommended shape for "a prop
+  // changed and some state should follow", and cheaper than an effect that
+  // would paint the closed panel first.
+  const [lastDefaultOpen, setLastDefaultOpen] = useState(defaultOpen)
+  if (defaultOpen !== lastDefaultOpen) {
+    setLastDefaultOpen(defaultOpen)
+    if (defaultOpen) setOpen(true)
+  }
 
   const entries = platformCopyEntries(creative ? creative.captions : (fallbackCaptions ?? null))
   // Selection survives a save; it falls back to the first platform only when

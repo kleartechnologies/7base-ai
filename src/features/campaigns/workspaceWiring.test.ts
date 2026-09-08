@@ -15,7 +15,14 @@ function read(relativePath: string): string {
   return readFileSync(new URL(relativePath, import.meta.url), 'utf8')
 }
 
+/** Source with its comments removed — for rules about what the UI *offers*. */
+function code(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+}
+
 const page = read('../../pages/CampaignDetailPage.tsx')
+const library = read('../../pages/CreativePage.tsx')
+const card = read('../creative/CreativeCard.tsx')
 
 describe('create creative with EVA uses the existing flow', () => {
   it('calls the existing callable client with only the campaign id', () => {
@@ -47,19 +54,80 @@ describe('workbench reuses existing creative infrastructure', () => {
   it('filters to this campaign in memory and derives progress from real state', () => {
     expect(page).toContain('campaignCreatives(allCreatives, campaign.id)')
     expect(page).toContain('campaignProgress(campaign,')
-    expect(page).toContain('workspaceSuggestion(campaign,')
+    expect(page).toContain('campaignNextAction(campaign, creatives)')
   })
 
-  it('creative cards open the existing Creative route', () => {
-    expect(page).toContain('to={ROUTES.creative}')
+  it('shows creatives through the one shared card, not a second version', () => {
+    expect(page).toContain("import { CreativeCard } from '@/features/creative/CreativeCard'")
+    expect(page).toContain('<CreativeCard')
+    // The compact campaign-only card is gone; there is one creative card.
+    expect(page).not.toContain('WorkbenchCreativeCard')
+    expect(page).not.toContain('PosterCanvas')
+  })
+
+  it('hands the creative down instead of opening a listener per card', () => {
+    expect(card).toContain('creative: Creative')
+    expect(card).not.toContain('useCreative')
+    expect(card).not.toContain('observeCreative')
+  })
+
+  it('the library renders the same card, so the two pages cannot disagree', () => {
+    expect(library).toContain("import { CreativeCard } from '@/features/creative/CreativeCard'")
+    expect(library).not.toContain('function CreativeCard(')
   })
 
   it('reuses the shared status vocabulary instead of inventing one', () => {
-    expect(page).toContain("'library.statusGenerating'")
+    expect(card).toContain("'library.statusGenerating'")
+  })
+
+  it('counts what exists — never a target, a percentage or a progress bar', () => {
+    expect(page).toContain("t('campaign.creativeCountOne')")
+    expect(page).toContain("t('campaign.creativeCountMany', { count: creatives.length })")
+    // The count is a plain number of things that exist: no denominator, no
+    // share of a target, no "3 of 10".
+    for (const value of [
+      en['campaign.creativeCountOne'],
+      en['campaign.creativeCountMany'],
+      ms['campaign.creativeCountOne'],
+      ms['campaign.creativeCountMany'],
+    ]) {
+      expect(value).not.toMatch(/[/%]|\bof\b|\bdaripada\b/i)
+    }
   })
 
   it('renders no invented metrics or publishing states', () => {
     expect(page).not.toMatch(/impressions|engagement|ROAS|conversion|published|scheduled/i)
+  })
+
+  it('offers only actions that work end to end today', () => {
+    // No Publish, Schedule, Boost, Duplicate or Run ads anywhere on the card.
+    expect(code(card)).not.toMatch(/publish|schedule|boost|duplicate|run ads|analyz/i)
+    expect(card).toContain('DownloadPosterButton')
+    expect(card).toContain("t('creative.editInChat')")
+  })
+})
+
+describe('one next action, derived from state', () => {
+  it('the header leads with it and EVA repeats it — never a second opinion', () => {
+    expect(page).toContain('{nextActionButton()}')
+    expect(page).toContain("nextAction.kind === 'edit_campaign'")
+    expect(page).toContain("nextAction.kind === 'review_copy'")
+  })
+
+  it('"Review copy" lands on the creative that is missing it', () => {
+    expect(page).toContain('function reviewCopy(creativeId: string)')
+    expect(page).toContain('setOpenCopyFor(creativeId)')
+    expect(page).toContain('anchorId={anchorFor(creative.id)}')
+    expect(page).toContain('copyOpen={openCopyFor === creative.id}')
+  })
+
+  it('honours reduced motion when it scrolls', () => {
+    expect(page).toContain("window.matchMedia('(prefers-reduced-motion: reduce)').matches")
+  })
+
+  it('each poster keeps its own copy — nothing is pooled per campaign', () => {
+    expect(card).toContain('<PlatformCopy creative={creative}')
+    expect(page).not.toContain('<PlatformCopy')
   })
 })
 
@@ -89,6 +157,9 @@ describe('workspace copy exists in both languages', () => {
     'campaign.createWithEva',
     'campaign.createAnotherWithEva',
     'campaign.workbenchTitle',
+    'campaign.creativeCountOne',
+    'campaign.creativeCountMany',
+    'campaign.reviewCopy',
     'campaign.workbenchEmptyTitle',
     'campaign.workbenchEmptyReady',
     'campaign.workbenchEmptyBody',
@@ -99,6 +170,7 @@ describe('workspace copy exists in both languages', () => {
     'campaign.evaSuggestDraft',
     'campaign.evaSuggestFirst',
     'campaign.evaSuggestAnother',
+    'campaign.evaSuggestReviewCopy',
     'campaign.evaCreateCta',
     'campaign.materialsInWorkbench',
   ] as const

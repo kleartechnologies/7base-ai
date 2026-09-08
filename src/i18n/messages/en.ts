@@ -479,7 +479,10 @@ export const en = {
   'campaign.editCampaign': 'Edit campaign',
   'campaign.createWithEva': 'Create creative with EVA',
   'campaign.createAnotherWithEva': 'Create another creative with EVA',
+  'campaign.reviewCopy': 'Review copy',
   'campaign.workbenchTitle': 'Creatives',
+  'campaign.creativeCountOne': '1 creative',
+  'campaign.creativeCountMany': '{count} creatives',
   'campaign.workbenchEmptyTitle': 'No creatives yet',
   'campaign.workbenchEmptyReady':
     'Your campaign strategy is ready. Create your first promotional creative with EVA.',
@@ -494,6 +497,8 @@ export const en = {
   'campaign.evaSuggestFirst':
     'Your campaign strategy is ready. Want me to create the first promotional creative?',
   'campaign.evaSuggestAnother': 'Want another creative for this campaign? I’ll keep it on-brand.',
+  'campaign.evaSuggestReviewCopy':
+    'One of these posters has no copy written for it yet. Open it and ask me for the caption.',
   'campaign.evaCreateCta': 'Create with EVA',
 
   /* --- onboarding ---------------------------------------------------------- */

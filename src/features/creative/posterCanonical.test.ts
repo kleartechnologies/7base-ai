@@ -20,6 +20,7 @@ function read(relativePath: string): string {
 }
 
 const SURFACES: { name: string; source: string }[] = [
+  { name: 'CreativeCard', source: read('./CreativeCard.tsx') },
   { name: 'CreativePage', source: read('../../pages/CreativePage.tsx') },
   { name: 'CampaignDetailPage', source: read('../../pages/CampaignDetailPage.tsx') },
   { name: 'CreativeSetCard', source: read('../chat/components/blocks/CreativeSetCard.tsx') },
@@ -29,7 +30,9 @@ const SURFACES: { name: string; source: string }[] = [
 describe('every surface draws the persisted creative through the shared renderer', () => {
   it('renders posters with PosterCanvas, never a hand-composed overlay', () => {
     for (const { name, source } of SURFACES) {
-      expect(source, name).toMatch(/PosterCanvas|LivePosterFrame/)
+      // Either it draws through the shared renderer, or it delegates to the
+      // one card that does. Nothing in between.
+      expect(source, name).toMatch(/PosterCanvas|LivePosterFrame|<CreativeCard/)
       // No surface paints its own poster: no <img> ground, no scrim, no
       // inline accent chips over one.
       expect(source, name).not.toContain('object-cover')

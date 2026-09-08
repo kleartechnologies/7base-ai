@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, Plus } from 'lucide-react'
+import { ArrowLeft, Check } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { EvaSpark } from '@/components/EvaMark'
 import { EvaCreatingState } from '@/components/EvaCreatingState'
@@ -12,11 +12,11 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   campaignCreatives,
   campaignDuration,
+  campaignNextAction,
   campaignProgress,
-  workspaceSuggestion,
 } from '@/features/campaigns/workspace'
+import { CreativeCard } from '@/features/creative/CreativeCard'
 import { useAuth } from '@/hooks/useAuth'
-import { PosterCanvas } from '@/features/creative/PosterCanvas'
 import { useI18n } from '@/hooks/useI18n'
 import type { MessageKey } from '@/i18n/translate'
 import { generateCreativeMaterials } from '@/services/ai/ai.client'
@@ -88,12 +88,22 @@ function toForm(campaign: Campaign): FormState {
 }
 
 /**
- * The Campaign Workspace: strategy plus workbench for one campaign.
+ * The Campaign Workspace: strategy plus the creatives made for one campaign.
  *
  * The page answers, top to bottom: what is this campaign, what's the strategy,
  * what creative exists for it, how far along is it, and what should happen
  * next. Everything shown is real stored data — no metrics, no publishing
  * states, no invented lifecycle.
+ *
+ * Each creative is the same card the library renders — poster first, that
+ * poster's own copy folded underneath — never a thinner second version that
+ * could drift. The creatives come from the one owner-scoped listener below,
+ * filtered to this campaign by id, so a card never opens a read of its own.
+ *
+ * One next action leads the page, chosen from stored state alone
+ * (`campaignNextAction`): finish the draft, make the first creative, look at
+ * the poster whose copy was never written, or make another. The same action
+ * is what EVA offers at the bottom — one suggestion, one destination.
  *
  * Editing stays the same deliberately simple form as before. Provenance rules
  * are applied on save: a rewritten audience is the owner's hypothesis (it only
@@ -122,6 +132,8 @@ export default function CampaignDetailPage() {
   const [materialsStarted, setMaterialsStarted] = useState(false)
   const [allCreatives, setAllCreatives] = useState<Creative[] | null>(null)
   const [creativesFailed, setCreativesFailed] = useState(false)
+  // Which creative's copy panel "Review copy" has opened, if any.
+  const [openCopyFor, setOpenCopyFor] = useState<string | null>(null)
 
   useEffect(() => {
     if (!campaignId) return
@@ -158,7 +170,7 @@ export default function CampaignDetailPage() {
 
   if (missing) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-8 py-12">
+      <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
         <p className="text-[14px] text-muted-foreground">{t('campaign.notFound')}</p>
         <Button className="mt-4" size="sm" variant="outline" asChild>
           <Link to={ROUTES.campaigns}>{t('campaign.backToCampaigns')}</Link>
@@ -169,7 +181,7 @@ export default function CampaignDetailPage() {
 
   if (!campaign || !form) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-8 py-12">
+      <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="mt-6 h-7 w-64" />
         <Skeleton className="mt-3 h-4 w-80 max-w-full" />
@@ -185,9 +197,7 @@ export default function CampaignDetailPage() {
   const archived = campaign.status === 'archived'
   const creatives = campaignCreatives(allCreatives, campaign.id)
   const progress = campaignProgress(campaign, creatives ? creatives.length : null)
-  const suggestion = editing
-    ? null
-    : workspaceSuggestion(campaign, creatives ? creatives.length : null)
+  const nextAction = editing ? null : campaignNextAction(campaign, creatives)
   const timing = campaignDuration(campaign)
   const purpose = campaign.objective ?? campaign.keyMessage
 
@@ -285,6 +295,17 @@ export default function CampaignDetailPage() {
     else setMaterialsStarted(true)
   }
 
+  // The card that carries a creative, so "Review copy" has somewhere to land.
+  const anchorFor = (creativeId: string) => `creative-${creativeId}`
+
+  function reviewCopy(creativeId: string) {
+    setOpenCopyFor(creativeId)
+    const node = document.getElementById(anchorFor(creativeId))
+    if (!node) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    node.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+  }
+
   const createButton = (labelKey: MessageKey, variant?: 'outline') => (
     <Button
       size="sm"
@@ -296,8 +317,38 @@ export default function CampaignDetailPage() {
     </Button>
   )
 
+  const editButton = (variant?: 'outline') => (
+    <Button size="sm" variant={variant} onClick={() => setEditing(true)}>
+      {t('campaign.editCampaign')}
+    </Button>
+  )
+
+  /**
+   * The one next action, rendered. Which action it is comes from stored state
+   * alone (see `campaignNextAction`) — there is no workflow engine here, and
+   * every branch leads to something that already works.
+   */
+  const nextActionButton = (variant?: 'outline') => {
+    if (!nextAction) return null
+    if (nextAction.kind === 'edit_campaign') return editButton(variant)
+    if (nextAction.kind === 'review_copy') {
+      const { creativeId } = nextAction
+      return (
+        <Button size="sm" variant={variant} onClick={() => reviewCopy(creativeId)}>
+          {t('campaign.reviewCopy')}
+        </Button>
+      )
+    }
+    return createButton(
+      nextAction.kind === 'create_first'
+        ? 'campaign.createWithEva'
+        : 'campaign.createAnotherWithEva',
+      variant,
+    )
+  }
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-8 py-12">
+    <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
       <Link
         to={ROUTES.campaigns}
         className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
@@ -334,10 +385,10 @@ export default function CampaignDetailPage() {
 
         {!editing ? (
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            {!archived ? createButton('campaign.createWithEva') : null}
-            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-              {t('campaign.editCampaign')}
-            </Button>
+            {/* One primary action, whatever the campaign actually needs next.
+                Editing lives with the strategy it edits, unless finishing the
+                strategy *is* the next thing to do. */}
+            {nextActionButton()}
             {campaign.conversationId ? (
               <Button size="sm" variant="outline" asChild>
                 <Link to={ROUTES.conversation(campaign.conversationId)}>
@@ -441,7 +492,11 @@ export default function CampaignDetailPage() {
               <ReadRow label={t('campaign.fieldNotes')} value={campaign.notes} />
             </div>
           </dl>
-        ) : (
+        ) : null}
+
+        {!editing ? <div className="mt-5">{editButton('outline')}</div> : null}
+
+        {editing ? (
           <div className="mt-4 space-y-5">
             <Field label={t('campaign.fieldName')}>
               <Input value={form.name} onChange={(e) => set({ name: e.target.value })} />
@@ -564,7 +619,7 @@ export default function CampaignDetailPage() {
               </Button>
             </div>
           </div>
-        )}
+        ) : null}
       </section>
 
       {campaign.assumptions.length > 0 || campaign.unknowns.length > 0 ? (
@@ -588,6 +643,14 @@ export default function CampaignDetailPage() {
             <h2 className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
               {t('campaign.workbenchTitle')}
             </h2>
+            {/* How many exist — not a target, not a percentage, not "3 of 10". */}
+            {creatives && creatives.length > 0 ? (
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                {creatives.length === 1
+                  ? t('campaign.creativeCountOne')
+                  : t('campaign.creativeCountMany', { count: creatives.length })}
+              </p>
+            ) : null}
 
             {creativesFailed ? (
               <p role="alert" className="mt-4 text-[14px] leading-relaxed text-destructive">
@@ -615,30 +678,27 @@ export default function CampaignDetailPage() {
                 ) : null}
               </div>
             ) : (
-              <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-                {creatives.map((creative) => (
-                  <li key={creative.id}>
-                    <WorkbenchCreativeCard creative={creative} />
-                  </li>
-                ))}
+              <>
+                {/* The same card the library shows: poster first, then this
+                    poster's own copy. The creative is handed down from the
+                    listener above — no per-card subscription. */}
+                <ul className="mt-4 grid items-start gap-6 sm:grid-cols-2">
+                  {creatives.map((creative) => (
+                    <li key={creative.id}>
+                      <CreativeCard
+                        creative={creative}
+                        anchorId={anchorFor(creative.id)}
+                        copyOpen={openCopyFor === creative.id}
+                      />
+                    </li>
+                  ))}
+                </ul>
                 {!archived ? (
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => void handleCreateCreative()}
-                      disabled={creating}
-                      className="flex h-full min-h-40 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border p-6 text-center transition-colors hover:border-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <Plus className="size-4 text-muted-foreground" aria-hidden />
-                      <span className="text-[13px] font-medium text-foreground">
-                        {creating
-                          ? t('campaign.creatingMaterials')
-                          : t('campaign.createAnotherWithEva')}
-                      </span>
-                    </button>
-                  </li>
+                  <div className="mt-5">
+                    {createButton('campaign.createAnotherWithEva', 'outline')}
+                  </div>
                 ) : null}
-              </ul>
+              </>
             )}
           </section>
 
@@ -657,87 +717,33 @@ export default function CampaignDetailPage() {
           ) : null}
 
           {/* --- One deterministic EVA suggestion — no AI call ------------ */}
-          {suggestion ? (
-            <section className="mt-6 rounded-xl border border-eva-tint-border bg-eva-tint px-6 py-5">
+          {nextAction ? (
+            <section className="mt-6 rounded-xl border border-eva-tint-border bg-eva-tint px-5 py-5 sm:px-6">
               <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                 <EvaSpark className="size-3.5 text-eva" aria-hidden />
                 EVA
               </p>
               <p className="mt-2 max-w-lg text-[14px] leading-relaxed text-foreground">
-                {suggestion === 'complete_draft'
+                {nextAction.kind === 'edit_campaign'
                   ? t('campaign.evaSuggestDraft')
-                  : suggestion === 'first_creative'
+                  : nextAction.kind === 'create_first'
                     ? t('campaign.evaSuggestFirst')
-                    : t('campaign.evaSuggestAnother')}
+                    : nextAction.kind === 'review_copy'
+                      ? t('campaign.evaSuggestReviewCopy')
+                      : t('campaign.evaSuggestAnother')}
               </p>
+              {/* The same next action as the header — one suggestion, one
+                  destination, never a second opinion further down the page. */}
               <div className="mt-3.5">
-                {suggestion === 'complete_draft' ? (
-                  <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-                    {t('campaign.editCampaign')}
-                  </Button>
-                ) : (
-                  createButton('campaign.evaCreateCta')
-                )}
+                {nextAction.kind === 'create_first' || nextAction.kind === 'create_another'
+                  ? createButton('campaign.evaCreateCta')
+                  : nextActionButton()}
               </div>
             </section>
           ) : null}
         </>
       ) : null}
     </div>
-  )
-}
-
-/**
- * A compact card for one creative made for this campaign. Shows only what
- * exists — preview, name, format, status, date — and opens the existing
- * Creative gallery, where the full card (download, edit in chat, brand
- * panel) lives.
- */
-function WorkbenchCreativeCard({ creative }: { creative: Creative }) {
-  const { t, language } = useI18n()
-
-  const statusKey: MessageKey | null =
-    creative.status === 'generating'
-      ? 'library.statusGenerating'
-      : creative.status === 'draft'
-        ? 'library.statusDraft'
-        : creative.status === 'failed'
-          ? 'library.statusFailed'
-          : null
-
-  return (
-    <Link
-      to={ROUTES.creative}
-      className="block overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-foreground/30"
-    >
-      {/* The same poster the Creative page and the download produce. */}
-      <div className="w-full bg-poster-surface">
-        <PosterCanvas creative={creative} className="block w-full" />
-      </div>
-      <div className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <h3 className="min-w-0 truncate text-[13.5px] font-semibold tracking-[-0.01em] text-foreground">
-            {creative.name}
-          </h3>
-          {statusKey ? (
-            <span className="ml-auto shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-              {t(statusKey)}
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
-          {creative.format === 'portrait_post'
-            ? t('creative.formatPortrait')
-            : t('creative.formatSquare')}{' '}
-          ·{' '}
-          {t('creative.updatedOn', {
-            date: new Date(creative.updatedAt).toLocaleDateString(
-              language === 'ms' ? 'ms-MY' : 'en-MY',
-            ),
-          })}
-        </p>
-      </div>
-    </Link>
   )
 }
 

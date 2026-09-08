@@ -3,16 +3,17 @@ import type { Campaign, Creative } from '@/types'
 import {
   campaignCreatives,
   campaignDuration,
+  campaignNextAction,
   campaignProgress,
+  hasPlatformCopy,
   hasStrategy,
-  workspaceSuggestion,
 } from './workspace'
 
 /**
  * The Campaign Workspace derives everything it says from stored data. These
  * tests pin the honesty rules: no step reads as complete without the data
  * behind it, an unloaded creative list never counts as anything, and the EVA
- * suggestion is a pure function of status + creative count.
+ * next action is a pure function of status and the creatives themselves.
  */
 
 function campaign(overrides: Partial<Campaign> = {}): Campaign {
@@ -134,23 +135,58 @@ describe('campaignProgress — real state only', () => {
   })
 })
 
-describe('workspaceSuggestion — deterministic, no AI call', () => {
+/** A creative that actually has copy, so it is not the gap in the campaign. */
+function withCopy(overrides: Partial<Creative> = {}): Creative {
+  return creative({
+    captions: { facebook: 'Lunch is on.', instagram: null, short: null, whatsapp: null },
+    ...overrides,
+  })
+}
+
+describe('hasPlatformCopy', () => {
+  it('is false when every caption is empty, true when one is written', () => {
+    expect(hasPlatformCopy(creative())).toBe(false)
+    expect(hasPlatformCopy(creative({ captions: { facebook: '   ', instagram: null, short: null, whatsapp: null } }))).toBe(false)
+    expect(hasPlatformCopy(withCopy())).toBe(true)
+  })
+})
+
+describe('campaignNextAction — deterministic, no AI call', () => {
   it('a draft asks to be completed, regardless of creatives', () => {
-    expect(workspaceSuggestion(campaign({ status: 'draft' }), null)).toBe('complete_draft')
-    expect(workspaceSuggestion(campaign({ status: 'draft' }), 3)).toBe('complete_draft')
+    expect(campaignNextAction(campaign({ status: 'draft' }), null)).toEqual({
+      kind: 'edit_campaign',
+    })
+    expect(campaignNextAction(campaign({ status: 'draft' }), [withCopy()])).toEqual({
+      kind: 'edit_campaign',
+    })
   })
 
-  it('ready without creatives asks for the first one; with creatives, another', () => {
-    expect(workspaceSuggestion(campaign(), 0)).toBe('first_creative')
-    expect(workspaceSuggestion(campaign(), 2)).toBe('another_creative')
+  it('ready without creatives asks for the first one', () => {
+    expect(campaignNextAction(campaign(), [])).toEqual({ kind: 'create_first' })
+  })
+
+  it('ready with creatives that all have copy offers another', () => {
+    expect(campaignNextAction(campaign(), [withCopy(), withCopy({ id: 'cre-2' })])).toEqual({
+      kind: 'create_another',
+    })
+  })
+
+  it('points at the first creative missing its copy, not at another poster', () => {
+    const done = withCopy()
+    const bare = creative({ id: 'cre-9' })
+    expect(campaignNextAction(campaign(), [done, bare])).toEqual({
+      kind: 'review_copy',
+      creativeId: 'cre-9',
+    })
   })
 
   it('waits for the creative list instead of guessing', () => {
-    expect(workspaceSuggestion(campaign(), null)).toBeNull()
+    expect(campaignNextAction(campaign(), null)).toBeNull()
   })
 
   it('archived campaigns get no nudge', () => {
-    expect(workspaceSuggestion(campaign({ status: 'archived' }), 0)).toBeNull()
+    expect(campaignNextAction(campaign({ status: 'archived' }), [])).toBeNull()
+    expect(campaignNextAction(campaign({ status: 'archived' }), [creative()])).toBeNull()
   })
 })
 

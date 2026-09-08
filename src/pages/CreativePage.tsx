@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Download, Image as ImageIcon } from 'lucide-react'
+import { Image as ImageIcon } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { EvaSpark } from '@/components/EvaMark'
 import { Button } from '@/components/ui/button'
-import { BrandAppliedPanel } from '@/features/creative/BrandAppliedPanel'
-import { PlatformCopy } from '@/features/creative/PlatformCopy'
-import { PosterCanvas } from '@/features/creative/PosterCanvas'
-import { downloadCreativePoster } from '@/features/creative/poster'
+import { CreativeCard } from '@/features/creative/CreativeCard'
 import { useAuth } from '@/hooks/useAuth'
 import { useI18n } from '@/hooks/useI18n'
 import { observeCampaigns } from '@/services/campaigns/campaign.service'
@@ -109,88 +106,6 @@ export default function CreativePage() {
           </li>
         </ul>
       )}
-    </div>
-  )
-}
-
-function CreativeCard({ creative, campaignName }: { creative: Creative; campaignName?: string }) {
-  const { t, language } = useI18n()
-  const [downloading, setDownloading] = useState(false)
-  const [downloadError, setDownloadError] = useState(false)
-
-  const handleDownload = async () => {
-    setDownloading(true)
-    setDownloadError(false)
-    try {
-      await downloadCreativePoster(creative)
-    } catch {
-      setDownloadError(true)
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  const source = creative.content.image?.source
-  const format =
-    creative.format === 'portrait_post' ? t('creative.formatPortrait') : t('creative.formatSquare')
-  const date = new Date(creative.updatedAt).toLocaleDateString(
-    language === 'ms' ? 'ms-MY' : 'en-MY',
-  )
-  const context = [campaignName ? t('creative.forCampaign', { campaign: campaignName }) : null, format, date]
-    .filter(Boolean)
-    .join(' · ')
-
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className="w-full bg-poster-surface">
-        <PosterCanvas creative={creative} className="block w-full" />
-      </div>
-
-      <div className="px-4 py-3.5">
-        <div className="flex items-start gap-2">
-          <h2 className="min-w-0 flex-1 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
-            {creative.name}
-          </h2>
-          {source === 'generated' ? (
-            <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-              {t('creative.aiGeneratedImage')}
-            </span>
-          ) : source === 'upload' ? (
-            <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-              {t('creative.yourPhoto')}
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">{context}</p>
-
-        {/* The poster's own copy, directly under it. Collapsed by default —
-            the poster is what this page is for. */}
-        <PlatformCopy creative={creative} className="mt-3" />
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={() => void handleDownload()} disabled={downloading}>
-            <Download className="size-3.5" aria-hidden />
-            {downloading ? t('creative.preparingDownload') : t('creative.downloadPoster')}
-          </Button>
-          <Button size="sm" variant="outline" asChild>
-            <Link
-              to={creative.conversationId ? ROUTES.conversation(creative.conversationId) : ROUTES.chat}
-            >
-              <EvaSpark className="size-3.5 text-eva" aria-hidden />
-              {t('creative.editInChat')}
-            </Link>
-          </Button>
-        </div>
-        {downloadError ? (
-          <p className="mt-2 text-[12px] text-destructive">{t('creative.downloadFailed')}</p>
-        ) : null}
-
-        {/* Only creatives generated after Brand Identity shipped carry the
-            server-stamped summary; older ones simply show nothing here. */}
-        {creative.style.brandApplied ? (
-          <BrandAppliedPanel applied={creative.style.brandApplied} />
-        ) : null}
-      </div>
     </div>
   )
 }

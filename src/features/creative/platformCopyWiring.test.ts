@@ -21,6 +21,7 @@ const model = read('./copyPlatforms.ts')
 const service = read('../../services/creatives/creative.service.ts')
 const creating = read('../../components/EvaCreatingState.tsx')
 const creativePage = read('../../pages/CreativePage.tsx')
+const creativeCard = read('./CreativeCard.tsx')
 const chatPreview = read('../chat/components/blocks/CreativePreview.tsx')
 const setCard = read('../chat/components/blocks/CreativeSetCard.tsx')
 const campaignCard = read('../chat/components/blocks/CampaignCard.tsx')
@@ -53,9 +54,17 @@ describe('the copy comes from the creative, never from the frontend', () => {
 
 describe('the copy panel is collapsed until it is asked for', () => {
   it('starts closed', () => {
-    expect(panel).toContain('useState(false)')
+    expect(panel).toContain('defaultOpen = false')
+    expect(panel).toContain('useState(defaultOpen)')
     expect(panel).toContain('aria-expanded={open}')
     expect(panel).toContain('aria-controls={panelId}')
+  })
+
+  it('"Review copy" can open it, and closing it again sticks', () => {
+    // The prop only ever opens the panel; nothing forces it back open, so the
+    // owner's close is final.
+    expect(panel).toContain('if (defaultOpen) setOpen(true)')
+    expect(panel).not.toContain('setOpen(defaultOpen)')
   })
 
   it('is one platform selector, not a stack of accordions', () => {
@@ -196,8 +205,13 @@ describe('the creation state replaced the generic loading line', () => {
 })
 
 describe('the copy sits with its own poster, everywhere a poster appears', () => {
-  it('is under the card on the Creative page', () => {
-    expect(creativePage).toContain('<PlatformCopy creative={creative} className="mt-3" />')
+  it('is under the poster on the one creative card both pages render', () => {
+    expect(creativeCard).toContain('<PlatformCopy creative={creative}')
+    expect(creativeCard).toContain('className="mt-3"')
+    // The pages render the card; neither pools copy of its own beside it.
+    expect(creativePage).toContain('<CreativeCard')
+    expect(creativePage).not.toContain('<PlatformCopy')
+    expect(campaignPage).not.toContain('<PlatformCopy')
   })
 
   it('is under the poster in a chat preview, reading the live document', () => {
@@ -217,7 +231,8 @@ describe('the copy sits with its own poster, everywhere a poster appears', () =>
     expect(panel).not.toContain('drawPoster')
     expect(panel).not.toContain('downloadCreativePoster')
     expect(chatPreview).toContain('<LivePosterFrame lookup={lookup}')
-    expect(creativePage).toContain('<PosterCanvas creative={creative}')
+    expect(creativeCard).toContain('<PosterCanvas creative={creative}')
+    expect(creativeCard).toContain('<DownloadPosterButton creative={creative} />')
   })
 })
 
