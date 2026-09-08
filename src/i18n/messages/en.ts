@@ -133,10 +133,10 @@ export const en = {
     'Your browser blocked the sign-in window. Please allow popups and retry.',
   'firebaseError.network': 'Network problem. Please check your connection and try again.',
   'firebaseError.tooManyRequests': 'Too many attempts. Please wait a moment and try again.',
-  'firebaseError.notEnabled': 'This sign-in method is not enabled for this project.',
+  'firebaseError.notEnabled': 'That way of signing in is not available.',
   'firebaseError.permissionDenied': 'You do not have access to that.',
   'firebaseError.signInAgain': 'Please sign in again.',
-  'firebaseError.unreachable': 'EVA could not reach the server. Please try again.',
+  'firebaseError.unreachable': 'EVA could not connect just now. Please try again.',
   'firebaseError.tookTooLong': 'That took too long. Please try again.',
   'firebaseError.usageLimit': 'You have reached a usage limit. Please try again later.',
   'firebaseError.notSetUp': 'EVA is not set up to do that yet.',
@@ -145,7 +145,7 @@ export const en = {
   /* --- AI request failures ------------------------------------------------ */
   'aiError.unauthenticated': 'Your session expired. Please sign in again.',
   'aiError.permissionDenied': 'You do not have access to this conversation.',
-  'aiError.notConfigured': 'EVA’s AI backend is not configured yet.',
+  'aiError.notConfigured': 'EVA cannot reply just yet. Please try again shortly.',
   'aiError.rateLimited': 'EVA is handling a lot of requests right now. Please try again shortly.',
   'aiError.timeout': 'EVA took too long to respond. Please try again.',
   'aiError.unavailable': 'EVA could not be reached. Please check your connection and try again.',
@@ -233,7 +233,7 @@ export const en = {
   'chat.loadConversationFailed': 'Could not load this conversation.',
   'chat.sendFailed': 'Your message could not be sent. Please try again.',
   'chat.backendNotConnected':
-    'EVA’s AI backend is not connected yet. Your message was saved — deploy the Cloud Functions to get a reply.',
+    'EVA cannot reply just yet. Your message is saved — please try again shortly.',
   'chat.loadConversationsFailed': 'Could not load your conversations.',
   'chat.deleteConversationFailed': 'Could not delete the conversation. Please try again.',
 
@@ -319,10 +319,10 @@ export const en = {
   'library.emptyAll':
     'No marketing work yet. Ask EVA in the chat — the recommendations, campaigns, posters and captions you build together are collected here.',
   'library.emptyCreatives':
-    'No creatives yet. Open a campaign and choose “{createMaterials}” — posters land here.',
+    'No posters yet. Tell EVA what you want to promote — what she makes lands here.',
   'library.emptyCopywriting': 'No copywriting yet. Captions arrive together with each creative EVA makes.',
   'library.emptyCampaigns':
-    'No campaigns yet. When EVA recommends a move in the chat, one click turns it into a campaign.',
+    'No campaigns yet. Tell EVA what you want to achieve and she’ll set one up.',
   'library.emptyRecommendations': 'No recommendations yet. Ask EVA what you want to achieve.',
   'library.typePoster': 'Poster',
   'library.typeCaption': 'Caption',

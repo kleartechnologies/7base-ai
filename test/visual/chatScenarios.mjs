@@ -9,7 +9,20 @@
 
 const PALETTE = ['#c2410c', '#0f172a', '#fdba74']
 
-function poster(id, position, headline, sub, cta, offer, scene = 'scene:food') {
+/**
+ * One poster in a set. `art` defaults to what the generator actually assigns
+ * at this position: `artDirectionForPosition` steers each sibling off the
+ * compositions its predecessors used, so a set never comes back as one layout
+ * three times. The fixture used to hard-code `editorial_split` for all three,
+ * which made the set scene look uniform on the sheet — and would have hidden
+ * exactly the regression this sheet exists to catch (Phase 7K §5).
+ */
+function poster(id, position, headline, sub, cta, offer, scene = 'scene:food', art = null) {
+  const spread = [
+    { composition: 'editorial_split', accent: 'field', cta: 'outline', device: false },
+    { composition: 'bottom_band', accent: 'rule', cta: 'solid', device: false },
+    { composition: 'card_overlay', accent: 'field', cta: 'chip', device: false },
+  ]
   return {
     id,
     ownerId: 'visual',
@@ -50,7 +63,7 @@ function poster(id, position, headline, sub, cta, offer, scene = 'scene:food') {
       logoStoragePath: null,
       brandApplied: null,
       direction: 'appetite',
-      artDirection: { composition: 'editorial_split', accent: 'field', cta: 'outline', device: false },
+      artDirection: art ?? spread[(position - 1) % spread.length],
     },
   }
 }
@@ -66,9 +79,11 @@ export const CREATIVE_FIXTURES = [
 
 /** Three posters for a business with no Brand Identity saved yet. */
 function unbranded() {
-  const neutral = (id, headline, sub, cta, scene, composition) => ({
-    ...poster(id, 1, headline, sub, cta, null, scene),
-    name: 'New menu',
+  const neutral = (id, headline, sub, cta, scene, composition, position) => ({
+    ...poster(id, position, headline, sub, cta, null, scene),
+    // What `draftName` produces: three posters in a set carry three labels,
+    // not one name three times over (Phase 7K §4).
+    name: position > 1 ? `New menu Poster ${position}` : 'New menu Poster',
     campaignId: 'camp2',
     style: {
       palette: ['#111827', '#374151', '#9ca3af'],
@@ -81,9 +96,9 @@ function unbranded() {
     },
   })
   return [
-    neutral('cr4', 'New on the menu', 'Nasi lemak ayam berempah, from Friday.', 'Try it Friday', 'scene:food', 'centred_statement'),
-    neutral('cr5', 'Ayam berempah, done properly', 'Marinated overnight, fried to order.', 'See the menu', 'scene:kitchen', 'editorial_split'),
-    neutral('cr6', 'From Friday', 'One new dish, every Friday this month.', 'Come try it', 'scene:table', 'corner_anchor'),
+    neutral('cr4', 'New on the menu', 'Nasi lemak ayam berempah, from Friday.', 'Try it Friday', 'scene:food', 'centred_statement', 1),
+    neutral('cr5', 'Ayam berempah, done properly', 'Marinated overnight, fried to order.', 'See the menu', 'scene:kitchen', 'editorial_split', 2),
+    neutral('cr6', 'From Friday', 'One new dish, every Friday this month.', 'Come try it', 'scene:table', 'corner_anchor', 3),
   ]
 }
 

@@ -558,3 +558,35 @@ describe('drawPoster — a short headline is set larger, not left timid (§5)', 
   })
 })
 
+
+describe('drawPoster — the split cuts below the message, not through its margin', () => {
+  /**
+   * Phase 7K §4. The editorial split sizes its band to the message and caps
+   * it at just over half the frame. But the room the type was allowed to fill
+   * *was* that cap, so a full message filled the band and the cap then took
+   * the padding that was meant to sit under it: the call to action came out
+   * 30px above a hard cut to the photograph, on a poster whose every other
+   * edge has 76. It read as type that had been pushed off the bottom.
+   */
+  const seamOf = (ops: Op[]) =>
+    ops.find((op) => op.op === 'rect' && op.x === 0 && op.y === 0 && op.width === 1080)?.height ?? 0
+
+  /** The lowest edge the message paints — its last line, or the button under it. */
+  const messageBottom = (ops: Op[], seam: number) =>
+    Math.max(
+      ...ops
+        .filter((op) => op.op !== 'image' && op.y > 100 && op.y < seam)
+        .map((op) => op.y + (op.op === 'text' ? 0 : op.height)),
+    )
+
+  it('leaves the call to action a full margin above the photograph', () => {
+    for (const headline of [
+      'Beat The Lunch Rush',
+      'Beat The Weekday Lunch Rush With Sets Ready When You Are',
+    ]) {
+      const { ops, poster } = render({ composition: 'editorial_split', headline })
+      const seam = seamOf(ops)
+      expect(seam - messageBottom(ops, seam)).toBeGreaterThanOrEqual(posterDesign(poster).margin)
+    }
+  })
+})

@@ -46,6 +46,14 @@ export default function OverviewPage() {
   }, [user])
 
   const activeCampaigns = (campaigns ?? []).filter((c) => c.status !== 'archived').slice(0, 4)
+  // On an empty workspace the campaigns panel already makes exactly this ask,
+  // and hands the owner three ways to phrase it. A card beside it saying
+  // "tell EVA what you want" is the same sentence twice, a hand's width
+  // apart (Phase 7K §9). Every other suggestion says something the panel
+  // does not, so only this one stands down.
+  const proposed = suggestionKey(business, campaigns)
+  const suggestion =
+    proposed === 'overview.suggestFirstCampaign' && activeCampaigns.length === 0 ? null : proposed
   const recentCreatives = (creatives ?? []).filter((c) => c.render).slice(0, 5)
 
   return (
@@ -144,18 +152,18 @@ export default function OverviewPage() {
         </div>
 
         <div className="min-w-0 space-y-4">
-          <section className="rounded-xl border border-eva-tint-border bg-eva-tint p-5">
-            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-eva-label">
-              <EvaSpark className="size-3.5" aria-hidden />
-              {t('overview.evaSuggests')}
-            </p>
-            <p className="mt-2.5 text-[14px] leading-relaxed text-foreground">
-              {t(suggestionKey(business, campaigns))}
-            </p>
-            <Button asChild variant="outline" size="sm" className="mt-4 bg-transparent">
-              <Link to={ROUTES.chat}>{t('overview.askAboutIt')}</Link>
-            </Button>
-          </section>
+          {suggestion ? (
+            <section className="rounded-xl border border-eva-tint-border bg-eva-tint p-5">
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-eva-label">
+                <EvaSpark className="size-3.5" aria-hidden />
+                {t('overview.evaSuggests')}
+              </p>
+              <p className="mt-2.5 text-[14px] leading-relaxed text-foreground">{t(suggestion)}</p>
+              <Button asChild variant="outline" size="sm" className="mt-4 bg-transparent">
+                <Link to={ROUTES.chat}>{t('overview.askAboutIt')}</Link>
+              </Button>
+            </section>
+          ) : null}
 
           {business ? <ProfileCard business={business} /> : null}
         </div>

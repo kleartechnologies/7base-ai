@@ -224,7 +224,12 @@ function drawSplit(
     // would break it, over two lines, rather than running the full measure as
     // one thin line.
     maxWidth: (width - margin * 2) * 0.88,
-    available: height * 0.54 - top,
+    // The band is capped at 0.54 below, so the room the stack may fill has to
+    // exclude the margin that sits under it. Given the whole band the type
+    // filled it, the cap then swallowed the padding, and the call to action
+    // came out all but touching the cut to the photograph — 30px of air under
+    // it where every other edge of the poster has 76.
+    available: height * 0.54 - top - margin,
     eyebrow: { color: palette.accentInk, fill: null, rule: palette.accent, uppercase: true },
     headline: palette.ink,
     emphasis: palette.accentInk,

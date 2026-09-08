@@ -220,3 +220,34 @@ describe('what the visual QA pass caught', () => {
     expect(firstCampaign).toBeLessThan(profile)
   })
 })
+
+describe('what the production pass caught (Phase 7K)', () => {
+  it('an empty workspace makes its one ask once, not twice side by side', () => {
+    const page = read('../../pages/OverviewPage.tsx')
+    // The campaigns panel already says "tell EVA what you want to promote"
+    // and hands over three ways to phrase it. The suggestion card stands
+    // down rather than saying it again a hand's width to the right.
+    expect(page).toContain("proposed === 'overview.suggestFirstCampaign' && activeCampaigns.length === 0")
+    expect(page).toContain('{suggestion ? (')
+  })
+
+  it('a single poster card ends where the poster does', () => {
+    const preview = read('./components/blocks/CreativePreview.tsx')
+    // The poster and its copy are capped at max-w-sm. Left to fill the
+    // thread, the card drew a 384px poster inside a 680px frame with an
+    // empty column beside it.
+    expect(preview).toContain('max-w-[26.5rem]')
+  })
+
+  it('an empty library asks EVA rather than teaching where things live', () => {
+    for (const dictionary of [en, ms]) {
+      for (const key of ['library.emptyCreatives', 'library.emptyCampaigns']) {
+        expect(entry(dictionary, key)).toMatch(/EVA/)
+      }
+    }
+    // "Open a campaign and choose 'Make the posters'" taught the object model
+    // and sent the owner down a button path instead of to EVA.
+    expect(entry(en, 'library.emptyCreatives')).not.toMatch(/open a campaign/i)
+    expect(entry(ms, 'library.emptyCreatives')).not.toMatch(/buka satu kempen/i)
+  })
+})

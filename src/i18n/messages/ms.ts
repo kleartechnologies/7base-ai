@@ -130,10 +130,10 @@ export const ms: Record<MessageKey, string> = {
     'Pelayar anda menyekat tetingkap log masuk. Sila benarkan popup dan cuba lagi.',
   'firebaseError.network': 'Masalah rangkaian. Sila semak sambungan internet dan cuba lagi.',
   'firebaseError.tooManyRequests': 'Terlalu banyak percubaan. Sila tunggu sebentar dan cuba lagi.',
-  'firebaseError.notEnabled': 'Kaedah log masuk ini belum diaktifkan untuk projek ini.',
+  'firebaseError.notEnabled': 'Cara log masuk ini tidak tersedia.',
   'firebaseError.permissionDenied': 'Anda tidak mempunyai akses kepada itu.',
   'firebaseError.signInAgain': 'Sila log masuk semula.',
-  'firebaseError.unreachable': 'EVA tidak dapat menghubungi pelayan. Sila cuba lagi.',
+  'firebaseError.unreachable': 'EVA tidak dapat menyambung buat masa ini. Sila cuba lagi.',
   'firebaseError.tookTooLong': 'Permintaan itu mengambil masa terlalu lama. Sila cuba lagi.',
   'firebaseError.usageLimit': 'Anda telah mencapai had penggunaan. Sila cuba lagi kemudian.',
   'firebaseError.notSetUp': 'EVA belum disediakan untuk melakukan itu.',
@@ -142,7 +142,7 @@ export const ms: Record<MessageKey, string> = {
   /* --- AI request failures ------------------------------------------------ */
   'aiError.unauthenticated': 'Sesi anda telah tamat. Sila log masuk semula.',
   'aiError.permissionDenied': 'Anda tidak mempunyai akses kepada perbualan ini.',
-  'aiError.notConfigured': 'Bahagian AI untuk EVA belum dikonfigurasi.',
+  'aiError.notConfigured': 'EVA belum boleh membalas. Cuba sebentar lagi.',
   'aiError.rateLimited': 'EVA sedang mengendalikan banyak permintaan sekarang. Sila cuba sebentar lagi.',
   'aiError.timeout': 'EVA mengambil masa terlalu lama untuk membalas. Sila cuba lagi.',
   'aiError.unavailable': 'EVA tidak dapat dihubungi. Sila semak sambungan internet dan cuba lagi.',
@@ -229,7 +229,7 @@ export const ms: Record<MessageKey, string> = {
   'chat.loadConversationFailed': 'Tidak dapat memuatkan perbualan ini.',
   'chat.sendFailed': 'Mesej anda tidak dapat dihantar. Sila cuba lagi.',
   'chat.backendNotConnected':
-    'Bahagian AI untuk EVA belum disambungkan. Mesej anda telah disimpan — deploy Cloud Functions untuk mendapatkan balasan.',
+    'EVA belum boleh membalas. Mesej anda sudah disimpan — cuba sebentar lagi.',
   'chat.loadConversationsFailed': 'Tidak dapat memuatkan perbualan anda.',
   'chat.deleteConversationFailed': 'Tidak dapat memadam perbualan itu. Sila cuba lagi.',
 
@@ -322,11 +322,11 @@ export const ms: Record<MessageKey, string> = {
   'library.emptyAll':
     'Belum ada hasil pemasaran. Tanya EVA dalam chat — cadangan, kempen, poster dan kapsyen yang anda bina bersama akan dikumpulkan di sini.',
   'library.emptyCreatives':
-    'Belum ada kreatif. Buka satu kempen dan pilih “{createMaterials}” — poster akan muncul di sini.',
+    'Belum ada poster. Beritahu EVA apa yang anda mahu promosikan — hasilnya muncul di sini.',
   'library.emptyCopywriting':
     'Belum ada copywriting. Kapsyen tiba bersama setiap kreatif yang EVA hasilkan.',
   'library.emptyCampaigns':
-    'Belum ada kempen. Bila EVA cadangkan sesuatu dalam chat, satu klik sahaja untuk jadikannya kempen.',
+    'Belum ada kempen. Beritahu EVA apa yang anda mahu capai dan dia akan sediakan satu.',
   'library.emptyRecommendations': 'Belum ada cadangan. Tanya EVA apa yang anda mahu capai.',
   'library.typePoster': 'Poster',
   'library.typeCaption': 'Kapsyen',

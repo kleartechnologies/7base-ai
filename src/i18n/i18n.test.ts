@@ -44,6 +44,24 @@ describe('dictionaries', () => {
       }
     }
   })
+
+  /**
+   * Phase 7K §7/§8. Every string in here is read by a shop owner, and three
+   * of them were written for whoever was building the thing: an unreachable
+   * backend was "EVA's AI backend is not configured", and a chat reply that
+   * could not be produced told the owner to "deploy the Cloud Functions".
+   * The words an owner sees are part of the product, so the vocabulary is
+   * pinned rather than left to whoever adds the next error.
+   */
+  const DEVELOPER_WORDS =
+    /\b(backend|server|pelayan|cloud function|deploy|configured|dikonfigurasi|pipeline|orchestrator|payload|endpoint|callable|firestore|classifier|schema|null|undefined)\b/i
+
+  it('speaks to the owner, not to whoever built it', () => {
+    for (const key of KEYS) {
+      expect(en[key], key).not.toMatch(DEVELOPER_WORDS)
+      expect(ms[key], key).not.toMatch(DEVELOPER_WORDS)
+    }
+  })
 })
 
 describe('translate', () => {

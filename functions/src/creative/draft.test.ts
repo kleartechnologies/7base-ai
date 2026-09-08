@@ -194,3 +194,49 @@ describe('buildCreativeEditCorpus', () => {
     expect(corpus).not.toContain('Weekday Lunch Growth\n')
   })
 })
+
+/**
+ * Phase 7K. Found in a live smoke against production credentials: the
+ * OpenAI balance was exhausted, every copy call failed, and the owner's
+ * three-poster set came back as the same name and the same headline three
+ * times. The draft is the one path that cannot fail, so it is also the path
+ * that has to hold the set together when everything else is down.
+ */
+describe('a set of drafts is a set, not one draft three times', () => {
+  const set = [0, 1, 2].map((position) => draftCreativeCopyFromCampaign(campaign, position))
+
+  it('leaves the first poster exactly as it was', () => {
+    expect(set[0]).toEqual(draftCreativeCopyFromCampaign(campaign))
+  })
+
+  it('gives each sibling its own headline, name and caption', () => {
+    expect(new Set(set.map((d) => d.content.headline)).size).toBe(3)
+    expect(new Set(set.map((d) => d.name)).size).toBe(3)
+    expect(new Set(set.map((d) => d.captions.short)).size).toBe(3)
+  })
+
+  it('only ever leads with a line the owner already approved', () => {
+    const approved = [campaign.keyMessage, campaign.positioning, campaign.name]
+    for (const draft of set) expect(approved).toContain(draft.content.headline)
+  })
+
+  it('never promotes a recommended offer to a headline — it is advice, not copy', () => {
+    // "Consider a weekday lunch set" is EVA suggesting an offer, not the
+    // business having one. An existing offer is the business's own words.
+    for (const draft of set) expect(draft.content.headline).not.toBe(campaign.offer?.description)
+
+    const real = { ...campaign, offer: { description: 'RM12 lunch set', basis: 'existing' as const } }
+    const headlines = [0, 1, 2].map((p) => draftCreativeCopyFromCampaign(real, p).content.headline)
+    expect(headlines).toContain('RM12 lunch set')
+  })
+
+  it('repeats itself rather than invent, when the campaign said only one thing', () => {
+    const thin = { ...campaign, positioning: null, offer: null, name: 'Lunch without the wait' }
+    const only = [0, 1, 2].map((p) => draftCreativeCopyFromCampaign(thin, p).content.headline)
+    expect(new Set(only).size).toBe(1)
+  })
+
+  it('is still deterministic — same campaign and position in, same draft out', () => {
+    expect(draftCreativeCopyFromCampaign(campaign, 2)).toEqual(set[2])
+  })
+})

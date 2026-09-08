@@ -196,6 +196,15 @@ const CAMPAIGN_CONCEPT_WORDS =
 const VISUAL_NOUNS =
   'posters?|images?|photos?|pictures?|visuals?|creatives?|designs?|artworks?|graphics?|backgrounds?|scenes?|gambar|reka bentuk|latar'
 
+/**
+ * The written side of a creative: what an instruction names when it wants
+ * different *words*, not a different picture. Kept apart from the visual
+ * nouns because the two lead to different work — a copy edit costs a fast
+ * wording call, a visual edit can cost an image.
+ */
+const COPY_NOUNS =
+  'headlines?|sub-?headlines?|captions?|taglines?|wording|copy|text|cta|call to action|tajuk|ayat|teks|kapsyen|perkataan'
+
 /** "the", "our", "that" — the small words that sit between a verb and its noun. */
 const NOUN_LEAD = '(?:the|a|an|our|my|that|this|its)?\\s*'
 
@@ -227,6 +236,19 @@ const CREATIVE_EDIT_PATTERNS: RegExp[] = [
     'i',
   ),
   new RegExp(`\\b(?:tukar|ubah|ganti|betulkan)\\b[^.?!]{0,50}\\b(?:${VISUAL_NOUNS})\\b`, 'i'),
+  // The same two verbs aimed at the words instead of the picture. Phase 7K:
+  // "Change the headline to something more urgent" — the single most
+  // ordinary edit an owner types — matched nothing here, so it fell past
+  // the creative editor, past the campaign editor, and came back as
+  // conversation. The instruction was read, agreed with, and not carried out.
+  new RegExp(
+    `\\b(?:change|update|replace|swap|switch|fix|improve|shorten|lengthen|soften|sharpen)\\b[^.?!]{0,50}\\b(?:${COPY_NOUNS})\\b`,
+    'i',
+  ),
+  new RegExp(
+    `\\b(?:tukar|ubah|ganti|betulkan|pendekkan|panjangkan)\\b[^.?!]{0,50}\\b(?:${COPY_NOUNS})\\b`,
+    'i',
+  ),
   // "add a student using the app to the poster", "put our logo on the image".
   // The preposition is required so that "put together 3 posters" stays what it
   // plainly is — a request for three new posters, not an edit of one.

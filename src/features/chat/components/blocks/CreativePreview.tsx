@@ -41,7 +41,11 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    // The poster and its copy are capped at `max-w-sm`, so a card left to
+    // fill the thread came out as a 384px poster in a 680px frame with an
+    // empty column beside it — the card looked unfinished rather than
+    // composed. It ends where its contents end (Phase 7K §12).
+    <div className="max-w-[26.5rem] overflow-hidden rounded-xl border border-border bg-card">
       <div className="border-b border-border px-5 py-3">
         <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           <Images className="size-3.5" aria-hidden />

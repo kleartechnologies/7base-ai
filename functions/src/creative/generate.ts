@@ -315,7 +315,7 @@ export async function generateCreativeForCampaign(
   )
 
   // 1. Copy: deterministic draft first, fast-tier wording on top.
-  let draft = draftCreativeCopyFromCampaign(campaign)
+  let draft = draftCreativeCopyFromCampaign(campaign, setPosition)
   let imageBrief: string | null = null
   let altText: string | null = null
   let meta: MessageMeta | null = null

@@ -8,6 +8,9 @@ import {
   mentionsCampaignConcept,
   mentionsCreative,
 } from './intent'
+// The routing veto lives in the decision layer; this file's new cases check
+// the two together, because a pattern that fixes one can break the other.
+import { parseCreativeRequest } from '../chat/actions/decide'
 
 /**
  * The two costs of getting intent wrong are asymmetric but both real: a
@@ -278,5 +281,55 @@ describe('routing between artifacts: creative nouns vs campaign concepts', () =>
   it('a message naming both stays with the creative', () => {
     const text = 'Change the campaign headline.'
     expect(mentionsCampaignConcept(text) && !mentionsCreative(text)).toBe(false)
+  })
+})
+
+/**
+ * Phase 7K. Found by running the owner's four ordinary sentences against
+ * the real routing: "Change the headline to something more urgent" — the
+ * most obvious edit anyone would type — matched no edit pattern at all. It
+ * fell past the creative editor and past the campaign editor and came back
+ * as conversation, so EVA agreed to the change and never made it.
+ */
+describe('an edit aimed at the words, not the picture', () => {
+  const edits = [
+    'Change the headline to something more urgent.',
+    'Tukar headline supaya lebih urgent.',
+    'Update the caption for Instagram.',
+    'Ubah ayat tu, terlalu panjang.',
+    'Replace the CTA with something clearer.',
+    'Shorten the copy a bit.',
+    'Improve the tagline.',
+  ]
+
+  it('is recognised as an edit', () => {
+    for (const text of edits) expect(detectCreativeEdit(text)).toBe(true)
+  })
+
+  it('names the creative, so it edits the poster rather than the campaign', () => {
+    for (const text of edits) {
+      // The router prefers the campaign only when a message names a
+      // campaign concept and no part of a creative.
+      expect(mentionsCampaignConcept(text) && !mentionsCreative(text)).toBe(false)
+    }
+  })
+
+  it('does not turn a request for new posters into an edit', () => {
+    for (const text of [
+      'Make 3 posters for the weekday lunch',
+      'Buat 3 poster untuk promo lunch',
+      'Create another poster like this one',
+      'I want to make an Instagram poster for our new offer',
+      'Can you write the captions for these?',
+    ]) {
+      expect(parseCreativeRequest(text) === null && detectCreativeEdit(text)).toBe(false)
+    }
+  })
+
+  it('leaves a strategy instruction on the campaign', () => {
+    // No creative noun anywhere: this is steering, and the campaign editor
+    // is the right destination.
+    expect(mentionsCreative('Change the audience to families instead')).toBe(false)
+    expect(mentionsCampaignConcept('Change the audience to families instead')).toBe(true)
   })
 })

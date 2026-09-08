@@ -126,7 +126,7 @@ export default function LibraryPage() {
         <p className="mt-10 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
           {/* The quoted button name comes from the same dictionary as the
               button itself, so the two can never drift apart. */}
-          {t(EMPTY_KEYS[tab], { createMaterials: t('campaign.createMaterials') })}
+          {t(EMPTY_KEYS[tab])}
         </p>
       ) : (
         <ul className="mt-8 space-y-3">
