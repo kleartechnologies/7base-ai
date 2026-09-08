@@ -45,8 +45,11 @@ export type AiFailureKind =
 
 /** The only four sentences MARKA will say about an AI failure. */
 export const AI_FAILURE_MESSAGES = {
-  billing:
-    'EVA’s AI service has reached its usage limit. Please check the account billing settings.',
+  // The owner has no billing settings to check: their own plan quota is a
+  // different message entirely (`usage/limits.ts`). This one fires when
+  // MARKA's provider account is exhausted, so it must not send the owner
+  // looking for a screen that is not theirs, or read as their fault.
+  billing: 'EVA has reached her limit. That is on our side to fix, not anything you did.',
   busy: 'EVA is busy right now. Please try again shortly.',
   timeout: 'EVA is taking longer than expected right now. Please try again.',
   generic: 'EVA ran into a problem. Please try again.',

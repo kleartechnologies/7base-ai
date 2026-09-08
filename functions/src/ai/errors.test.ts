@@ -36,9 +36,10 @@ describe('billing and exhausted credit', () => {
     )
 
     expect(failure.kind).toBe('billing')
-    expect(failure.userMessage).toBe(
-      'EVA’s AI service has reached its usage limit. Please check the account billing settings.',
-    )
+    expect(failure.userMessage).toBe(AI_FAILURE_MESSAGES.billing)
+    // Production hit this for real (Phase 7K): the sentence must not send the
+    // owner to billing settings that belong to MARKA, not to them.
+    expect(failure.userMessage).not.toMatch(/billing|settings|account/i)
   })
 
   it('never tells the owner to retry a billing failure', () => {
