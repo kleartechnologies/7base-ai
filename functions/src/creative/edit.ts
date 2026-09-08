@@ -90,6 +90,8 @@ export function applyCreativePatch(
   )
   consider('shortCopy', creative.captions.short, (value) => (next.captions.short = value))
   consider('whatsappCopy', creative.captions.whatsapp, (value) => (next.captions.whatsapp = value))
+  consider('xCopy', creative.captions.x ?? null, (value) => (next.captions.x = value))
+  consider('tiktokCopy', creative.captions.tiktok ?? null, (value) => (next.captions.tiktok = value))
 
   if (changed.length > 0) {
     next.updatedAt = now

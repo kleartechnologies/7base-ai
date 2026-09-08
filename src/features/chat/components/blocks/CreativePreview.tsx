@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ImageOff, Images, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DownloadPosterButton, LivePosterFrame, useLivePoster } from '@/features/creative/LivePoster'
-import { copyTextToClipboard } from '@/features/creative/poster'
+import { PlatformCopy } from '@/features/creative/PlatformCopy'
 import { useI18n } from '@/hooks/useI18n'
 import { retryCreativeImage } from '@/services/ai/ai.client'
 import type { CreativePreviewBlock } from '@/types'
@@ -12,10 +12,11 @@ import type { CreativePreviewBlock } from '@/types'
  * complete marketing package.
  *
  * The poster is the persisted creative, drawn by the shared renderer — the
- * same picture the Creative page shows and the download exports. Captions
- * come from the document too once it has loaded, so an edit shows here
- * without a new message. A generated visual is labelled as EVA's; honesty
- * over polish.
+ * same picture the Creative page shows and the download exports. The copy
+ * comes from the document too once it has loaded, so an edit shows here
+ * without a new message, and the panel under the poster is the same one the
+ * Creative page uses. A generated visual is labelled as EVA's; honesty over
+ * polish.
  */
 export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
   const { t } = useI18n()
@@ -26,8 +27,6 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
 
   const source = creative ? creative.content.image?.source : block.image?.source
   const imageFailed = creative ? creative.imageError !== null : block.imageFailed
-  const captions = creative ? creative.captions : block.captions
-
   const handleRetry = async () => {
     setRetrying(true)
     setRetryNote(null)
@@ -87,12 +86,9 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
         ) : null}
       </div>
 
-      {/* Captions: each channel's copy, one click to use it. */}
-      <div className="space-y-4 px-5 py-4">
-        <Caption label={t('creative.captionFacebook')} text={captions.facebook} />
-        <Caption label={t('creative.captionInstagram')} text={captions.instagram} />
-        <Caption label={t('creative.captionShort')} text={captions.short} />
-        <Caption label={t('creative.captionWhatsapp')} text={captions.whatsapp} />
+      {/* The copy for this poster — collapsed until it is wanted. */}
+      <div className="px-5 py-4">
+        <PlatformCopy creative={creative} fallbackCaptions={block.captions} className="max-w-sm" />
       </div>
 
       <div className="border-t border-border px-5 py-3.5">
@@ -103,39 +99,6 @@ export function CreativePreview({ block }: { block: CreativePreviewBlock }) {
           {t('creative.editHint')}
         </p>
       </div>
-    </div>
-  )
-}
-
-function Caption({ label, text }: { label: string; text: string | null }) {
-  const { t } = useI18n()
-  const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    if (!copied) return
-    const timer = window.setTimeout(() => setCopied(false), 2000)
-    return () => window.clearTimeout(timer)
-  }, [copied])
-
-  if (!text) return null
-
-  const handleCopy = async () => {
-    if (await copyTextToClipboard(text)) setCopied(true)
-  }
-
-  return (
-    <div>
-      <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-        {label}
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="ml-auto rounded-full border border-border px-2 py-px text-[11px] font-normal normal-case tracking-normal text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          {copied ? t('creative.copied') : t('creative.copy')}
-        </button>
-      </p>
-      <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-foreground">{text}</p>
     </div>
   )
 }

@@ -109,6 +109,8 @@ describe('validateCreativeCopy', () => {
       instagramCaption: null,
       shortCopy: null,
       whatsappCopy: null,
+      xCopy: null,
+      tiktokCopy: null,
       imageBrief: null,
       altText: null,
     })

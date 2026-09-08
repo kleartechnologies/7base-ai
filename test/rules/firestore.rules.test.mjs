@@ -290,6 +290,14 @@ await no('client backfills assetIds on a legacy creative', () => updateDoc(doc(a
 await no('client backfills a logo snapshot on a legacy creative', () => updateDoc(doc(alice, 'creatives/aliceLegacyCreative'), { 'style.logoAssetId': 'aliceLogoAsset', 'style.logoStoragePath': 'businesses/aliceBiz/creatives/logo.png' }))
 await no('alice rewrites creative ownerId', () => updateDoc(doc(alice, 'creatives/aliceCreative'), { ownerId: 'bob' }))
 await no('alice rewrites creative createdAt', () => updateDoc(doc(alice, 'creatives/aliceCreative'), { createdAt: 9999 }))
+// Phase 7H: the owner rewording one platform caption in the copy panel — the
+// only creative write the client makes. It must reach the caption and the
+// authority list and nothing else, and it must not work across owners.
+await ok('alice saves her X post from the copy panel', () => updateDoc(doc(alice, 'creatives/aliceCreative'), { 'captions.x': 'Lunch, no queue.', userEdited: ['xCopy'], updatedAt: 2300 }))
+await ok('alice saves a TikTok caption on a creative that never had one', () => updateDoc(doc(alice, 'creatives/aliceLegacyCreative'), { 'captions.tiktok': 'No queue at lunch.', userEdited: ['tiktokCopy'], updatedAt: 2400 }))
+await no('bob saves platform copy onto alice creative', () => updateDoc(doc(bob, 'creatives/aliceCreative'), { 'captions.x': 'Hijacked.', userEdited: ['xCopy'], updatedAt: 2500 }))
+await no('alice smuggles an image swap into a caption save', () => updateDoc(doc(alice, 'creatives/aliceCreative'), { 'captions.x': 'Lunch, no queue.', 'content.image.storagePath': 'businesses/bobBiz/creatives/stolen.png', updatedAt: 2600 }))
+await no('alice smuggles a business move into a caption save', () => updateDoc(doc(alice, 'creatives/aliceCreative'), { 'captions.tiktok': 'Hello.', businessId: 'bobBiz', updatedAt: 2700 }))
 await no('bob reads alice creative', () => getDoc(doc(bob, 'creatives/aliceCreative')))
 await no('bob lists alice creatives', () => getDocs(query(collection(bob, 'creatives'), where('ownerId', '==', 'alice'))))
 await no('bob edits alice creative', () => updateDoc(doc(bob, 'creatives/aliceCreative'), { 'content.headline': 'X' }))

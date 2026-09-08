@@ -46,6 +46,12 @@ export function draftCreativeCopyFromCampaign(campaign: StoredCampaign): {
       instagram: shortCopy,
       short: shortCopy,
       whatsapp: campaign.channels.includes('whatsapp') ? shortCopy : null,
+      // Deliberately empty. A campaign sentence repeated under an "X" and a
+      // "TikTok" label is not a platform variant, and this draft only ships
+      // when the writer was unavailable — announced to the owner as a draft.
+      // Better to say the copy isn't there than to fake it.
+      x: null,
+      tiktok: null,
     },
   }
 }
@@ -74,6 +80,8 @@ export function mergeCopy(
       instagram: copy.instagramCaption ?? fallback.captions.instagram,
       short: copy.shortCopy ?? fallback.captions.short,
       whatsapp: copy.whatsappCopy ?? fallback.captions.whatsapp,
+      x: copy.xCopy ?? fallback.captions.x ?? null,
+      tiktok: copy.tiktokCopy ?? fallback.captions.tiktok ?? null,
     },
   }
 }
@@ -150,6 +158,8 @@ export function buildCreativeEditCorpus(params: {
     creative.captions.instagram,
     creative.captions.short,
     creative.captions.whatsapp,
+    creative.captions.x ?? null,
+    creative.captions.tiktok ?? null,
     ...creative.ownerDirectives,
     params.instruction,
   ].filter(Boolean) as string[]

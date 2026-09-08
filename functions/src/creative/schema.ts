@@ -42,6 +42,10 @@ export const CREATIVE_COPY_SCHEMA = object({
   shortCopy: nullableString,
   /** A WhatsApp broadcast message, or null if the channel is not in play. */
   whatsappCopy: nullableString,
+  /** A post for X: one thought, no wind-up, inside the character budget. */
+  xCopy: nullableString,
+  /** A TikTok caption: spoken-sounding, hook first, a few tags at most. */
+  tiktokCopy: nullableString,
   /** What the supporting visual should show. Scene only — never words. */
   imageBrief: nullableString,
   /** Accessibility description of that visual. */
@@ -63,6 +67,8 @@ export const CREATIVE_EDIT_SCHEMA = object({
   instagramCaption: nullableString,
   shortCopy: nullableString,
   whatsappCopy: nullableString,
+  xCopy: nullableString,
+  tiktokCopy: nullableString,
   /**
    * Null unless the instruction asks for a *visual* change. When set, a new
    * image brief — this is the only path that regenerates the poster image;

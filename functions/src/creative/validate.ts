@@ -29,6 +29,10 @@ const LIMITS = {
   instagramCaption: 500,
   shortCopy: 240,
   whatsappCopy: 400,
+  // X is 280 characters for most accounts; 240 leaves room for a link the
+  // owner pastes in themselves rather than shipping copy that cannot post.
+  xCopy: 240,
+  tiktokCopy: 300,
   // Never printed anywhere — it is briefing text for the image model, and
   // 7G.2 asks it to name a subject, a place, the light and the moment. At 400
   // that arrived clipped mid-word.
@@ -90,11 +94,21 @@ export interface CreativeContent {
 }
 
 /** Channel copy that travels with the poster. All optional by design. */
+/**
+ * The copy that goes with the poster, one field per place the owner posts it.
+ *
+ * `x` and `tiktok` arrived in Phase 7H and are optional on purpose: every
+ * creative written before that date simply does not have them, and the UI
+ * says so rather than inventing a variant that was never written.
+ */
 export interface CreativeCaptions {
   facebook: string | null
   instagram: string | null
+  /** The general caption — usable anywhere. */
   short: string | null
   whatsapp: string | null
+  x?: string | null
+  tiktok?: string | null
 }
 
 export interface CreativeStyle {
@@ -154,6 +168,8 @@ export const CREATIVE_EDITABLE_FIELDS = [
   'instagramCaption',
   'shortCopy',
   'whatsappCopy',
+  'xCopy',
+  'tiktokCopy',
 ] as const
 export type CreativeEditableField = (typeof CREATIVE_EDITABLE_FIELDS)[number]
 
@@ -168,6 +184,8 @@ export interface CreativeCopyDraft {
   instagramCaption: string | null
   shortCopy: string | null
   whatsappCopy: string | null
+  xCopy: string | null
+  tiktokCopy: string | null
   /** Short description of the supporting visual, for the image prompt. */
   imageBrief: string | null
   altText: string | null
@@ -258,6 +276,8 @@ export function validateCreativeCopy(raw: unknown, corpus: string): CreativeCopy
     instagramCaption: grounded(raw.instagramCaption, LIMITS.instagramCaption),
     shortCopy: grounded(raw.shortCopy, LIMITS.shortCopy),
     whatsappCopy: grounded(raw.whatsappCopy, LIMITS.whatsappCopy),
+    xCopy: grounded(raw.xCopy, LIMITS.xCopy),
+    tiktokCopy: grounded(raw.tiktokCopy, LIMITS.tiktokCopy),
     // The brief feeds an image prompt, so money is irrelevant, but it is
     // still clamped and stripped of URLs like everything else.
     imageBrief: grounded(raw.imageBrief, LIMITS.imageBrief),
@@ -289,6 +309,8 @@ export function validateCreativeEdit(raw: unknown, corpus: string): CreativeEdit
   consider('instagramCaption', raw.instagramCaption, LIMITS.instagramCaption)
   consider('shortCopy', raw.shortCopy, LIMITS.shortCopy)
   consider('whatsappCopy', raw.whatsappCopy, LIMITS.whatsappCopy)
+  consider('xCopy', raw.xCopy, LIMITS.xCopy)
+  consider('tiktokCopy', raw.tiktokCopy, LIMITS.tiktokCopy)
 
   return {
     reply: text(raw.reply, LIMITS.reply),

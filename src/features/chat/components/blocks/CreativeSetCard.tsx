@@ -3,6 +3,7 @@ import { ImageOff, Images } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { Button } from '@/components/ui/button'
 import { DownloadPosterButton, LivePosterFrame, useLivePoster } from '@/features/creative/LivePoster'
+import { PlatformCopy } from '@/features/creative/PlatformCopy'
 import { useI18n } from '@/hooks/useI18n'
 import type { CreativeSetBlock, CreativeSetItem } from '@/types'
 
@@ -76,6 +77,11 @@ function PosterTile({ item }: { item: CreativeSetItem }) {
         creative={lookup.status === 'ready' ? lookup.creative : null}
         variant="ghost"
         className="mt-1 -ml-2 h-7 px-2 text-[12px] text-muted-foreground"
+      />
+      {/* Each poster keeps its own copy — never one pooled block per set. */}
+      <PlatformCopy
+        creative={lookup.status === 'ready' ? lookup.creative : null}
+        className="mt-2"
       />
     </div>
   )

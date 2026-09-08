@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Megaphone } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { generateCreativeMaterials } from '@/services/ai/ai.client'
+import { EvaCreatingState } from '@/components/EvaCreatingState'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/hooks/useI18n'
 import type { CampaignCardBlock } from '@/types'
@@ -120,9 +121,7 @@ export function CampaignCard({ block }: { block: CampaignCardBlock }) {
           </Button>
         </div>
         {creating ? (
-          <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-            {t('campaign.creatingMaterialsNote')}
-          </p>
+          <EvaCreatingState note="campaign.creatingMaterialsNote" className="mt-3" />
         ) : null}
         {materialsError ? (
           <p className="mt-2 text-[13px] leading-relaxed text-destructive">{materialsError}</p>

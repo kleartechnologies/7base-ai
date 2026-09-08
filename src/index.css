@@ -154,12 +154,42 @@
   --color-eva-on-dark: var(--eva-on-dark);
 
   /*
-   * The only approved EVA animations: the spark's thinking pulse and the
-   * card entrance. (The third, the streaming cursor blink, reuses Tailwind's
-   * animate-pulse.) Both respect prefers-reduced-motion at the usage site.
+   * The only approved EVA animations: the spark's thinking pulse, the card
+   * entrance, and the creation state's orbit and halo. (A fourth, the
+   * streaming cursor blink, reuses Tailwind's animate-pulse.) All of them
+   * respect prefers-reduced-motion at the usage site.
+   *
+   * The orbit is one small point of light travelling around the mark while
+   * EVA is making something, and the halo is the faint breath of tint behind
+   * it. Slow on purpose — this runs for a minute or two, so anything quicker
+   * would be a thing to watch rather than a sign of life. No spinner, no
+   * glow, no particles.
    */
   --animate-eva-pulse: eva-pulse 1.6s ease-in-out infinite;
   --animate-card-in: card-in 120ms ease-out;
+  --animate-eva-orbit: eva-orbit 4.8s linear infinite;
+  --animate-eva-halo: eva-halo 3.6s ease-in-out infinite;
+
+  @keyframes eva-orbit {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes eva-halo {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.94);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.06);
+    }
+  }
 
   @keyframes eva-pulse {
     0%,

@@ -369,6 +369,33 @@ export const ms: Record<MessageKey, string> = {
   'creative.downloadFailed': 'Poster tidak dapat dimuat turun. Sila cuba lagi.',
   'creative.editHint': 'Beritahu saya apa yang nak diubah — tajuk, kapsyen, atau imej.',
 
+  /* --- platform copy: teks pemasaran yang mengiringi poster ------------- */
+  'creative.copyForPosting': 'Teks untuk dihantar',
+  'creative.copyPlatforms': 'Pilih platform',
+  'creative.copyNotReady': 'Teks untuk poster ini belum siap.',
+  'creative.copyFailed':
+    'Pelayar anda tidak membenarkan salinan. Pilih teks itu dan salin sendiri.',
+  'creative.copySaveFailed': 'Tidak berjaya disimpan. Semak sambungan anda dan cuba lagi.',
+  'creative.editCopyLabel': 'Sunting {platform}',
+  'creative.platformGeneral': 'Kapsyen umum',
+  'creative.platformGeneralChip': 'Umum',
+  'creative.platformFacebook': 'Kapsyen Facebook',
+  'creative.platformFacebookChip': 'Facebook',
+  'creative.platformInstagram': 'Kapsyen Instagram',
+  'creative.platformInstagramChip': 'Instagram',
+  'creative.platformX': 'Hantaran untuk X',
+  'creative.platformXChip': 'X',
+  'creative.platformTiktok': 'Kapsyen TikTok',
+  'creative.platformTiktokChip': 'TikTok',
+  'creative.platformWhatsapp': 'Mesej WhatsApp',
+  'creative.platformWhatsappChip': 'WhatsApp',
+
+  // EVA sedang bekerja, pada laluan yang tidak melaporkan apa-apa di tengah.
+  'creative.evaCreatingTitle': 'EVA sedang menghasilkan bahan pemasaran anda',
+  'creative.evaCreatingDetail':
+    'Menulis teks anda, memilih visual, kemudian menghasilkan poster.',
+  'creative.evaCreatingNote': 'Ini biasanya mengambil masa satu dua minit.',
+
   /* --- creative gallery page ------------------------------------------------ */
   'creative.pageTitle': 'Kreatif',
   'creative.pageIntro': 'Semua yang EVA dah buat untuk anda — sedia dimuat turun, atau diubah dengan EVA.',

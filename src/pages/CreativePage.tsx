@@ -5,6 +5,7 @@ import { ROUTES } from '@/app/routes/paths'
 import { EvaSpark } from '@/components/EvaMark'
 import { Button } from '@/components/ui/button'
 import { BrandAppliedPanel } from '@/features/creative/BrandAppliedPanel'
+import { PlatformCopy } from '@/features/creative/PlatformCopy'
 import { PosterCanvas } from '@/features/creative/PosterCanvas'
 import { downloadCreativePoster } from '@/features/creative/poster'
 import { useAuth } from '@/hooks/useAuth'
@@ -161,6 +162,10 @@ function CreativeCard({ creative, campaignName }: { creative: Creative; campaign
           ) : null}
         </div>
         <p className="mt-0.5 text-[12px] text-muted-foreground">{context}</p>
+
+        {/* The poster's own copy, directly under it. Collapsed by default —
+            the poster is what this page is for. */}
+        <PlatformCopy creative={creative} className="mt-3" />
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => void handleDownload()} disabled={downloading}>

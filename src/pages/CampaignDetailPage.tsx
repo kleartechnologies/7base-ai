@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, Plus } from 'lucide-react'
 import { ROUTES } from '@/app/routes/paths'
 import { EvaSpark } from '@/components/EvaMark'
+import { EvaCreatingState } from '@/components/EvaCreatingState'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -369,11 +370,7 @@ export default function CampaignDetailPage() {
         ) : null}
       </header>
 
-      {creating ? (
-        <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-          {t('campaign.materialsPreparing')}
-        </p>
-      ) : null}
+      {creating ? <EvaCreatingState note={null} className="mt-4" /> : null}
       {materialsStarted ? (
         <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
           {t('campaign.materialsInWorkbench')}

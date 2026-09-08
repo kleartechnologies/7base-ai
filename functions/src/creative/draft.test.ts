@@ -114,6 +114,8 @@ describe('mergeCopy', () => {
       instagramCaption: null,
       shortCopy: null,
       whatsappCopy: null,
+      xCopy: null,
+      tiktokCopy: null,
       imageBrief: 'A plate of nasi lemak on a kopitiam table',
       altText: null,
     })

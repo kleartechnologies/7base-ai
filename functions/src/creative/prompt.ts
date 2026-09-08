@@ -3,7 +3,7 @@ import { compositionBrief, type PosterComposition } from './artDirection'
 import type { CreativeDirection } from './direction'
 import { POSTER_COPY_LIMITS } from './posterCopy'
 import type { StoredCreative } from './store'
-import type { CreativeFormat } from './validate'
+import { CREATIVE_LIMITS as LIMITS, type CreativeFormat } from './validate'
 
 /**
  * Prompts for the creative transformations. Like the campaign prompts, these
@@ -27,8 +27,10 @@ Fields:
 - offerText: the offer as short displayable poster text (at most ${POSTER_COPY_LIMITS.offerText} characters), or null when the campaign has no concrete offer. Never sharpen a suggestion into a claim — if the offer says "consider a lunch set", there is no price and no named set to print.
 - facebookCaption: 2-4 short sentences in the business's voice, ending with the call to action. This is where a link belongs, if the campaign has one. Hashtags optional, at most three.
 - instagramCaption: shorter and lighter than Facebook, at most three hashtags.
-- shortCopy: one or two sentences usable anywhere.
+- shortCopy: one or two sentences usable anywhere — the general caption, for a story, a flyer, a reply to a customer.
 - whatsappCopy: a friendly broadcast message, or null if WhatsApp is not one of the campaign's channels.
+- xCopy: one post for X. At most ${LIMITS.xCopy} characters including any hashtag, because the owner still has a link to paste. One thought, said straight, no wind-up and no thread. Usually no hashtag at all.
+- tiktokCopy: one TikTok caption. It sounds like someone talking, opens on the hook — the thing that makes a person stop — and runs to about ${LIMITS.tiktokCopy} characters at most. Up to three hashtags, only ones a real person would use for this business.
 - imageBrief: 1-3 sentences describing the supporting visual — who or what is in it, where, what they are doing, the light, and the feeling. Name a specific moment, not a category: "a hawker lifting a ladle out of the pot, steam catching the morning light" rather than "food at a stall". VISUAL DIRECTION in the input, when present, says what kind of picture this poster is; write the brief as that kind of picture. Describe things, never words: no text, signs, prices or logos in the scene, because the poster's words are set over this image afterwards.
 - altText: a plain accessibility description of that visual.
 
@@ -37,6 +39,8 @@ Rules:
 - OWNER RULES in the input are standing instructions from the owner. They outrank everything else here.
 - ALREADY WRITTEN IN THIS SET lists the posters of this set that exist already, with their headline and the picture they use. Yours must not repeat them. A different message, said differently, over a genuinely different picture — another subject, another moment, another place, another distance. Rewording one of them is the failure this list exists to prevent.
 - SET CONTEXT in the input, when present, places this poster in a set the owner asked for in one go, with the owner's request quoted. Give this poster its own angle within that request: when the request lists distinct concepts or languages, this poster takes the one at its position, in the language named for it; otherwise vary the angle from the other posters. This applies to the picture as much as the words — a set whose three imageBriefs describe the same person at the same table in the same light is one poster printed three times, which is a failure. Change the subject, the moment, the place or the distance. The campaign's facts still bound every claim.
+- The captions are four different jobs, not one caption reworded four times. Facebook explains and can carry the link; Instagram is lighter and shorter; X is one blunt thought inside its character budget; TikTok opens on a hook and sounds spoken. If two of them could be swapped without anyone noticing, they are wrong. Hashtags belong where they are used — Instagram and TikTok — not forced into Facebook, X or WhatsApp.
+- No filler that could belong to any business on earth. "Unlock your potential", "take your business to the next level", "don't miss out", "elevate your experience", "game-changer" and their Malay equivalents are banned unless the campaign's own words genuinely say that.
 - Plain, warm, jargon-free language. Malaysian context. Write in the language the campaign's core message and offer are written in — Bahasa Melayu campaigns get Bahasa Melayu poster text and captions; do not translate the owner's wording into English. No hype, no ALL CAPS, no emoji walls (one or two emoji in captions are fine).
 - Return null for any field you cannot write honestly.`
 
@@ -165,6 +169,8 @@ export function buildCreativeEditInput(params: CreativeEditInputParams): string 
     instagramCaption: cr.captions.instagram,
     shortCopy: cr.captions.short,
     whatsappCopy: cr.captions.whatsapp,
+    xCopy: cr.captions.x ?? null,
+    tiktokCopy: cr.captions.tiktok ?? null,
     imageAltText: cr.content.image?.altText ?? null,
   }
 

@@ -365,6 +365,33 @@ export const en = {
   'creative.downloadFailed': 'The poster could not be downloaded. Please try again.',
   'creative.editHint': 'Tell me what to change — the headline, the captions, or the image.',
 
+  /* --- platform copy: the marketing text that goes with a poster -------- */
+  'creative.copyForPosting': 'Copy for posting',
+  'creative.copyPlatforms': 'Choose a platform',
+  'creative.copyNotReady': 'The copy for this poster isn’t ready yet.',
+  'creative.copyFailed':
+    'Your browser wouldn’t let us copy that. Select the text and copy it manually.',
+  'creative.copySaveFailed': 'That didn’t save. Check your connection and try again.',
+  'creative.editCopyLabel': 'Edit {platform}',
+  'creative.platformGeneral': 'General caption',
+  'creative.platformGeneralChip': 'General',
+  'creative.platformFacebook': 'Facebook caption',
+  'creative.platformFacebookChip': 'Facebook',
+  'creative.platformInstagram': 'Instagram caption',
+  'creative.platformInstagramChip': 'Instagram',
+  'creative.platformX': 'Post for X',
+  'creative.platformXChip': 'X',
+  'creative.platformTiktok': 'TikTok caption',
+  'creative.platformTiktokChip': 'TikTok',
+  'creative.platformWhatsapp': 'WhatsApp message',
+  'creative.platformWhatsappChip': 'WhatsApp',
+
+  // EVA at work, on the paths where the backend reports nothing in between.
+  'creative.evaCreatingTitle': 'EVA is creating your marketing materials',
+  'creative.evaCreatingDetail':
+    'Writing your copy, choosing the visual, then rendering the poster.',
+  'creative.evaCreatingNote': 'This usually takes a minute or two.',
+
   /* --- creative gallery page ------------------------------------------------ */
   'creative.pageTitle': 'Creatives',
   'creative.pageIntro': 'Everything EVA has made for you — ready to download, or to change with EVA.',

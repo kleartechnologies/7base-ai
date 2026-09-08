@@ -39,11 +39,21 @@ export interface Creative extends OwnedEntity {
   imageError: string | null
 }
 
+/**
+ * The copy that goes with the poster, one field per place the owner posts it.
+ *
+ * `x` and `tiktok` arrived in Phase 7H and are optional on purpose: every
+ * creative written before that date simply does not have them, and the UI
+ * says so rather than inventing a variant that was never written.
+ */
 export interface CreativeCaptions {
   facebook: string | null
   instagram: string | null
+  /** The general caption — usable anywhere. */
   short: string | null
   whatsapp: string | null
+  x?: string | null
+  tiktok?: string | null
 }
 
 export type CreativeEditableField =
@@ -57,6 +67,8 @@ export type CreativeEditableField =
   | 'instagramCaption'
   | 'shortCopy'
   | 'whatsappCopy'
+  | 'xCopy'
+  | 'tiktokCopy'
 
 export type CreativeFormat =
   | 'square_post'

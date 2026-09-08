@@ -97,6 +97,9 @@ export interface CreativePreviewBlock {
     instagram: string | null
     short: string | null
     whatsapp: string | null
+    /** Phase 7H; absent on every creative preview written before it. */
+    x?: string | null
+    tiktok?: string | null
   }
 }
 
